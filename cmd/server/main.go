@@ -43,6 +43,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/sourcebook/v1/search", apiHandler.HandleSearch)
 	mux.HandleFunc("/api/sourcebook/v1/pipeline", apiHandler.HandlePipeline)
+	mux.HandleFunc("/api/sourcebook/v1/chat", apiHandler.HandleChat)
 	mux.HandleFunc("/api/sourcebook/v1/jobs/", apiHandler.HandleJob)
 
 	// Health endpoint.

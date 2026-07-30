@@ -1,257 +1,126 @@
-# SourceBook - Agent Context
+# SourceBook — Agent Context
 
-This file is for AI coding agents working on SourceBook. It defines the project shape, priorities, and conventions.
-
----
-
-## What is SourceBook?
-
-SourceBook is an Internet Knowledge Engine, not just a search application.
-
-It aggregates knowledge from multiple internet sources, normalizes the outputs, ranks them, and feeds a shared knowledge pipeline for AI-powered reasoning. The long-term direction is a NotebookLM-style backend built around unified retrieval, preprocessing, and grounded answers.
+This document is intended for AI coding agents (Codex, Cursor, Claude, Gemini, etc.) to understand
+the structure, philosophy, vision, and conventions of this project before making changes.
 
 ---
 
-## Vision
+## 🎯 What is SourceBook?
 
-SourceBook is designed to:
+SourceBook is an **Open-Source, Local-First NotebookLM + Perplexity Hybrid** built in Go.
 
-- query multiple providers simultaneously
-- normalize heterogeneous results into one schema
-- rank and deduplicate results consistently
-- ingest web content into a knowledge pipeline
-- support citation-aware retrieval and analysis later
-
-The current focus is backend-first: search, ingestion, preprocessing, storage, and retrieval infrastructure.
+It serves as a unified intelligence platform that queries multiple internet sources simultaneously via **SearXNG**, extracts clean markdown via **Searqon**, ingests user documents (PDFs, Markdown, Audio/Video transcripts), and feeds a grounded LLM synthesis pipeline for AI reasoning with strict numerical citations (`[1]`, `[2]`).
 
 ---
 
-## Core Principles
+## 🏛️ Product Architecture & NotebookLM Parity Matrix
 
-1. Provider-agnostic
-2. Modular
-3. Concurrent
-4. Extensible
-5. Lightweight
-6. Built in Go
-7. Containerized with Podman
-8. Memory efficient
-9. Production-ready
+| Feature | NotebookLM (Cloud) | SourceBook (Open Source & Local-First) | Status |
+| :--- | :--- | :--- | :--- |
+| **Search Engine** | Google Search | SearXNG (`searqon-searxng-1` Docker container) | ✅ Implemented |
+| **Web Crawler** | Proprietary Cloud Crawler | Searqon (Parallel Go Scraper) | ✅ Implemented |
+| **RAG Synthesis** | Gemini 1.5 Pro | Local LLMs (Ollama / `gemma2`) & OpenAI APIs | ✅ Implemented |
+| **Grounded Citations** | Clickable Citations | Inline numerical citations (`[1]`, `[2]`) | ✅ Implemented |
+| **Text Cleaning** | Auto Sanitization | `utils.CleanText()` (Whitespace/Newline Normalization) | ✅ Implemented |
+| **Notebook Store** | Cloud Storage | Local SQLite + Vector Storage | 🚧 In Progress |
+| **File Ingestion** | Google Drive / PDFs | Local PDF, Markdown, Text, YouTube transcripts | 🚧 In Progress |
+| **Audio Overview** | Deep Dive Podcast (2 Hosts) | Local TTS (Kokoro / Piper / Bark) Audio Synthesis | 🔮 Planned |
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Language | Go |
-| HTTP Server | `net/http` |
-| Config | `.env` via `godotenv` |
-| Search | SearXNG via HTML scraping |
-| Scraping / preprocessing | Searqon |
-| Runtime | Podman / Docker |
+| :--- | :--- |
+| **Language** | Go (all backend) |
+| **HTTP Server** | `net/http` (stdlib, no framework) |
+| **Config** | `.env` via `godotenv` |
+| **Web Scraper** | Searqon (separate Go microservice at `http://127.0.0.1:4001`) |
+| **Search Engine** | SearXNG (`http://localhost:8080`) |
+| **LLM Provider** | Ollama (e.g. `gemma2`) / OpenAI compatible endpoints |
+| **Database** | SQLite + local indexers (for Notebooks & Sources) |
 
 ---
 
-## Current Architecture
+## 📁 Project Structure
 
-```text
-Query API
-  ->
-Unified Search Controller
-  ->
-Provider Registry
-  ->
-Unified Result Normalizer
-  ->
-Search Ranking
-  ->
-Knowledge Pipeline
-  ->
-Knowledge Base
+All Go files are strictly modularized and kept **under 200 lines per file**.
+
 ```
-
-The current implementation already includes:
-
-- SearXNG search provider
-- unified search controller
-- pipeline endpoint
-- in-memory pipeline store
-- job tracking
-- source deduplication
-- raw pipeline response capture
-- document and chunk extraction from pipeline output where possible
-
----
-
-## Project Structure
-
-```text
 sourcebook/
-├── cmd/server/main.go
+├── cmd/server/main.go          # Entrypoint — wires HTTP routes & dependencies
 ├── internal/
-│   ├── api/handlers.go
-│   ├── controller/search.go
-│   ├── models/
-│   ├── pipeline/
-│   ├── providers/
-│   │   └── searx/client.go
-│   └── registry/registry.go
-├── README.md
-└── AGENTS.md
+│   ├── api/                    # Modular HTTP handlers (< 200 lines each)
+│   │   ├── api.go              # API struct and constructor
+│   │   ├── search_handler.go   # GET/POST /search handler
+│   │   ├── pipeline_handler.go # POST /pipeline (Search + Scrape + Clean)
+│   │   ├── chat_handler.go     # POST /chat (Grounded RAG synthesis handler)
+│   │   └── job_handler.go      # GET /jobs handler
+│   ├── controller/
+│   │   └── search.go           # Unified Search Controller (concurrent dispatch)
+│   ├── llm/                    # LLM completion & prompt formatting
+│   │   ├── client.go           # Client supporting Ollama & OpenAI
+│   │   ├── prompt.go           # Grounded RAG prompt builder
+│   │   └── types.go            # LLM data structures
+│   ├── synthesis/              # RAG Orchestration engine
+│   │   └── synthesizer.go      # Cleans docs & synthesizes grounded answer
+│   ├── utils/                  # Text utilities
+│   │   └── cleaner.go          # Whitespace & line-break normalization
+│   ├── models/                 # Shared domain data types
+│   ├── providers/              # Pluggable search providers (SearXNG)
+│   └── registry/               # Provider registry
+├── .env                        # Environment config
+├── docs/.github/commits.md     # Granular commit history & changelog (Refer here for detailed development status)
+└── AGENTS.md                   # This file
 ```
 
 ---
 
-## Search Model
+## ⚙️ Environment Variables (`.env`)
 
-SourceBook’s shared search options:
+```env
+SEARXNG_URL=http://localhost:8080                  # SearXNG Docker instance
+SEARQON_SCRAPE_URL=http://127.0.0.1:4001/scrape/batch # Searqon scraper endpoint
+PORT=5000                                          # SourceBook server port
 
-```go
-type SearchOptions struct {
-    Web bool
-    Images bool
-    Videos bool
-    News bool
-    PDFs bool
-    Docs bool
-    MaxResults int
-    Language string
-    SafeSearch bool
-}
+# LLM Configuration
+LLM_PROVIDER=ollama                                # "ollama" or "openai"
+LLM_URL=http://localhost:11434                     # Ollama URL or OpenAI endpoint
+LLM_MODEL=gemma2                                   # LLM model name
+LLM_API_KEY=                                       # API key (optional for OpenAI)
 ```
 
-Every provider returns normalized results through the shared `SearchResult` schema.
-
 ---
 
-## Provider Interface
-
-Every provider must implement the same interface:
-
-```go
-type SearchProvider interface {
-    Name() string
-    Search(ctx context.Context, query string, options SearchOptions) ([]SearchResult, error)
-}
-```
-
-Adding a new provider should require only:
-
-1. implementing the interface
-2. registering the provider in `cmd/server/main.go`
-
----
-
-## Unified Search Controller
-
-`Search(ctx, query, options)` is the main coordination point.
-
-Responsibilities:
-
-- validate request input
-- dispatch providers concurrently
-- apply per-provider timeouts
-- collect results
-- merge and deduplicate
-- return unified output
-
-Failures from one provider should not stop the overall search.
-
----
-
-## SearXNG
-
-SearXNG is the primary backend search source.
-
-It is used for:
-
-- Web search
-- Image search
-- News search
-- Video search
-
-The provider uses HTML scraping and normalizes the result into the shared schema.
-
----
-
-## Knowledge Pipeline
-
-The current pipeline is the backend spine for future notebook-style behavior.
-
-Flow:
-
-1. Search SearXNG for URLs
-2. Deduplicate and select top results
-3. Send URLs to Searqon `/scrape/batch`
-4. Store the job and pipeline output
-5. Extract documents and chunks from returned content where possible
-
-The pipeline store currently tracks:
-
-- jobs
-- sources
-- documents
-- chunks
-
-This is intentionally the first step toward durable persistence, retrieval, embeddings, and citation mapping.
-
----
-
-## API Endpoints
+## 📡 API Endpoints
 
 All endpoints are versioned under `/api/sourcebook/v1/`.
 
 | Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/sourcebook/v1/search?q=...` | Search via SearXNG |
-| POST | `/api/sourcebook/v1/search` | Search via JSON body |
-| POST | `/api/sourcebook/v1/pipeline` | Search -> scrape/batch -> store |
-| GET | `/api/sourcebook/v1/jobs/{job_id}` | Inspect pipeline job state |
-| GET | `/health` | Health check |
+| :--- | :--- | :--- |
+| `GET` | `/api/sourcebook/v1/search?q=...` | Search via SearXNG, returns normalized JSON |
+| `POST` | `/api/sourcebook/v1/search` | Search via JSON payload `{query, options}` |
+| `POST` | `/api/sourcebook/v1/pipeline` | Search → Scrape → Cleaned Markdown response |
+| `POST` | `/api/sourcebook/v1/chat` | Full Grounded RAG Synthesis: Search → Scrape → Clean → LLM Answer |
+| `GET` | `/api/sourcebook/v1/jobs/{id}` | Status & records of an ingestion job |
+| `GET` | `/health` | Server health check |
 
 ---
 
-## Environment Variables
+## 🗺️ Product Roadmap
 
-```env
-SEARXNG_URL=http://localhost:8080
-SEARQON_SCRAPE_URL=http://127.0.0.1:4001/scrape/batch
-PORT=5000
-```
-
-Never hardcode IPs or ports when a config value exists.
+- [x] **Phase 1: Search & Web Ingestion Pipeline** (SearXNG discovery + Searqon batch scraping)
+- [x] **Phase 2: Grounded RAG Engine & Text Cleaner** (Stripping bloat + LLM synthesis + `[1]`, `[2]` citations)
+- [ ] **Phase 3: Local Notebooks & Document Ingestion** (SQLite persistence + PDF, Markdown, YouTube URL ingestion)
+- [ ] **Phase 4: Agentic RAG** (Query decomposition, BM25/Vector re-ranking, multi-turn chat memory)
+- [ ] **Phase 5: Audio Overview / Podcast Synthesis** (Generating 2-host summary dialogues + Local TTS)
 
 ---
 
-## Roadmap Direction
+## 📜 Coding Conventions & Rules
 
-### Phase 1
-
-- SearXNG integration
-- unified search controller
-- result normalization
-- basic ranking
-- REST API
-
-### Phase 2
-
-- Wikipedia, GitHub, Reddit, Stack Overflow, RSS providers
-- HTML and PDF ingestion
-- metadata extraction
-- local knowledge base
-
-### Phase 3
-
-- Agentic RAG
-- hybrid retrieval with BM25 and vectors
-- semantic reranking
-- AI chat over indexed content
-
-### Phase 4
-
-- knowledge graph
-- cross-source relationship discovery
-- personalized collections and workspaces
-- browser extension
-- live monitoring and scheduled indexing
+1. **Modular Files** — Keep every single file focused and strictly **under 200 lines**.
+2. **Clean Text** — Always pass scraped or ingested text through `utils.CleanText()` before returning or feeding to LLMs.
+3. **Grounded Answers** — Use inline numerical citations `[1]`, `[2]` for AI generated answers based strictly on retrieved sources.
+4. **No Direct Git Commits** — Do not commit directly to remote repository/GitHub unless explicitly requested by the user.
+5. **Development Status Reference** — Always refer to `docs/.github/commits.md` for detailed historical context, implemented features, and recent changelogs.
