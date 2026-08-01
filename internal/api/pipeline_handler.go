@@ -32,10 +32,10 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		}
 
 		if err != nil {
-			log.Printf("[Pipeline] ❌ Search failed after %v: %v", time.Since(searchStart), err)
+			log.Printf("[Pipeline] Search failed after %v: %v", time.Since(searchStart), err)
 			return nil, nil, fmt.Errorf("search failed: %w", err)
 		}
-		log.Printf("[Pipeline] ✅ Search completed in %v. Found %d raw results.", time.Since(searchStart), len(results))
+		log.Printf("[Pipeline] Search completed in %v. Found %d raw results.", time.Since(searchStart), len(results))
 
 		seen := map[string]bool{}
 		for _, res := range results {
@@ -51,11 +51,11 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 			}
 		}
 	} else {
-		log.Printf("[Pipeline] ⚡ Skipping search, using %d explicitly provided URLs.", len(urls))
+		log.Printf("[Pipeline] Skipping search, using %d explicitly provided URLs.", len(urls))
 	}
 
 	if len(urls) == 0 {
-		log.Printf("[Pipeline] ⚠️ No valid URLs found to scrape.")
+		log.Printf("[Pipeline] No valid URLs found to scrape.")
 		return []synthesis.ScrapedDoc{}, []byte(`{"success":true,"data":[]}`), nil
 	}
 
@@ -77,7 +77,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	}
 	searqonReq.Header.Set("Content-Type", "application/json")
 
-	log.Printf("[Pipeline] 🚀 Dispatching batch scrape to Searqon (%s)...", searqonURL)
+	log.Printf("[Pipeline] Dispatching batch scrape to Searqon (%s)...", searqonURL)
 	scrapeStart := time.Now()
 
 	client := &http.Client{
@@ -85,13 +85,13 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	}
 	searqonResp, err := client.Do(searqonReq)
 	if err != nil {
-		log.Printf("[Pipeline] ❌ Searqon request failed after %v: %v", time.Since(scrapeStart), err)
+		log.Printf("[Pipeline] Searqon request failed after %v: %v", time.Since(scrapeStart), err)
 		return nil, nil, fmt.Errorf("failed to call Searqon: %w", err)
 	}
 	defer searqonResp.Body.Close()
 
 	scrapeDuration := time.Since(scrapeStart)
-	log.Printf("[Pipeline] 📥 Searqon responded with status %d in %v", searqonResp.StatusCode, scrapeDuration)
+	log.Printf("[Pipeline] Searqon responded with status %d in %v", searqonResp.StatusCode, scrapeDuration)
 
 	if searqonResp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(searqonResp.Body)
@@ -130,10 +130,10 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 			}
 		}
 	} else {
-		log.Printf("[Pipeline] ⚠️ Searqon returned success=false or invalid JSON")
+		log.Printf("[Pipeline] Searqon returned success=false or invalid JSON")
 	}
 
-	log.Printf("[Pipeline] ✨ Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))
+	log.Printf("[Pipeline] Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))
 	return docs, body, nil
 }
 

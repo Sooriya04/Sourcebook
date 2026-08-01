@@ -29,9 +29,51 @@ export async function runPipeline({ query, maxSources = 5, urls = [] }) {
 }
 
 export async function searchSources(query) {
-  const response = await fetch(`/api/sourcebook/v1/search?q=${encodeURIComponent(query)}`);
+  const response = await fetch('/api/sourcebook/v1/discovery', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, limit: 10 }),
+  });
   if (!response.ok) {
     throw new Error(`Search error: status ${response.status}`);
   }
   return await response.json();
+}
+
+export async function fetchNotebooks() {
+  const response = await fetch('/api/sourcebook/v1/notebooks');
+  if (!response.ok) throw new Error(`Failed to fetch notebooks: ${response.status}`);
+  return await response.json();
+}
+
+export async function createNotebookOnServer(title, description) {
+  const response = await fetch('/api/sourcebook/v1/notebooks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description }),
+  });
+  if (!response.ok) throw new Error(`Failed to create notebook: ${response.status}`);
+  return await response.json();
+}
+
+export async function fetchNotebookDetail(id) {
+  const response = await fetch(`/api/sourcebook/v1/notebooks/${id}`);
+  if (!response.ok) throw new Error(`Failed to fetch notebook detail: ${response.status}`);
+  return await response.json();
+}
+
+export async function updateNotebookOnServer(id, payload) {
+  const response = await fetch(`/api/sourcebook/v1/notebooks/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`Failed to update notebook: ${response.status}`);
+}
+
+export async function deleteNotebookOnServer(id) {
+  const response = await fetch(`/api/sourcebook/v1/notebooks/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error(`Failed to delete notebook: ${response.status}`);
 }

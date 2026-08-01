@@ -7,6 +7,7 @@ import (
 
 	"sourcebook/internal/api"
 	"sourcebook/internal/controller"
+	"sourcebook/internal/database"
 	"sourcebook/internal/pipeline"
 	"sourcebook/internal/providers/searx"
 	"sourcebook/internal/registry"
@@ -19,6 +20,14 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found or error reading it, using system environment variables")
 	}
+
+	// Initialize database
+	db, err := database.InitDB("sourcebook.db")
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+	repo := database.NewRepository(db)
 
 	// Wire the provider registry.
 	reg := registry.NewProviderRegistry()
@@ -37,14 +46,17 @@ func main() {
 	pipelineStore := pipeline.NewStore()
 
 	// Wire the HTTP API.
-	apiHandler := api.NewAPI(searchController, searxProvider, pipelineStore)
+	apiHandler := api.NewAPI(searchController, searxProvider, pipelineStore, repo)
 
 	// Register routes.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/sourcebook/v1/search", apiHandler.HandleSearch)
+	mux.HandleFunc("/api/sourcebook/v1/discovery", apiHandler.HandleDiscovery) // New Searqon fast search
 	mux.HandleFunc("/api/sourcebook/v1/pipeline", apiHandler.HandlePipeline)
 	mux.HandleFunc("/api/sourcebook/v1/chat", apiHandler.HandleChat)
 	mux.HandleFunc("/api/sourcebook/v1/jobs/", apiHandler.HandleJob)
+	mux.HandleFunc("/api/sourcebook/v1/notebooks", apiHandler.HandleNotebooks)
+	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebookDetail)
 
 	// Health endpoint.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

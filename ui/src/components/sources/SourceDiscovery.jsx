@@ -14,7 +14,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
       searchSources(query)
         .then(data => {
           if (!isMounted) return;
-          const searchResults = data.results || [];
+          const searchResults = data.results || (data.data && data.data.results) || [];
           const topResults = searchResults.slice(0, 10);
           setResults(topResults);
           setSelectedUrls(new Set(topResults.map(r => r.url)));
@@ -71,17 +71,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
         <button className="back-to-sources-btn" onClick={onCancel}>
           <ChevronLeft size={16} /> Sources
         </button>
-        <span className="discovery-header-title">Source discovery</span>
       </div>
-
-      <div className="discovery-search-box">
-        <Search size={16} color="var(--text-muted)" />
-        <span className="discovery-query-text">{query}</span>
-      </div>
-
-      <p className="discovery-subtitle">
-        These sources provide a technical roadmap for evolving standard retrieval into autonomous, reasoning-driven AI agent systems.
-      </p>
 
       <div className="discovery-results-container">
         {loading ? (

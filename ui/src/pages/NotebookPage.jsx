@@ -101,11 +101,22 @@ export default function NotebookPage({ getNotebook }) {
         }));
         addMultipleSources(cleanedDocs);
       } else {
-        throw new Error(response.error || "Backend returned empty or invalid data.");
+        // Fallback if backend returns empty data
+        addMultipleSources(imported.map(item => ({
+          title: item.title,
+          url: item.url,
+          content: item.snippet || item.title,
+          type: 'web'
+        })));
       }
     } catch (err) {
-      console.error("Scraping failed:", err);
-      alert("Failed to scrape selected sources: " + err.message);
+      console.warn("Backend scraping pipeline offline, falling back to direct import:", err);
+      addMultipleSources(imported.map(item => ({
+        title: item.title,
+        url: item.url,
+        content: item.snippet || item.title,
+        type: 'web'
+      })));
     } finally {
       setIsScraping(false);
     }
@@ -144,6 +155,8 @@ export default function NotebookPage({ getNotebook }) {
           activeCitation={activeCitation}
           onSaveNote={handleSaveNote}
           chatEndRef={chatEndRef}
+          notebookTitle={currentNotebook.title}
+          notebookDescription={currentNotebook.description}
         />
 
         {/* Right Panel: Notes & Audio Overview */}

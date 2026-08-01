@@ -70,3 +70,10 @@
 - **Anti-Slop Component Cleanup**: Removed sparkle icons, emoji warning text, placeholder source-discovery glyphs, and leftover unused imports/parameters from the frontend so the UI feels less generated and more product-grade.
 - **Compatibility Token Aliases**: Added backward-compatible CSS variable aliases (`--text-main`, `--bg-card`, `--accent-primary`, etc.) so existing component-level icon styling continues to render correctly under the new design system.
 - **Validation**: Verified the frontend with `npm run build` and `npm run lint`; both pass successfully. Vite still emits a non-blocking existing dynamic-import chunking warning for `sourcebookApi.js`.
+
+## Commit 10: Implement SQLite Notebook CRUD, Add Searqon Discovery Proxying, and Resolve Sidebar Overflow
+- **Backend SQLite CRUD Integration**: Implemented Go backend HTTP endpoints `HandleNotebooks` and `HandleNotebookDetail` (in `internal/api/notebook_handler.go`) to support full CRUD operations and robust atomic syncing of notebook sources and notes to the SQLite database.
+- **Environment-based Searqon Configuration**: Addressed setup where Searqon is running on a different machine by declaring `SEARQON_URL=http://100.79.5.109:4001` in the `.env` configuration file, and refactored the Go discovery handler to strictly load it without hardcoded fallbacks.
+- **Search Result Format Reconciliation**: Updated `SourceDiscovery.jsx` search result parsing to support both standard SearXNG and nested Searqon response payloads (`data.results || data.data.results`), fixing empty search lists.
+- **Discovery Sidebar Layout & Redundancy Cleanup**: Fixed vertical layout clipping in `.sidebar` by adding `height: 100%; overflow: hidden;` and `position: relative` to prevent overflow. Removed the redundant discovery header, query searchbox, and description since the notebook header already provides them.
+- **Go Server Route Registration**: Registered the new notebook routes in the Go server multiplexer and compiled the updated backend binary.

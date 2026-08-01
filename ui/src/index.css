@@ -386,6 +386,7 @@ button {
   width: 100%;
   height: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .notebook-header {
@@ -471,6 +472,8 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -628,11 +631,11 @@ button {
 
 .welcome-title {
   font-family: var(--font-serif);
-  font-size: clamp(3rem, 7vw, 6.4rem);
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
   font-weight: 600;
-  letter-spacing: -0.075em;
-  line-height: 0.9;
-  margin-bottom: 18px;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 14px;
   max-width: 820px;
 }
 
@@ -788,6 +791,7 @@ button {
   outline: none;
   resize: none;
   line-height: 1.45;
+  overflow: hidden;
 }
 
 .prompt-input::placeholder,
@@ -1085,6 +1089,13 @@ button {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+}
+
+.discovery-results-container {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .discovery-header {
@@ -1361,12 +1372,14 @@ button {
 }
 
 @keyframes dotPulse {
+
   0%,
   80%,
   100% {
     opacity: 0.35;
     transform: translateY(0);
   }
+
   40% {
     opacity: 1;
     transform: translateY(-3px);

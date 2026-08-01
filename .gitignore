@@ -2,3 +2,5 @@
 sourcebook-server
 *__pycache__*
 .venv
+*.db
+*.db-journal

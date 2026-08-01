@@ -4,6 +4,7 @@ import "time"
 
 type SourceRecord struct {
 	ID           string                 `json:"id"`
+	NotebookID   string                 `json:"notebook_id,omitempty"`
 	JobID        string                 `json:"job_id"`
 	Query        string                 `json:"query,omitempty"`
 	Provider     string                 `json:"provider,omitempty"`

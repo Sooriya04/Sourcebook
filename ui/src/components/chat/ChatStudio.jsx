@@ -14,15 +14,17 @@ export default function ChatStudio({
   onCitationClick,
   activeCitation,
   onSaveNote,
-  chatEndRef
+  chatEndRef,
+  notebookTitle,
+  notebookDescription
 }) {
   return (
     <div className="chat-studio-panel">
       {messages.length === 0 ? (
         <div className="welcome-screen">
-          <h1 className="welcome-title">SourceBook</h1>
+          <h1 className="welcome-title">{notebookTitle || 'SourceBook'}</h1>
           <p className="welcome-subtitle">
-            Your local autonomous research engine. Ask questions and synthesize grounded answers.
+            {notebookDescription || 'Your local autonomous research engine. Ask questions and synthesize grounded answers.'}
           </p>
         </div>
       ) : (
