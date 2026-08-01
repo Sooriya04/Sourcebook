@@ -1,78 +1,76 @@
 import React, { useState } from 'react';
+import { Search, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
-import NotebookCard from '../components/notebook/NotebookCard';
 import CreateNotebookModal from '../components/notebook/CreateNotebookModal';
+import NotebookCard from '../components/notebook/NotebookCard';
 
 export default function HomePage({ notebooks, onCreateNotebook, onDeleteNotebook }) {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const filteredNotebooks = notebooks.filter(nb => 
-    nb.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (nb.description && nb.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    nb.title.toLowerCase().includes(search.toLowerCase())
   );
-
-  const handleCreate = (title, desc) => {
-    const newNb = onCreateNotebook(title, desc);
-    if (newNb?.id) {
-      navigate(`/notebook/${newNb.id}`);
-    }
-  };
 
   return (
     <div className="home-page-container">
       <div className="home-hero">
-        <h1 className="home-headline">Welcome to SourceBook</h1>
-        <p className="home-subheadline">
-          Local-First NotebookLM + Perplexity hybrid engine. Synthesize web knowledge & documents into grounded AI insights.
-        </p>
-
-        <div className="home-search-bar">
-          <Search size={18} className="search-icon" />
-          <input
-            type="text"
+        <h1 className="home-headline">SourceBook</h1>
+        
+        <div className="home-search-bar" style={{ marginTop: '30px' }}>
+          <Search size={16} className="search-icon" />
+          <input 
+            type="text" 
             className="home-search-input"
             placeholder="Search notebooks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
 
       <div className="notebooks-grid-section">
-        <div className="grid-section-header">
-          <span className="section-heading">Recent Notebooks ({filteredNotebooks.length})</span>
-        </div>
-
+        <h2 className="grid-section-header" style={{ fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '20px' }}>
+          Recent notebooks
+        </h2>
         <div className="notebooks-grid">
-          {/* Card to create new notebook */}
-          <div className="create-notebook-card" onClick={() => setIsModalOpen(true)}>
-            <div className="create-icon-wrapper">
-              <Plus size={28} />
+          <div 
+            className="create-notebook-card"
+            onClick={() => setIsCreateModalOpen(true)}
+            style={{ alignItems: 'center', justifyContent: 'center', borderStyle: 'solid', borderColor: 'transparent', background: 'var(--bg-hover)' }}
+          >
+            <div className="create-icon-wrapper" style={{ background: 'var(--accent-primary)', borderRadius: '50%', padding: '10px', color: '#fff', marginBottom: '8px' }}>
+              <Plus size={24} />
             </div>
-            <span className="create-card-title">New Notebook</span>
-            <span className="create-card-sub">Start with empty sources or web query</span>
+            <div className="create-card-title">Create new</div>
           </div>
 
-          {/* List existing notebooks */}
           {filteredNotebooks.map(nb => (
-            <NotebookCard
+            <NotebookCard 
               key={nb.id}
               notebook={nb}
               onClick={() => navigate(`/notebook/${nb.id}`)}
-              onDelete={onDeleteNotebook}
+              onDelete={(e) => {
+                e.stopPropagation();
+                onDeleteNotebook(nb.id);
+              }}
             />
           ))}
         </div>
       </div>
 
-      <CreateNotebookModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onCreate={handleCreate}
-      />
+      {isCreateModalOpen && (
+        <CreateNotebookModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreate={(title, desc) => {
+            const nb = onCreateNotebook(title, desc);
+            setIsCreateModalOpen(false);
+            navigate(`/notebook/${nb.id}`);
+          }}
+        />
+      )}
     </div>
   );
 }

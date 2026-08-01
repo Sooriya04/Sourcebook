@@ -21,6 +21,7 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
 
   const [notes, setNotes] = useState(currentNotebook?.notes || []);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [discoveryTopic, setDiscoveryTopic] = useState(null);
 
   const {
     sources,
@@ -95,6 +96,9 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
           onSelectSource={setSelectedSource}
           onDeleteSource={removeSource}
           onOpenAddModal={() => setIsAddModalOpen(true)}
+          discoveryTopic={discoveryTopic}
+          setDiscoveryTopic={setDiscoveryTopic}
+          onImportDiscovery={(imported) => { addMultipleSources(imported); setDiscoveryTopic(null); }}
         />
 
         {/* Center Panel: Chat Studio */}
@@ -123,6 +127,7 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddSource={handleAddSource}
+        onSearchDiscovery={(topic) => setDiscoveryTopic(topic)}
       />
 
       {/* Source Inspector Drawer */}
