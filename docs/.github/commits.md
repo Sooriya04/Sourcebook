@@ -50,3 +50,13 @@
 - **Transcript Extraction**: Integrated the `youtube-transcript-api` to fetch and extract full text transcripts and segment details from YouTube videos, Shorts, and shortened URLs.
 - **REST Endpoints**: Added a `POST /youtube/transcript` endpoint that accepts a YouTube URL and returns the extracted transcript text in JSON format.
 - **Health Check and Logging**: Implemented a `GET /health` endpoint for service monitoring and configured an automatic rolling logger in the `logs` directory.
+
+## Commit 8: Add SourceBook Search Service Microservice
+- **Search Service Microservice**: Created a standalone FastAPI microservice in `services/search` dedicated only to query planning and web search orchestration.
+- **LLM Query Planning**: Added an Ollama-backed planner that accepts long user paragraphs or rough research ideas and converts them into a structured `SearchPlan` containing intent, objective, entities, keywords, and multiple executable SearXNG queries.
+- **SearXNG Search Orchestration**: Implemented async SearXNG integration using `httpx`, executing planned search queries concurrently and deduplicating results by URL.
+- **Focused API Contract**: Added `GET /api/sourcebook/v1/health`, `GET /api/sourcebook/v1/search?q=...`, and `POST /api/sourcebook/v1/search` endpoints. Search responses return the original query, generated plan, normalized result list, and result count.
+- **Minimal Result Payloads**: Reduced search result output to only necessary client-facing fields: `title`, `url`, and `snippet`, removing noisy provider metadata such as engine names and scores from the API response.
+- **Typed Configuration**: Added `.env` and Pydantic Settings support for service port, SearXNG URL/port, Ollama URL/port, model name, timeouts, planner query limits, and logging mode.
+- **Production-Oriented Logging**: Added Loguru-based request logging with request IDs, method, path, status code, latency, planner summaries, SearXNG query completion logs, and optional JSON log serialization.
+- **Error Handling and Validation**: Added centralized exception handling for expected planner/search provider failures, ORJSON responses, strict Pydantic v2 models, and compile-verified Python service modules.
