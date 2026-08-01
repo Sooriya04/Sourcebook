@@ -73,7 +73,12 @@
 
 ## Commit 10: Implement SQLite Notebook CRUD, Add Searqon Discovery Proxying, and Resolve Sidebar Overflow
 - **Backend SQLite CRUD Integration**: Implemented Go backend HTTP endpoints `HandleNotebooks` and `HandleNotebookDetail` (in `internal/api/notebook_handler.go`) to support full CRUD operations and robust atomic syncing of notebook sources and notes to the SQLite database.
-- **Environment-based Searqon Configuration**: Addressed setup where Searqon is running on a different machine by declaring `SEARQON_URL=http://100.79.5.109:4001` in the `.env` configuration file, and refactored the Go discovery handler to strictly load it without hardcoded fallbacks.
+- **Environment-based Searqon Configuration**: Addressed setup where Searqon is running on a different machine by declaring `SEARQON_URL=http://localhost:4001` in the `.env` configuration file, and refactored the Go discovery handler to strictly load it without hardcoded fallbacks.
 - **Search Result Format Reconciliation**: Updated `SourceDiscovery.jsx` search result parsing to support both standard SearXNG and nested Searqon response payloads (`data.results || data.data.results`), fixing empty search lists.
 - **Discovery Sidebar Layout & Redundancy Cleanup**: Fixed vertical layout clipping in `.sidebar` by adding `height: 100%; overflow: hidden;` and `position: relative` to prevent overflow. Removed the redundant discovery header, query searchbox, and description since the notebook header already provides them.
 - **Go Server Route Registration**: Registered the new notebook routes in the Go server multiplexer and compiled the updated backend binary.
+
+## Future TODOs (For Tomorrow's Session)
+- **Frontend SQLite Integration**: Rewrite frontend hooks (`useNotebooks.js`, `useSources.js`) to load from and save to the new SQLite REST API endpoints rather than relying on browser `localStorage`.
+- **Chat History & Persistence**: Wire the `/chat` route and `chat_messages` table to persist and load conversation histories per notebook workspace.
+- **Unified Document Ingestion Syncing**: Integrate the document parser and YouTube transcript extractor so that all locally uploaded files persist directly into the SQLite database.
