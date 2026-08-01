@@ -44,3 +44,9 @@
 - **Import Orchestration**: Built the import flow in `NotebookPage.jsx` to lock the UI with a non-intrusive scraping toast while the Go backend pulls and sanitizes the sources, directly injecting the cleaned markdown into the notebook sidebar upon success.
 - **Robust JSON Validation**: Fortified the frontend pipeline response handler to explicitly validate `Array.isArray(response.data)` and throw graceful errors instead of crashing the UI when the backend pipeline is forcefully aborted by the user.
 - **Strict UI Cleanups (Anti-Slop)**: Stripped out leftover "vibe code" (glowing borders, giant blue circles, glassmorphism, sparky hero icons, and gradient text) from `index.css`, `HomePage.jsx`, and `AppShell.jsx`. Fully restored the application to a pristine, minimalist, monochrome aesthetic matching the core corporate design system.
+
+## Commit 7: Add YouTube Microservice for Transcript Extraction
+- **FastAPI Microservice**: Created a standalone Python microservice in `services/youtube` using FastAPI and Uvicorn to handle YouTube video processing.
+- **Transcript Extraction**: Integrated the `youtube-transcript-api` to fetch and extract full text transcripts and segment details from YouTube videos, Shorts, and shortened URLs.
+- **REST Endpoints**: Added a `POST /youtube/transcript` endpoint that accepts a YouTube URL and returns the extracted transcript text in JSON format.
+- **Health Check and Logging**: Implemented a `GET /health` endpoint for service monitoring and configured an automatic rolling logger in the `logs` directory.
