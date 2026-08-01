@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, X } from 'lucide-react';
+import { Search, ChevronLeft, Check, FileSearch } from 'lucide-react';
 
 export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [loading, setLoading] = useState(true);
@@ -93,7 +93,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
           <>
             <div className="discovery-results-header">
               <button className="select-all-btn" onClick={handleSelectAll}>
-                Select all {selectedUrls.size === results.length && results.length > 0 ? '✓' : ''}
+                {selectedUrls.size === results.length && results.length > 0 ? 'Clear all' : 'Select all'}
               </button>
             </div>
             
@@ -105,15 +105,14 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
                   onClick={() => toggleSelection(res.url)}
                 >
                   <div className="discovery-item-icon">
-                    {/* Placeholder icon based on url or generic */}
-                    {res.url.includes('arxiv.org') ? 'X' : 'M'}
+                    <FileSearch size={14} />
                   </div>
                   <div className="discovery-item-content">
                     <div className="discovery-item-title">{res.title}</div>
                     <div className="discovery-item-snippet">{res.snippet}</div>
                   </div>
                   <div className="discovery-checkbox">
-                    {selectedUrls.has(res.url) && <span className="check-mark">✓</span>}
+                    {selectedUrls.has(res.url) && <Check size={13} strokeWidth={3} />}
                   </div>
                 </div>
               ))}

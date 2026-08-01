@@ -15,7 +15,7 @@ import { runPipeline } from '../services/sourcebookApi';
 
 const EMPTY_SOURCES = [];
 
-export default function NotebookPage({ getNotebook, updateNotebook }) {
+export default function NotebookPage({ getNotebook }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const currentNotebook = getNotebook(id);
@@ -52,7 +52,7 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
 
   useEffect(() => {
     setNotes(currentNotebook?.notes || []);
-  }, [currentNotebook?.id]);
+  }, [currentNotebook?.id, currentNotebook?.notes]);
 
   if (!currentNotebook) {
     return (

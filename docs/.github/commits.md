@@ -60,3 +60,13 @@
 - **Typed Configuration**: Added `.env` and Pydantic Settings support for service port, SearXNG URL/port, Ollama URL/port, model name, timeouts, planner query limits, and logging mode.
 - **Production-Oriented Logging**: Added Loguru-based request logging with request IDs, method, path, status code, latency, planner summaries, SearXNG query completion logs, and optional JSON log serialization.
 - **Error Handling and Validation**: Added centralized exception handling for expected planner/search provider failures, ORJSON responses, strict Pydantic v2 models, and compile-verified Python service modules.
+
+## Commit 9: Premium Research Workstation UI Redesign
+
+- **Complete Visual System Replacement**: Rebuilt `ui/src/index.css` around a deliberate research-workstation aesthetic using a warm dark canvas, editorial typography, tactile panels, sharp interaction states, and restrained amber accents.
+- **Premium Typography Stack**: Replaced the generic Inter/JetBrains Mono pairing with `Newsreader`, `Sora`, and `IBM Plex Mono` to give SourceBook a more distinctive product identity across the home page, notebook workspace, chat, source cards, modals, and drawers.
+- **Workspace Layout Refinement**: Upgraded the 3-panel notebook interface with denser but cleaner source cards, a stronger chat reading column, improved prompt bar hierarchy, polished notes/audio panel styling, and responsive behavior for tablet and mobile widths.
+- **Home Dashboard Redesign**: Reworked the notebook landing page into a stronger editorial dashboard with a large SourceBook masthead, structured search field, upgraded notebook cards, and a more intentional create-new notebook affordance.
+- **Anti-Slop Component Cleanup**: Removed sparkle icons, emoji warning text, placeholder source-discovery glyphs, and leftover unused imports/parameters from the frontend so the UI feels less generated and more product-grade.
+- **Compatibility Token Aliases**: Added backward-compatible CSS variable aliases (`--text-main`, `--bg-card`, `--accent-primary`, etc.) so existing component-level icon styling continues to render correctly under the new design system.
+- **Validation**: Verified the frontend with `npm run build` and `npm run lint`; both pass successfully. Vite still emits a non-blocking existing dynamic-import chunking warning for `sourcebookApi.js`.

@@ -42,7 +42,7 @@ export function useChat(onNewSourcesRetrieved) {
         ...prev,
         {
           role: 'assistant',
-          content: `⚠️ Error synthesizing grounded response: ${err.message}`,
+          content: `Error synthesizing grounded response: ${err.message}`,
           sources: [],
           duration: 0
         }

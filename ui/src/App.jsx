@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   BookOpen, 
   Send, 
-  Sparkles, 
+  Cpu,
   Globe, 
   ExternalLink, 
   Clock, 
@@ -74,7 +74,7 @@ export default function App() {
         ...prev,
         {
           role: 'assistant',
-          content: `⚠️ Error synthesizing response: ${err.message}`,
+          content: `Error synthesizing response: ${err.message}`,
           sources: [],
           duration: 0,
         },
@@ -207,7 +207,7 @@ export default function App() {
         {messages.length === 0 ? (
           <div className="welcome-screen">
             <div className="welcome-icon">
-              <Sparkles size={28} />
+              <Cpu size={28} />
             </div>
             <h1 className="welcome-title">What would you like to explore today?</h1>
             <p className="welcome-subtitle">
@@ -278,7 +278,7 @@ export default function App() {
             {loading && (
               <div className="message-card">
                 <div className="avatar ai">
-                  <Sparkles size={18} />
+                  <Cpu size={18} />
                 </div>
                 <div className="message-content-box" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                   <span>Searching SearXNG & scraping sources via Searqon...</span>

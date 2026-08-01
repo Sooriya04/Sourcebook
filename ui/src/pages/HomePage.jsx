@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, Trash2 } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CreateNotebookModal from '../components/notebook/CreateNotebookModal';
 import NotebookCard from '../components/notebook/NotebookCard';

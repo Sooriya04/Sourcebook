@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, Mic, Trash2, Sparkles } from 'lucide-react';
+import { Bookmark, Mic, Trash2, Radio } from 'lucide-react';
 
 export default function NotesPanel({ notes = [], onDeleteNote }) {
   return (
@@ -21,7 +21,7 @@ export default function NotesPanel({ notes = [], onDeleteNote }) {
           Generate a 2-host podcast deep-dive summary audio from your active notebook sources.
         </p>
         <button className="podcast-btn" disabled>
-          <Sparkles size={14} /> Generate Audio Overview
+          <Radio size={14} /> Generate Audio Overview
         </button>
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Send, Globe } from 'lucide-react';
+import { Send } from 'lucide-react';
 
-export default function PromptBar({ onSend, loading, maxSources, setMaxSources }) {
+export default function PromptBar({ onSend, loading }) {
   const [query, setQuery] = useState('');
 
   const handleSubmit = (e) => {

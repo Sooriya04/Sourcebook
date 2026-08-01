@@ -1,7 +1,7 @@
 // Pure frontend client-side document and link extractor (No python backend required)
 
 export async function parseFileClientSide(file) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
 
     if (file.name.endsWith('.pdf')) {

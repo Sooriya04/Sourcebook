@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, FileText, Mic, Image as ImageIcon, Globe, Video, Copy, HardDrive, Send } from 'lucide-react';
+import { FileText, Mic, Image as ImageIcon, Globe, Video, Copy, HardDrive, Send } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { parseFileClientSide, parseYouTubeURL } from '../../services/fileIngestor';
 

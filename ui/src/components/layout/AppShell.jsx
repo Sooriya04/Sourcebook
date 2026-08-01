@@ -1,11 +1,8 @@
 import React from 'react';
-import { BookOpen, Sparkles } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { BookOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-export default function AppShell({ children, onNewNotebook }) {
-  const location = useLocation();
-  const isHome = location.pathname === '/';
-
+export default function AppShell({ children }) {
   return (
     <div className="app-container">
       <header className="top-nav-bar">

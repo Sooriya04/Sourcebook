@@ -1,11 +1,11 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 
 export default function ThinkingIndicator() {
   return (
     <div className="message-card thinking">
       <div className="avatar ai pulse">
-        <Sparkles size={18} />
+        <Cpu size={18} />
       </div>
       <div className="message-content-box thinking-text">
         <div className="thinking-dots">
