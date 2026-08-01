@@ -35,3 +35,12 @@
 ## Commit 5: Architectural Documentation Refactoring
 - **Structured Documentation Hub**: Organized `docs/` into a modular, highly cohesive documentation structure with an index hub (`docs/index.md`).
 - **Dedicated Diagram Files**: Created specific markdown documents for every major system component and pipeline (e.g., `master_architecture.md`, `search_scrape_pipeline.md`, `agentic_rag_flow.md`), directly embedding the corresponding visual graphs and diagrams.
+
+## Commit 6: End-to-End Live Web Ingestion & Corporate UI Refinement
+
+- **Live Search Integration**: Connected the frontend `SourceDiscovery.jsx` to the live `GET /search` API, replacing mock data with real internet results powered by SearXNG.
+- **Direct-URL Scraping Pipeline**: Modified the `POST /pipeline` endpoint (`pipeline_handler.go`) to accept an explicit array of `urls`. This allows the pipeline to bypass the discovery phase and immediately dispatch user-selected URLs to the Searqon scraper.
+- **Scraper Stability**: Increased the Searqon internal HTTP client timeout from 15 seconds to 45 seconds to guarantee reliable ingestion of multiple heavy documents (e.g., batch Arxiv PDFs).
+- **Import Orchestration**: Built the import flow in `NotebookPage.jsx` to lock the UI with a non-intrusive scraping toast while the Go backend pulls and sanitizes the sources, directly injecting the cleaned markdown into the notebook sidebar upon success.
+- **Robust JSON Validation**: Fortified the frontend pipeline response handler to explicitly validate `Array.isArray(response.data)` and throw graceful errors instead of crashing the UI when the backend pipeline is forcefully aborted by the user.
+- **Strict UI Cleanups (Anti-Slop)**: Stripped out leftover "vibe code" (glowing borders, giant blue circles, glassmorphism, sparky hero icons, and gradient text) from `index.css`, `HomePage.jsx`, and `AppShell.jsx`. Fully restored the application to a pristine, minimalist, monochrome aesthetic matching the core corporate design system.

@@ -18,7 +18,7 @@ export default function HomePage({ notebooks, onCreateNotebook, onDeleteNotebook
       <div className="home-hero">
         <h1 className="home-headline">SourceBook</h1>
         
-        <div className="home-search-bar" style={{ marginTop: '30px' }}>
+        <div className="home-search-bar">
           <Search size={16} className="search-icon" />
           <input 
             type="text" 
@@ -31,16 +31,15 @@ export default function HomePage({ notebooks, onCreateNotebook, onDeleteNotebook
       </div>
 
       <div className="notebooks-grid-section">
-        <h2 className="grid-section-header" style={{ fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '20px' }}>
+        <h2 className="grid-section-header">
           Recent notebooks
         </h2>
         <div className="notebooks-grid">
           <div 
             className="create-notebook-card"
             onClick={() => setIsCreateModalOpen(true)}
-            style={{ alignItems: 'center', justifyContent: 'center', borderStyle: 'solid', borderColor: 'transparent', background: 'var(--bg-hover)' }}
           >
-            <div className="create-icon-wrapper" style={{ background: 'var(--accent-primary)', borderRadius: '50%', padding: '10px', color: '#fff', marginBottom: '8px' }}>
+            <div className="create-icon-wrapper">
               <Plus size={24} />
             </div>
             <div className="create-card-title">Create new</div>
@@ -51,9 +50,8 @@ export default function HomePage({ notebooks, onCreateNotebook, onDeleteNotebook
               key={nb.id}
               notebook={nb}
               onClick={() => navigate(`/notebook/${nb.id}`)}
-              onDelete={(e) => {
-                e.stopPropagation();
-                onDeleteNotebook(nb.id);
+              onDelete={(id) => {
+                onDeleteNotebook(id);
               }}
             />
           ))}

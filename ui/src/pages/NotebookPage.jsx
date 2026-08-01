@@ -11,6 +11,7 @@ import SourceInspectorDrawer from '../components/sources/SourceInspectorDrawer';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
+import { runPipeline } from '../services/sourcebookApi';
 
 const EMPTY_SOURCES = [];
 
@@ -22,6 +23,7 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
   const [notes, setNotes] = useState(currentNotebook?.notes || []);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [discoveryTopic, setDiscoveryTopic] = useState(null);
+  const [isScraping, setIsScraping] = useState(false);
 
   const {
     sources,
@@ -80,6 +82,35 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
     setNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
+  const handleImportDiscovery = async (imported) => {
+    const urls = imported.map(src => src.url);
+    if (urls.length === 0) return;
+    
+    setIsScraping(true);
+    setDiscoveryTopic(null);
+
+    try {
+      const response = await runPipeline({ query: "discovery_import", urls: urls });
+      
+      if (response && Array.isArray(response.data) && response.data.length > 0) {
+        const cleanedDocs = response.data.map(doc => ({
+          title: doc.Title || doc.title || 'Untitled Web Source',
+          url: doc.URL || doc.url,
+          content: doc.Content || doc.content || '',
+          type: 'web'
+        }));
+        addMultipleSources(cleanedDocs);
+      } else {
+        throw new Error(response.error || "Backend returned empty or invalid data.");
+      }
+    } catch (err) {
+      console.error("Scraping failed:", err);
+      alert("Failed to scrape selected sources: " + err.message);
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
   return (
     <div className="notebook-workspace-3panel">
       <NotebookHeader
@@ -98,7 +129,7 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
           onOpenAddModal={() => setIsAddModalOpen(true)}
           discoveryTopic={discoveryTopic}
           setDiscoveryTopic={setDiscoveryTopic}
-          onImportDiscovery={(imported) => { addMultipleSources(imported); setDiscoveryTopic(null); }}
+          onImportDiscovery={handleImportDiscovery}
         />
 
         {/* Center Panel: Chat Studio */}
@@ -135,6 +166,16 @@ export default function NotebookPage({ getNotebook, updateNotebook }) {
         source={selectedSource}
         onClose={() => setSelectedSource(null)}
       />
+
+      {/* Scraping Toast */}
+      {isScraping && (
+        <div className="scraping-overlay">
+          <div className="scraping-modal">
+            <div className="spinner"></div>
+            <h3>Scraping sources...</h3>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

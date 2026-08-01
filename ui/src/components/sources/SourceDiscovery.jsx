@@ -6,37 +6,30 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [results, setResults] = useState([]);
   const [selectedUrls, setSelectedUrls] = useState(new Set());
 
-  // Mock search results simulating SearXNG backend response
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
-    // Simulate network delay
-    const timer = setTimeout(() => {
-      setResults([
-        {
-          title: "Towards Agentic RAG with Deep Reasoning: A Survey on ...",
-          snippet: "You can explore high-level research synthesizing advanced...",
-          url: "https://arxiv.org/abs/2401.mock1"
-        },
-        {
-          title: "Reasoning RAG via System 1 or System 2: A Survey on ...",
-          snippet: "You will find a categorization of agentic RAG methods into ...",
-          url: "https://arxiv.org/abs/2402.mock2"
-        },
-        {
-          title: "Agentic RAG vs Standard RAG: Why AI Agents Need M...",
-          snippet: "You can compare architectural differences between static ...",
-          url: "https://example.com/blog/agentic-rag-mock"
-        },
-        {
-          title: "Self-RAG: Learning to Retrieve, Generate, and Critique ...",
-          snippet: "You will learn about self-reflective tokens that allow models...",
-          url: "https://arxiv.org/abs/2403.mock4"
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
 
-    return () => clearTimeout(timer);
+    import('../../services/sourcebookApi').then(({ searchSources }) => {
+      searchSources(query)
+        .then(data => {
+          if (!isMounted) return;
+          const searchResults = data.results || [];
+          const topResults = searchResults.slice(0, 10);
+          setResults(topResults);
+          setSelectedUrls(new Set(topResults.map(r => r.url)));
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Search failed:", err);
+          if (isMounted) {
+            setResults([]);
+            setLoading(false);
+          }
+        });
+    });
+
+    return () => { isMounted = false; };
   }, [query]);
 
   const toggleSelection = (url) => {

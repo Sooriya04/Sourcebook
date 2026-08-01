@@ -9,46 +9,57 @@ import (
 	"log"
 	"net/http"
 	"os"
-
 	"sourcebook/internal/models"
 	"sourcebook/internal/synthesis"
 	"sourcebook/internal/utils"
+	"time"
 )
 
 // fetchPipelineSources performs Search -> Searqon /scrape/batch and returns clean docs.
-func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources int, jobID string) ([]synthesis.ScrapedDoc, []byte, error) {
-	options := models.SearchOptions{Web: true}
-	var results []models.SearchResult
-	var err error
+func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources int, urls []string, jobID string) ([]synthesis.ScrapedDoc, []byte, error) {
+	if len(urls) == 0 {
+		options := models.SearchOptions{Web: true}
+		var results []models.SearchResult
+		var err error
 
-	if a.pipelineSearchSource != nil {
-		results, err = a.pipelineSearchSource.Search(ctx, query, options)
-	} else {
-		results, err = a.searchController.Search(ctx, query, options)
-	}
+		log.Printf("[Pipeline] Querying Unified Search (SearXNG) for query: %q", query)
+		searchStart := time.Now()
 
-	if err != nil {
-		return nil, nil, fmt.Errorf("search failed: %w", err)
-	}
-
-	var urls []string
-	seen := map[string]bool{}
-	for _, res := range results {
-		if len(urls) >= maxSources {
-			break
+		if a.pipelineSearchSource != nil {
+			results, err = a.pipelineSearchSource.Search(ctx, query, options)
+		} else {
+			results, err = a.searchController.Search(ctx, query, options)
 		}
-		if res.URL != "" && !seen[res.URL] {
-			seen[res.URL] = true
-			urls = append(urls, res.URL)
-			if a.pipelineStore != nil && jobID != "" {
-				a.pipelineStore.UpsertSource(jobID, res, query)
+
+		if err != nil {
+			log.Printf("[Pipeline] ❌ Search failed after %v: %v", time.Since(searchStart), err)
+			return nil, nil, fmt.Errorf("search failed: %w", err)
+		}
+		log.Printf("[Pipeline] ✅ Search completed in %v. Found %d raw results.", time.Since(searchStart), len(results))
+
+		seen := map[string]bool{}
+		for _, res := range results {
+			if len(urls) >= maxSources {
+				break
+			}
+			if res.URL != "" && !seen[res.URL] {
+				seen[res.URL] = true
+				urls = append(urls, res.URL)
+				if a.pipelineStore != nil && jobID != "" {
+					a.pipelineStore.UpsertSource(jobID, res, query)
+				}
 			}
 		}
+	} else {
+		log.Printf("[Pipeline] ⚡ Skipping search, using %d explicitly provided URLs.", len(urls))
 	}
 
 	if len(urls) == 0 {
+		log.Printf("[Pipeline] ⚠️ No valid URLs found to scrape.")
 		return []synthesis.ScrapedDoc{}, []byte(`{"success":true,"data":[]}`), nil
 	}
+
+	log.Printf("[Pipeline] Extracted %d unique target URLs to scrape: %v", len(urls), urls)
 
 	searqonURL := os.Getenv("SEARQON_SCRAPE_URL")
 	if searqonURL == "" {
@@ -66,12 +77,21 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	}
 	searqonReq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	log.Printf("[Pipeline] 🚀 Dispatching batch scrape to Searqon (%s)...", searqonURL)
+	scrapeStart := time.Now()
+
+	client := &http.Client{
+		Timeout: 45 * time.Second,
+	}
 	searqonResp, err := client.Do(searqonReq)
 	if err != nil {
+		log.Printf("[Pipeline] ❌ Searqon request failed after %v: %v", time.Since(scrapeStart), err)
 		return nil, nil, fmt.Errorf("failed to call Searqon: %w", err)
 	}
 	defer searqonResp.Body.Close()
+
+	scrapeDuration := time.Since(scrapeStart)
+	log.Printf("[Pipeline] 📥 Searqon responded with status %d in %v", searqonResp.StatusCode, scrapeDuration)
 
 	if searqonResp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(searqonResp.Body)
@@ -109,8 +129,11 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 				})
 			}
 		}
+	} else {
+		log.Printf("[Pipeline] ⚠️ Searqon returned success=false or invalid JSON")
 	}
 
+	log.Printf("[Pipeline] ✨ Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))
 	return docs, body, nil
 }
 
@@ -122,8 +145,9 @@ func (a *API) HandlePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Query      string `json:"query"`
-		MaxSources int    `json:"max_sources,omitempty"`
+		Query      string   `json:"query"`
+		MaxSources int      `json:"max_sources,omitempty"`
+		Urls       []string `json:"urls,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -149,8 +173,8 @@ func (a *API) HandlePipeline(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-SourceBook-Job-ID", jobID)
 	}
 
-	log.Printf("[Pipeline] Processing query: %q (MaxSources: %d)", req.Query, maxSources)
-	docs, rawBody, err := a.fetchPipelineSources(r.Context(), req.Query, maxSources, jobID)
+	log.Printf("[Pipeline] Processing query: %q (MaxSources: %d, Provided URLs: %d)", req.Query, maxSources, len(req.Urls))
+	docs, rawBody, err := a.fetchPipelineSources(r.Context(), req.Query, maxSources, req.Urls, jobID)
 	if err != nil {
 		if a.pipelineStore != nil && jobID != "" {
 			_ = a.pipelineStore.MarkFailed(jobID, err)

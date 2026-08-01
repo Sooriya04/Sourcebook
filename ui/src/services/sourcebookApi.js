@@ -14,11 +14,11 @@ export async function chatQuery({ query, maxSources = 5 }) {
   return await response.json();
 }
 
-export async function runPipeline({ query, maxSources = 5 }) {
+export async function runPipeline({ query, maxSources = 5, urls = [] }) {
   const response = await fetch('/api/sourcebook/v1/pipeline', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, max_sources: maxSources }),
+    body: JSON.stringify({ query, max_sources: maxSources, urls }),
   });
 
   if (!response.ok) {

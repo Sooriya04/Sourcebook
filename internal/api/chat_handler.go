@@ -35,7 +35,7 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Chat] Received query: %q", req.Query)
 
-	docs, _, err := a.fetchPipelineSources(r.Context(), req.Query, maxSources, "")
+	docs, _, err := a.fetchPipelineSources(r.Context(), req.Query, maxSources, nil, "")
 	if err != nil {
 		log.Printf("[Chat] Pipeline fetch error: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

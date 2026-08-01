@@ -23,28 +23,13 @@ export default function PromptBar({ onSend, loading, maxSources, setMaxSources }
       <form className="prompt-bar" onSubmit={handleSubmit}>
         <textarea
           className="prompt-input"
-          placeholder="Ask SourceBook anything about your sources or web knowledge..."
+          placeholder="Ask SourceBook anything..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={1}
         />
         <div className="prompt-actions">
-          <div className="controls-group">
-            <Globe size={14} color="var(--text-main)" />
-            <span>Max Sources:</span>
-            <select
-              className="select-control"
-              value={maxSources}
-              onChange={(e) => setMaxSources(Number(e.target.value))}
-            >
-              <option value={3}>3 Sources</option>
-              <option value={5}>5 Sources</option>
-              <option value={8}>8 Sources</option>
-              <option value={10}>10 Sources</option>
-            </select>
-          </div>
-
           <button
             type="submit"
             className="send-btn"
