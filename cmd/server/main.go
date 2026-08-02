@@ -9,6 +9,7 @@ import (
 	"sourcebook/internal/controller"
 	"sourcebook/internal/database"
 	"sourcebook/internal/pipeline"
+	"sourcebook/internal/providers/ddg"
 	"sourcebook/internal/providers/searx"
 	"sourcebook/internal/registry"
 
@@ -40,6 +41,10 @@ func main() {
 
 	searxProvider := searx.NewSearXNGProvider(searxURL)
 	reg.Register(searxProvider)
+
+	// Initialize the fallback search provider (DuckDuckGo).
+	ddgProvider := ddg.NewDuckDuckGoProvider()
+	reg.Register(ddgProvider)
 
 	// Wire the unified search controller and pipeline store.
 	searchController := controller.NewUnifiedSearchController(reg)

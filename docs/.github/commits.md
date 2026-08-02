@@ -100,3 +100,6 @@
 - **Unified `.venv` Launcher Script**: Created executable `run.sh` that automatically detects and activates the root `.venv` virtual environment and launches both the Python YouTube service (`:6001`) and Go backend server (`:5000`) concurrently.
 - **Source Deletion & Sequential Re-Indexing**: Fixed a state re-hydration bug in `useSources.js` to ensure deleting a source immediately syncs with SQLite and re-indexes remaining sources (`[1]`, `[2]`, `[3]...`).
 - **Compact UI Workspace Header**: Added CSS line-clamping and a stateful "Read more / Show less" toggle to `ChatStudio.jsx` for long notebook descriptions, keeping the center chat interface spacious and uncrowded.
+
+## Commit 14: DuckDuckGo Search Fallback
+Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/ddg/client.go` with specialized request headers to bypass CAPTCHA. Wired it into `UnifiedSearchController` as a default fallback when the primary SearXNG server is offline or returns empty results.
