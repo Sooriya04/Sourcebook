@@ -1,65 +1,50 @@
 import { useState, useEffect } from 'react';
-
-const LOCAL_STORAGE_KEY = 'sourcebook_notebooks';
-
-const INITIAL_NOTEBOOKS = [
-  {
-    id: 'nb-1',
-    title: 'Internet Architecture & SearXNG',
-    description: 'Deep dive research on SearXNG query synthesis and Searqon scraping.',
-    createdAt: new Date().toISOString(),
-    sources: [
-      { index: 1, title: 'SearXNG Documentation', url: 'https://docs.searxng.org', type: 'web' },
-      { index: 2, title: 'Go Net/HTTP stdlib', url: 'https://pkg.go.dev/net/http', type: 'web' }
-    ],
-    notes: [
-      { id: 'n-1', title: 'Key Takeaway', content: 'SearXNG provides anonymous search result discovery across multiple web engines.' }
-    ]
-  },
-  {
-    id: 'nb-2',
-    title: 'Machine Learning Models & Grounded RAG',
-    description: 'Notes on LLM prompt engineering, numerical inline citations, and hallucination reduction.',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    sources: [],
-    notes: []
-  }
-];
+import { 
+  fetchNotebooks, 
+  createNotebookOnServer, 
+  deleteNotebookOnServer 
+} from '../services/sourcebookApi';
 
 export function useNotebooks() {
-  const [notebooks, setNotebooks] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return INITIAL_NOTEBOOKS;
-  });
+  const [notebooks, setNotebooks] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(notebooks));
-  }, [notebooks]);
+    let isMounted = true;
+    fetchNotebooks()
+      .then(data => {
+        if (isMounted) setNotebooks(data);
+      })
+      .catch(err => console.error("Failed to fetch notebooks:", err));
+    
+    return () => { isMounted = false; };
+  }, []);
 
-  const createNotebook = (title, description = '') => {
-    const newNotebook = {
-      id: `nb-${Date.now()}`,
-      title: title || 'Untitled Notebook',
-      description,
-      createdAt: new Date().toISOString(),
-      sources: [],
-      notes: []
-    };
-    setNotebooks(prev => [newNotebook, ...prev]);
-    return newNotebook;
+  const createNotebook = async (title, description = '') => {
+    try {
+      const newNotebook = await createNotebookOnServer(title, description);
+      setNotebooks(prev => [newNotebook, ...prev]);
+      return newNotebook;
+    } catch (err) {
+      console.error("Failed to create notebook:", err);
+      throw err;
+    }
   };
 
-  const deleteNotebook = (id) => {
-    setNotebooks(prev => prev.filter(nb => nb.id !== id));
+  const deleteNotebook = async (id) => {
+    try {
+      await deleteNotebookOnServer(id);
+      setNotebooks(prev => prev.filter(nb => nb.id !== id));
+    } catch (err) {
+      console.error("Failed to delete notebook:", err);
+      throw err;
+    }
   };
 
   const getNotebook = (id) => {
     return notebooks.find(nb => nb.id === id);
   };
 
+  // Deprecated: Notebooks are now synced dynamically in NotebookPage.
   const updateNotebook = (id, updates) => {
     setNotebooks(prev => prev.map(nb => nb.id === id ? { ...nb, ...updates } : nb));
   };

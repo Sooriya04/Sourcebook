@@ -1,7 +1,8 @@
-// API service for Go SourceBook Backend (/api/sourcebook/v1/)
+// API service for Go SourceBook Backend loaded dynamically from environment
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export async function chatQuery({ query, maxSources = 5 }) {
-  const response = await fetch('/api/sourcebook/v1/chat', {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, max_sources: maxSources }),
@@ -15,7 +16,7 @@ export async function chatQuery({ query, maxSources = 5 }) {
 }
 
 export async function runPipeline({ query, maxSources = 5, urls = [] }) {
-  const response = await fetch('/api/sourcebook/v1/pipeline', {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/pipeline`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, max_sources: maxSources, urls }),
@@ -29,7 +30,7 @@ export async function runPipeline({ query, maxSources = 5, urls = [] }) {
 }
 
 export async function searchSources(query) {
-  const response = await fetch('/api/sourcebook/v1/discovery', {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/discovery`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, limit: 10 }),
@@ -41,13 +42,13 @@ export async function searchSources(query) {
 }
 
 export async function fetchNotebooks() {
-  const response = await fetch('/api/sourcebook/v1/notebooks');
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks`);
   if (!response.ok) throw new Error(`Failed to fetch notebooks: ${response.status}`);
   return await response.json();
 }
 
 export async function createNotebookOnServer(title, description) {
-  const response = await fetch('/api/sourcebook/v1/notebooks', {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, description }),
@@ -57,13 +58,13 @@ export async function createNotebookOnServer(title, description) {
 }
 
 export async function fetchNotebookDetail(id) {
-  const response = await fetch(`/api/sourcebook/v1/notebooks/${id}`);
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks/${id}`);
   if (!response.ok) throw new Error(`Failed to fetch notebook detail: ${response.status}`);
   return await response.json();
 }
 
 export async function updateNotebookOnServer(id, payload) {
-  const response = await fetch(`/api/sourcebook/v1/notebooks/${id}`, {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -72,7 +73,7 @@ export async function updateNotebookOnServer(id, payload) {
 }
 
 export async function deleteNotebookOnServer(id) {
-  const response = await fetch(`/api/sourcebook/v1/notebooks/${id}`, {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks/${id}`, {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error(`Failed to delete notebook: ${response.status}`);

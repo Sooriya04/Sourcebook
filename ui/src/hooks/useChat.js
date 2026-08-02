@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { chatQuery } from '../services/sourcebookApi';
 
-export function useChat(onNewSourcesRetrieved) {
-  const [messages, setMessages] = useState([]);
+export function useChat(initialMessages = [], onNewSourcesRetrieved) {
+  const [messages, setMessages] = useState(initialMessages);
   const [loading, setLoading] = useState(false);
   const [maxSources, setMaxSources] = useState(5);
   const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

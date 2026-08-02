@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import Sidebar from '../components/layout/Sidebar';
@@ -11,22 +11,34 @@ import SourceInspectorDrawer from '../components/sources/SourceInspectorDrawer';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
-import { runPipeline } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer } from '../services/sourcebookApi';
 
 const EMPTY_SOURCES = [];
+const EMPTY_NOTES = [];
+const EMPTY_MESSAGES = [];
 
 export default function NotebookPage({ getNotebook }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const currentNotebook = getNotebook(id);
+  // We still get the basic shell (title/desc) from the router for instant render
+  const shellNotebook = getNotebook(id);
 
-  const [notes, setNotes] = useState(currentNotebook?.notes || []);
+  const [notebook, setNotebook] = useState(shellNotebook || null);
+  const [loadingNotebook, setLoadingNotebook] = useState(true);
+  
+  const [notes, setNotes] = useState(EMPTY_NOTES);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [discoveryTopic, setDiscoveryTopic] = useState(null);
   const [isScraping, setIsScraping] = useState(false);
 
+  // Auto-sync debouncer ref
+  const syncTimeoutRef = useRef(null);
+  // Initial load flag to prevent saving empty state immediately on mount
+  const hasLoadedRef = useRef(false);
+
   const {
     sources,
+    setSources,
     selectedSource,
     setSelectedSource,
     activeCitation,
@@ -34,7 +46,7 @@ export default function NotebookPage({ getNotebook }) {
     addSource,
     addMultipleSources,
     removeSource
-  } = useSources(currentNotebook?.sources ?? EMPTY_SOURCES);
+  } = useSources(EMPTY_SOURCES);
 
   const handleNewSourcesFromAPI = (newSources) => {
     addMultipleSources(newSources);
@@ -42,19 +54,80 @@ export default function NotebookPage({ getNotebook }) {
 
   const {
     messages,
-    loading,
+    loading: chatLoading,
     maxSources,
     setMaxSources,
     sendMessage,
     clearChat,
     chatEndRef
-  } = useChat(handleNewSourcesFromAPI);
+  } = useChat(EMPTY_MESSAGES, handleNewSourcesFromAPI);
 
+  // Fetch full details on mount
   useEffect(() => {
-    setNotes(currentNotebook?.notes || []);
-  }, [currentNotebook?.id, currentNotebook?.notes]);
+    let isMounted = true;
+    setLoadingNotebook(true);
+    hasLoadedRef.current = false;
 
-  if (!currentNotebook) {
+    if (!id || id === 'undefined') {
+      setLoadingNotebook(false);
+      return;
+    }
+
+    fetchNotebookDetail(id)
+      .then(data => {
+        if (!isMounted) return;
+        setNotebook(data);
+        setSources(data.sources || []);
+        setNotes(data.notes || []);
+        hasLoadedRef.current = true;
+        setLoadingNotebook(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch notebook details:", err);
+        if (isMounted) setLoadingNotebook(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [id, setSources]);
+
+  // Auto-sync effect
+  useEffect(() => {
+    if (!hasLoadedRef.current || !notebook) return;
+
+    // Debounce the save operation by 1 second
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    syncTimeoutRef.current = setTimeout(() => {
+      const payload = {
+        title: notebook.title,
+        description: notebook.description,
+        sources: sources,
+        notes: notes,
+        messages: messages
+      };
+
+      updateNotebookOnServer(id, payload).catch(err => {
+        console.error("Failed to auto-sync notebook:", err);
+      });
+    }, 1000);
+
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, [notebook?.title, notebook?.description, sources, notes, messages, id]);
+
+
+  if (loadingNotebook) {
+    return (
+      <div className="not-found-container">
+        <h2>Loading Workspace...</h2>
+      </div>
+    );
+  }
+
+  if (!notebook) {
     return (
       <div className="not-found-container">
         <h2>Notebook Not Found</h2>
@@ -65,6 +138,11 @@ export default function NotebookPage({ getNotebook }) {
 
   const handleAddSource = (srcData) => {
     addSource(srcData);
+  };
+
+  const handleUpdateSource = (updatedSource) => {
+    setSources(prev => prev.map(s => (s.url === updatedSource.url || (s.id && s.id === updatedSource.id)) ? updatedSource : s));
+    setSelectedSource(updatedSource);
   };
 
   const handleCitationClick = (index, foundSource) => {
@@ -83,38 +161,47 @@ export default function NotebookPage({ getNotebook }) {
   };
 
   const handleImportDiscovery = async (imported) => {
-    const urls = imported.map(src => src.url);
-    if (urls.length === 0) return;
+    const urls = imported.map(src => src.url).filter(Boolean);
+    if (imported.length === 0) return;
     
     setIsScraping(true);
     setDiscoveryTopic(null);
 
     try {
-      const response = await runPipeline({ query: "discovery_import", urls: urls });
-      
-      if (response && Array.isArray(response.data) && response.data.length > 0) {
-        const cleanedDocs = response.data.map(doc => ({
-          title: doc.Title || doc.title || 'Untitled Web Source',
-          url: doc.URL || doc.url,
-          content: doc.Content || doc.content || '',
-          type: 'web'
-        }));
-        addMultipleSources(cleanedDocs);
-      } else {
-        // Fallback if backend returns empty data
-        addMultipleSources(imported.map(item => ({
-          title: item.title,
-          url: item.url,
-          content: item.snippet || item.title,
-          type: 'web'
-        })));
+      let scrapedDocsMap = new Map();
+      if (urls.length > 0) {
+        const response = await runPipeline({ query: "discovery_import", urls: urls });
+        if (response && Array.isArray(response.data)) {
+          response.data.forEach(doc => {
+            const docUrl = (doc.url || doc.URL || '').toLowerCase();
+            const text = doc.content || doc.Content || doc.markdown || doc.Markdown || '';
+            if (docUrl && text) {
+              scrapedDocsMap.set(docUrl, text);
+            }
+          });
+        }
       }
+
+      const finalSources = imported.map(item => {
+        const itemUrl = (item.url || '').toLowerCase();
+        const scrapedText = scrapedDocsMap.get(itemUrl);
+        return {
+          title: item.title || 'Web Source',
+          url: item.url || '',
+          content: scrapedText || item.snippet || item.title,
+          snippet: item.snippet || '',
+          type: 'web'
+        };
+      });
+
+      addMultipleSources(finalSources);
     } catch (err) {
       console.warn("Backend scraping pipeline offline, falling back to direct import:", err);
       addMultipleSources(imported.map(item => ({
-        title: item.title,
-        url: item.url,
+        title: item.title || 'Web Source',
+        url: item.url || '',
         content: item.snippet || item.title,
+        snippet: item.snippet || '',
         type: 'web'
       })));
     } finally {
@@ -125,7 +212,7 @@ export default function NotebookPage({ getNotebook }) {
   return (
     <div className="notebook-workspace-3panel">
       <NotebookHeader
-        title={currentNotebook.title}
+        title={notebook.title}
         onClearChat={clearChat}
         messageCount={messages.length}
       />
@@ -146,7 +233,7 @@ export default function NotebookPage({ getNotebook }) {
         {/* Center Panel: Chat Studio */}
         <ChatStudio
           messages={messages}
-          loading={loading}
+          loading={chatLoading}
           maxSources={maxSources}
           setMaxSources={setMaxSources}
           onSendMessage={sendMessage}
@@ -155,8 +242,8 @@ export default function NotebookPage({ getNotebook }) {
           activeCitation={activeCitation}
           onSaveNote={handleSaveNote}
           chatEndRef={chatEndRef}
-          notebookTitle={currentNotebook.title}
-          notebookDescription={currentNotebook.description}
+          notebookTitle={notebook.title}
+          notebookDescription={notebook.description}
         />
 
         {/* Right Panel: Notes & Audio Overview */}
@@ -178,6 +265,7 @@ export default function NotebookPage({ getNotebook }) {
       <SourceInspectorDrawer
         source={selectedSource}
         onClose={() => setSelectedSource(null)}
+        onUpdateSource={handleUpdateSource}
       />
 
       {/* Scraping Toast */}

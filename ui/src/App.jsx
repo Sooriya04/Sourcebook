@@ -134,7 +134,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="brand-title">
-            <BookOpen size={20} color="#818cf8" />
+            <BookOpen size={20} color="var(--text-main)" />
             <span>SourceBook</span>
             <span className="brand-badge">V2 RAG</span>
           </div>
@@ -266,7 +266,7 @@ export default function App() {
                           gap: '4px'
                         }}
                       >
-                        {copiedIdx === idx ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                        {copiedIdx === idx ? <Check size={12} color="var(--text-main)" /> : <Copy size={12} />}
                         {copiedIdx === idx ? 'Copied' : 'Copy Response'}
                       </button>
                     </div>
@@ -309,7 +309,7 @@ export default function App() {
             />
             <div className="prompt-actions">
               <div className="controls-group">
-                <Globe size={14} color="#818cf8" />
+                <Globe size={14} color="var(--text-main)" />
                 <span>Max Sources:</span>
                 <select
                   className="select-control"
@@ -341,7 +341,7 @@ export default function App() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={18} color="#818cf8" />
+                <FileText size={18} color="var(--text-main)" />
                 <span style={{ fontWeight: 600 }}>Source [{selectedSource.index}]: {selectedSource.title}</span>
               </div>
               <button

@@ -78,7 +78,16 @@
 - **Discovery Sidebar Layout & Redundancy Cleanup**: Fixed vertical layout clipping in `.sidebar` by adding `height: 100%; overflow: hidden;` and `position: relative` to prevent overflow. Removed the redundant discovery header, query searchbox, and description since the notebook header already provides them.
 - **Go Server Route Registration**: Registered the new notebook routes in the Go server multiplexer and compiled the updated backend binary.
 
-## Future TODOs (For Tomorrow's Session)
-- **Frontend SQLite Integration**: Rewrite frontend hooks (`useNotebooks.js`, `useSources.js`) to load from and save to the new SQLite REST API endpoints rather than relying on browser `localStorage`.
-- **Chat History & Persistence**: Wire the `/chat` route and `chat_messages` table to persist and load conversation histories per notebook workspace.
-- **Unified Document Ingestion Syncing**: Integrate the document parser and YouTube transcript extractor so that all locally uploaded files persist directly into the SQLite database.
+
+## Commit 11: Drawer UI Redesign and End-to-End Markdown Scrape Persistence
+- **UI & Drawer Redesign**: Redesigned the `SourceInspectorDrawer` using modern glassmorphism cards, glowing citation badges (`[1]`), and clean domain labels. Fixed an issue where source cards rendered empty brackets `[]` by enforcing index fallbacks.
+- **Rich Markdown Rendering**: Integrated `react-markdown` to render extracted source text with premium dark-mode typography (headings, bullet lists, code blocks) inside the drawer.
+- **End-to-End Extraction Pipeline**: Modified the frontend `handleImportDiscovery` flow to automatically dispatch the `runPipeline` web scraper for all selected search results upon import.
+- **SQLite Schema Upgrade**: Added a missing `content TEXT` column to the `sources` table via an auto-migration script in `db.go` so extracted markdown text is permanently persisted.
+- **Data Hydration**: Updated backend models (`models.SourceRecord`) and SQL `INSERT`/`SELECT` queries to correctly read and write the full `content` payload.
+
+## Commit 12: Backend Persistence, CORS/404 Resolution, and Proxying
+- **Database Architecture**: Fully migrated frontend state management from `localStorage` to the SQLite backend (`sourcebook.db`), ensuring reliable persistence across sessions.
+- **API & CORS Stability**: Resolved persistent `404` and `CORS` issues by unifying `/notebooks` and `/notebooks/` handlers in the Go router to prevent redirect loops.
+- **Same-Origin Proxying**: Configured the Vite dev server to proxy `/api` requests to the Go backend (`127.0.0.1:5000`), completely bypassing browser CORS complexities and environment variable misconfigurations.
+- **Fail-Safe Discovery**: Implemented automatic fallback routing in `discovery_handler.go` to seamlessly default to standard SearXNG if the Searqon engine is slow or unreachable.

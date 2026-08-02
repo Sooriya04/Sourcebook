@@ -19,7 +19,7 @@ export default function SourceCard({ source, isActive, onClick, onDelete }) {
       onClick={onClick}
     >
       <div className="source-card-header">
-        <span className="source-index">[{source.index}]</span>
+        <span className="source-index">[{source.index || '1'}]</span>
         <span className="source-title">{source.title || 'Untitled Source'}</span>
         {onDelete && (
           <button

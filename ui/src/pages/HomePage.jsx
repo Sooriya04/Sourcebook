@@ -62,10 +62,16 @@ export default function HomePage({ notebooks, onCreateNotebook, onDeleteNotebook
         <CreateNotebookModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreate={(title, desc) => {
-            const nb = onCreateNotebook(title, desc);
-            setIsCreateModalOpen(false);
-            navigate(`/notebook/${nb.id}`);
+          onCreate={async (title, desc) => {
+            try {
+              const nb = await onCreateNotebook(title, desc);
+              setIsCreateModalOpen(false);
+              if (nb && nb.id) {
+                navigate(`/notebook/${nb.id}`);
+              }
+            } catch (err) {
+              console.error("Failed to create notebook:", err);
+            }
           }}
         />
       )}

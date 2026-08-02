@@ -8,6 +8,15 @@ import (
 )
 
 func (a *API) HandleNotebooks(w http.ResponseWriter, r *http.Request) {
+	// Strip prefix to see if an ID is present
+	id := strings.TrimPrefix(r.URL.Path, "/api/sourcebook/v1/notebooks")
+	id = strings.TrimPrefix(id, "/")
+
+	if id != "" {
+		a.handleNotebookDetail(w, r, id)
+		return
+	}
+
 	if r.Method == http.MethodGet {
 		notebooks, err := a.repo.GetNotebooks()
 		if err != nil {
@@ -47,14 +56,7 @@ func (a *API) HandleNotebooks(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
-func (a *API) HandleNotebookDetail(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 6 {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
-	}
-	id := parts[5]
-
+func (a *API) handleNotebookDetail(w http.ResponseWriter, r *http.Request, id string) {
 	if r.Method == http.MethodGet {
 		nb, err := a.repo.GetNotebook(id)
 		if err != nil {
@@ -84,6 +86,15 @@ func (a *API) HandleNotebookDetail(w http.ResponseWriter, r *http.Request) {
 			notes = []models.Note{}
 		}
 
+		messages, err := a.repo.GetMessagesByNotebook(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if messages == nil {
+			messages = []models.ChatMessage{}
+		}
+
 		payload := map[string]interface{}{
 			"id":          nb.ID,
 			"title":       nb.Title,
@@ -92,6 +103,7 @@ func (a *API) HandleNotebookDetail(w http.ResponseWriter, r *http.Request) {
 			"updated_at":  nb.UpdatedAt,
 			"sources":     sources,
 			"notes":       notes,
+			"messages":    messages,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -105,6 +117,7 @@ func (a *API) HandleNotebookDetail(w http.ResponseWriter, r *http.Request) {
 			Description string                `json:"description"`
 			Sources     []models.SourceRecord `json:"sources"`
 			Notes       []models.Note         `json:"notes"`
+			Messages    []models.ChatMessage  `json:"messages"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -122,6 +135,11 @@ func (a *API) HandleNotebookDetail(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := a.repo.SyncNotebookMessages(id, req.Messages); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

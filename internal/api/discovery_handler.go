@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"sourcebook/internal/models"
 )
 
 // HandleDiscovery uses Searqon's /search endpoint with scrape: false for instant source discovery.
@@ -63,33 +65,41 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Discovery] Calling Searqon discovery endpoint: %s", searchEndpoint)
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(searchReq)
-	if err != nil {
-		log.Printf("[Discovery] Searqon request failed after %v: %v", time.Since(startTime), err)
-		http.Error(w, fmt.Sprintf("Searqon API failed: %v", err), http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("[Discovery] Failed to read Searqon response: %v", err)
-		http.Error(w, "Failed to read response", http.StatusInternalServerError)
-		return
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err == nil {
+			log.Printf("[Discovery] Searqon discovery completed successfully in %v.", time.Since(startTime))
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(body)
+			return
+		}
 	}
 
-	log.Printf("[Discovery] Searqon responded with status %d in %v", resp.StatusCode, time.Since(startTime))
+	if resp != nil {
+		resp.Body.Close()
+	}
 
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[Discovery] Searqon returned error: %s", string(body))
-		http.Error(w, fmt.Sprintf("Searqon returned %d", resp.StatusCode), http.StatusBadGateway)
+	log.Printf("[Discovery] Searqon offline or failed (%v). Falling back to direct SearXNG controller.", err)
+
+	// Fallback to direct SearXNG search
+	results, searchErr := a.searchController.Search(r.Context(), req.Query, models.SearchOptions{Web: true})
+	if searchErr != nil {
+		log.Printf("[Discovery] Fallback search also failed: %v", searchErr)
+		http.Error(w, fmt.Sprintf("Search discovery failed: %v", searchErr), http.StatusInternalServerError)
 		return
 	}
 
-	// We just proxy the JSON back to the frontend
-	log.Printf("[Discovery] Fast discovery completed successfully. Returning payload to frontend.")
+	if results == nil {
+		results = []models.SearchResult{}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(body)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"query":   req.Query,
+		"results": results,
+		"count":   len(results),
+	})
 }

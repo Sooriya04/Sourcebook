@@ -4,3 +4,4 @@ sourcebook-server
 .venv
 *.db
 *.db-journal
+*.log

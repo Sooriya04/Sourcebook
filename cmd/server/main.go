@@ -56,12 +56,27 @@ func main() {
 	mux.HandleFunc("/api/sourcebook/v1/chat", apiHandler.HandleChat)
 	mux.HandleFunc("/api/sourcebook/v1/jobs/", apiHandler.HandleJob)
 	mux.HandleFunc("/api/sourcebook/v1/notebooks", apiHandler.HandleNotebooks)
-	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebookDetail)
+	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebooks)
 
 	// Health endpoint.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	})
+
+	// Request logging & CORS middleware
+	corsAndLoggingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		log.Printf("[HTTP] %s %s", r.Method, r.URL.Path)
+		mux.ServeHTTP(w, r)
 	})
 
 	port := os.Getenv("PORT")
@@ -70,7 +85,7 @@ func main() {
 	}
 
 	log.Printf("Starting SourceBook V1 server on port %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, corsAndLoggingHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

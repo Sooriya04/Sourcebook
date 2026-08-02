@@ -20,15 +20,19 @@ export default function SourceList({
 
   return (
     <div className="sources-list">
-      {sources.map((src) => (
-        <SourceCard
-          key={src.index}
-          source={src}
-          isActive={activeCitation === src.index}
-          onClick={() => onSelectSource(src)}
-          onDelete={onDeleteSource}
-        />
-      ))}
+      {sources.map((src, idx) => {
+        const citationIndex = src.index || (idx + 1);
+        const enrichedSource = { ...src, index: citationIndex };
+        return (
+          <SourceCard
+            key={src.id || citationIndex}
+            source={enrichedSource}
+            isActive={activeCitation === citationIndex}
+            onClick={() => onSelectSource(enrichedSource)}
+            onDelete={onDeleteSource}
+          />
+        );
+      })}
     </div>
   );
 }

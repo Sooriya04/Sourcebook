@@ -46,6 +46,7 @@ func createTables(db *sql.DB) error {
 			url TEXT,
 			canonical_url TEXT,
 			snippet TEXT,
+			content TEXT,
 			image_url TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -74,6 +75,9 @@ func createTables(db *sql.DB) error {
 			return fmt.Errorf("error executing schema query %q: %w", query, err)
 		}
 	}
+
+	// Auto-migrate: Add content column to sources if it doesn't exist
+	_, _ = db.Exec("ALTER TABLE sources ADD COLUMN content TEXT;")
 
 	return nil
 }
