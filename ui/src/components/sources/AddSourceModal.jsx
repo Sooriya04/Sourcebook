@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { FileText, Mic, Image as ImageIcon, Globe, Video, Copy, HardDrive, Send } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { parseFileClientSide, parseYouTubeURL } from '../../services/fileIngestor';
+import { fetchYouTubeTranscript } from '../../services/sourcebookApi';
 
 export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchDiscovery }) {
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeInputType, setActiveInputType] = useState(null);
   const [inputValue, setInputValue] = useState('');
+  const [errorMessage, setErrorMessage] = useState(null);
 
   // Hidden inputs for file uploads
   const fileInputRef = React.useRef(null);
@@ -40,8 +42,6 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
   const handleImageSubmit = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
-    // For now we mock the image addition or parse it
-    // If you had OCR or image extraction, it would go here.
     onAddSource({
       title: selectedFile.name,
       content: "[Image content placeholder]",
@@ -52,21 +52,49 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
     onClose();
   };
 
-  const handleInputSubmit = (e) => {
+  const handleInputSubmit = async (e) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || loading) return;
+    setErrorMessage(null);
 
     if (activeInputType === 'Website') {
       onAddSource({ title: inputValue.replace(/^https?:\/\//, '').split('/')[0], url: inputValue, type: 'web' });
+      setActiveInputType(null);
+      setInputValue('');
+      onClose();
     } else if (activeInputType === 'YouTube') {
-      onAddSource(parseYouTubeURL(inputValue));
+      setLoading(true);
+      try {
+        const transcriptData = await fetchYouTubeTranscript(inputValue);
+        onAddSource({
+          title: transcriptData.title || `YouTube (${inputValue.slice(-11)})`,
+          url: inputValue,
+          content: transcriptData.content,
+          type: 'youtube'
+        });
+        setActiveInputType(null);
+        setInputValue('');
+        onClose();
+      } catch (err) {
+        console.warn("YouTube microservice transcript error, falling back to URL ingestion:", err.message);
+        setErrorMessage(`Transcript error: ${err.message}. Adding URL link instead.`);
+        const fallbackObj = parseYouTubeURL(inputValue);
+        onAddSource(fallbackObj);
+        setTimeout(() => {
+          setActiveInputType(null);
+          setInputValue('');
+          setErrorMessage(null);
+          onClose();
+        }, 1200);
+      } finally {
+        setLoading(false);
+      }
     } else if (activeInputType === 'Copied text') {
       onAddSource({ title: 'Pasted Text Snippet', content: inputValue, type: 'text' });
+      setActiveInputType(null);
+      setInputValue('');
+      onClose();
     }
-    
-    setActiveInputType(null);
-    setInputValue('');
-    onClose();
   };
 
   const handlePlaceholderClick = (name) => {
@@ -112,9 +140,16 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
                 autoFocus
               />
             )}
+            {errorMessage && (
+              <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '10px' }}>
+                {errorMessage}
+              </div>
+            )}
             <div className="inline-input-actions">
               <button type="button" className="cancel-btn" onClick={() => setActiveInputType(null)}>Back</button>
-              <button type="submit" className="submit-btn" disabled={!inputValue.trim()}>Add</button>
+              <button type="submit" className="submit-btn" disabled={!inputValue.trim() || loading}>
+                {loading ? 'Fetching...' : 'Add'}
+              </button>
             </div>
           </form>
         ) : (

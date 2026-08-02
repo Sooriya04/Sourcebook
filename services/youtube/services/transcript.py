@@ -33,25 +33,47 @@ class TranscriptService:
 
     @classmethod
     def fetch(cls, url: str):
-
         video_id = cls.extract_video_id(url)
-
         api = YouTubeTranscriptApi()
-        fetched = api.fetch(video_id)
+        
+        # List all available transcripts for the video
+        transcript_list = api.list(video_id)
+        
+        target_transcript = None
+        # 1. Try finding English (manual or generated)
+        try:
+            target_transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+        except NoTranscriptFound:
+            try:
+                target_transcript = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB'])
+            except NoTranscriptFound:
+                pass
 
-        transcript = [
-            {
-                "text": s.text,
-                "start": s.start,
-                "duration": s.duration
-            }
-            for s in fetched.snippets
-        ]
+        # 2. If no English transcript, grab the first available transcript
+        if target_transcript is None:
+            for t in transcript_list:
+                target_transcript = t
+                break
+
+        if target_transcript is None:
+            raise NoTranscriptFound(video_id, ['en'], transcript_list)
+
+        # 3. Fetch native transcript directly without machine translation
+        fetched = target_transcript.fetch()
+
+        snippets = getattr(fetched, 'snippets', fetched)
+        transcript = []
+        for s in snippets:
+            txt = getattr(s, 'text', s['text'] if isinstance(s, dict) else '')
+            st = getattr(s, 'start', s['start'] if isinstance(s, dict) else 0)
+            dur = getattr(s, 'duration', s['duration'] if isinstance(s, dict) else 0)
+            transcript.append({"text": txt, "start": st, "duration": dur})
 
         return {
-            "video_id": fetched.video_id,
+            "video_id": video_id,
             "segments": len(transcript),
-            "language": fetched.language,
+            "language": getattr(target_transcript, 'language', 'unknown'),
             "transcript": transcript,
-            "text": " ".join(t["text"] for t in transcript),
+            "text": " ".join(t["text"] for t in transcript if t["text"]),
         }
+

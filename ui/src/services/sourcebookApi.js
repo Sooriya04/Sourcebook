@@ -78,3 +78,18 @@ export async function deleteNotebookOnServer(id) {
   });
   if (!response.ok) throw new Error(`Failed to delete notebook: ${response.status}`);
 }
+
+export async function fetchYouTubeTranscript(url) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/youtube/transcript`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to fetch YouTube transcript (Status ${response.status})`);
+  }
+
+  return await response.json();
+}

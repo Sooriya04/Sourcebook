@@ -18,14 +18,28 @@ export default function ChatStudio({
   notebookTitle,
   notebookDescription
 }) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const isLongDescription = notebookDescription && notebookDescription.length > 180;
+
   return (
     <div className="chat-studio-panel">
       {messages.length === 0 ? (
         <div className="welcome-screen">
           <h1 className="welcome-title">{notebookTitle || 'SourceBook'}</h1>
-          <p className="welcome-subtitle">
-            {notebookDescription || 'Your local autonomous research engine. Ask questions and synthesize grounded answers.'}
-          </p>
+          <div className="welcome-subtitle-container">
+            <p className={`welcome-subtitle ${!isExpanded && isLongDescription ? 'truncated' : ''}`}>
+              {notebookDescription || 'Your local autonomous research engine. Ask questions and synthesize grounded answers.'}
+            </p>
+            {isLongDescription && (
+              <button 
+                type="button" 
+                className="welcome-subtitle-toggle"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                {isExpanded ? 'Show less' : 'Read more'}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="chat-container">

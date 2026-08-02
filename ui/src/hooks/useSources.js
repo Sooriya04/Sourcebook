@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export function useSources(initialSources = []) {
   const [sources, setSources] = useState(initialSources);
   const [selectedSource, setSelectedSource] = useState(null);
   const [activeCitation, setActiveCitation] = useState(null);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    setSources(initialSources);
-    setSelectedSource(null);
-    setActiveCitation(null);
+    if (!isInitializedRef.current && initialSources && initialSources.length > 0) {
+      const indexed = initialSources.map((s, idx) => ({
+        ...s,
+        index: s.index || (idx + 1)
+      }));
+      setSources(indexed);
+      isInitializedRef.current = true;
+    }
   }, [initialSources]);
 
   const addSource = (sourceData) => {
@@ -30,10 +36,23 @@ export function useSources(initialSources = []) {
     });
   };
 
-  const removeSource = (index) => {
-    setSources(prev => prev.filter(s => s.index !== index));
-    if (selectedSource?.index === index) setSelectedSource(null);
-    if (activeCitation === index) setActiveCitation(null);
+  const removeSource = (target) => {
+    setSources(prev => {
+      const filtered = prev.filter((s, i) => {
+        const currentIndex = s.index || (i + 1);
+        if (typeof target === 'number') {
+          return currentIndex !== target;
+        }
+        if (typeof target === 'string') {
+          return s.id !== target && s.title !== target;
+        }
+        return s !== target && (s.id ? s.id !== target?.id : currentIndex !== target?.index);
+      });
+      // Re-index remaining sources sequentially
+      return filtered.map((s, idx) => ({ ...s, index: idx + 1 }));
+    });
+    setSelectedSource(null);
+    setActiveCitation(null);
   };
 
   const clearSources = () => {
@@ -55,3 +74,4 @@ export function useSources(initialSources = []) {
     clearSources
   };
 }
+

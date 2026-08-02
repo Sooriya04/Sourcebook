@@ -62,6 +62,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved) {
 
   return {
     messages,
+    setMessages,
     loading,
     maxSources,
     setMaxSources,

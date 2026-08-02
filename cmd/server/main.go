@@ -35,7 +35,7 @@ func main() {
 	// Initialize the primary search provider.
 	searxURL := os.Getenv("SEARXNG_URL")
 	if searxURL == "" {
-		searxURL = "http://localhost:8080"
+		log.Fatalf("SEARXNG_URL environment variable is required")
 	}
 
 	searxProvider := searx.NewSearXNGProvider(searxURL)
@@ -54,6 +54,7 @@ func main() {
 	mux.HandleFunc("/api/sourcebook/v1/discovery", apiHandler.HandleDiscovery) // New Searqon fast search
 	mux.HandleFunc("/api/sourcebook/v1/pipeline", apiHandler.HandlePipeline)
 	mux.HandleFunc("/api/sourcebook/v1/chat", apiHandler.HandleChat)
+	mux.HandleFunc("/api/sourcebook/v1/youtube/transcript", apiHandler.HandleYouTubeTranscript)
 	mux.HandleFunc("/api/sourcebook/v1/jobs/", apiHandler.HandleJob)
 	mux.HandleFunc("/api/sourcebook/v1/notebooks", apiHandler.HandleNotebooks)
 	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebooks)

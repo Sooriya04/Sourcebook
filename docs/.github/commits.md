@@ -91,3 +91,12 @@
 - **API & CORS Stability**: Resolved persistent `404` and `CORS` issues by unifying `/notebooks` and `/notebooks/` handlers in the Go router to prevent redirect loops.
 - **Same-Origin Proxying**: Configured the Vite dev server to proxy `/api` requests to the Go backend (`127.0.0.1:5000`), completely bypassing browser CORS complexities and environment variable misconfigurations.
 - **Fail-Safe Discovery**: Implemented automatic fallback routing in `discovery_handler.go` to seamlessly default to standard SearXNG if the Searqon engine is slow or unreachable.
+
+## Commit 13: YouTube Microservice, Environment Isolation, and UI Polish
+- **YouTube Microservice Proxy**: Created `internal/api/youtube_handler.go` and registered `/api/sourcebook/v1/youtube/transcript` in the Go API router to proxy transcript requests to the standalone FastAPI Python microservice.
+- **Zero Hardcoded API URLs**: Enforced strict environment variable loading (`YOUTUBE_SERVICE_URL`, `SEARQON_SCRAPE_URL`, `SEARXNG_URL`) across Go handlers and `.env` with no hardcoded fallback URLs in the codebase.
+- **Robust Transcript Extraction**: Updated `services/youtube/services/transcript.py` to inspect all available manual and auto-generated transcripts and extract native transcript content cleanly without forcing poor machine translations.
+- **Python 3.14 Environment Compatibility**: Updated `services/youtube/requirements.txt` to modern `pydantic>=2.10.0` and `pydantic-settings>=2.7.0` to resolve Python 3.14 wheel compilation errors (`ForwardRef._evaluate`).
+- **Unified `.venv` Launcher Script**: Created executable `run.sh` that automatically detects and activates the root `.venv` virtual environment and launches both the Python YouTube service (`:6001`) and Go backend server (`:5000`) concurrently.
+- **Source Deletion & Sequential Re-Indexing**: Fixed a state re-hydration bug in `useSources.js` to ensure deleting a source immediately syncs with SQLite and re-indexes remaining sources (`[1]`, `[2]`, `[3]...`).
+- **Compact UI Workspace Header**: Added CSS line-clamping and a stateful "Read more / Show less" toggle to `ChatStudio.jsx` for long notebook descriptions, keeping the center chat interface spacious and uncrowded.

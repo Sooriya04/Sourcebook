@@ -54,6 +54,7 @@ export default function NotebookPage({ getNotebook }) {
 
   const {
     messages,
+    setMessages,
     loading: chatLoading,
     maxSources,
     setMaxSources,
@@ -79,6 +80,7 @@ export default function NotebookPage({ getNotebook }) {
         setNotebook(data);
         setSources(data.sources || []);
         setNotes(data.notes || []);
+        setMessages(data.messages || []);
         hasLoadedRef.current = true;
         setLoadingNotebook(false);
       })
@@ -88,7 +90,7 @@ export default function NotebookPage({ getNotebook }) {
       });
 
     return () => { isMounted = false; };
-  }, [id, setSources]);
+  }, [id, setSources, setMessages]);
 
   // Auto-sync effect
   useEffect(() => {
@@ -116,7 +118,7 @@ export default function NotebookPage({ getNotebook }) {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [notebook?.title, notebook?.description, sources, notes, messages, id]);
+  }, [notebook, sources, notes, messages, id]);
 
 
   if (loadingNotebook) {

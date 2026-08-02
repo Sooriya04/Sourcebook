@@ -63,7 +63,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 
 	searqonURL := os.Getenv("SEARQON_SCRAPE_URL")
 	if searqonURL == "" {
-		searqonURL = "http://127.0.0.1:4001/scrape/batch"
+		return nil, nil, fmt.Errorf("SEARQON_SCRAPE_URL environment variable is not configured")
 	}
 
 	batchBody, _ := json.Marshal(map[string]interface{}{

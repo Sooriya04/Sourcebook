@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, Check, FileSearch } from 'lucide-react';
+import { ChevronLeft, Check, FileSearch } from 'lucide-react';
 
 export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [loading, setLoading] = useState(true);
