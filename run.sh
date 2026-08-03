@@ -4,6 +4,7 @@
 # Launches both the Go SourceBook Server (Port 5000) and YouTube Microservice (Port 6001)
 fuser -k 5000/tcp
 fuser -k 6001/tcp
+fuser -k 8010/tcp
 
 
 set -e
@@ -45,6 +46,13 @@ if [ -d "services/youtube" ]; then
   (cd services/youtube && uvicorn main:app --port 6001 --host 0.0.0.0) &
 else
   echo "⚠️ YouTube service directory not found, skipping..."
+fi
+
+if [ -d "services/search" ]; then
+  echo "🔍 Starting Search Microservice on port 8010..."
+  (cd services/search && uvicorn main:create_app --factory --port 8010 --host 0.0.0.0) &
+else
+  echo "⚠️ Search service directory not found, skipping..."
 fi
 
 # 2. Build and Start Go SourceBook Backend Server

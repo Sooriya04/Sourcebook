@@ -98,7 +98,11 @@ func (r *Repository) SyncNotebookSources(notebookID string, sources []models.Sou
 		if id == "" {
 			id = uuid.NewString()
 		}
-		_, err := stmt.Exec(id, notebookID, src.JobID, src.Query, src.Provider, src.Title, src.URL, src.CanonicalURL, src.Snippet, src.Content, src.ImageURL, now, now)
+		prov := src.Provider
+		if prov == "" && src.Type != "" {
+			prov = src.Type
+		}
+		_, err := stmt.Exec(id, notebookID, src.JobID, src.Query, prov, src.Title, src.URL, src.CanonicalURL, src.Snippet, src.Content, src.ImageURL, now, now)
 		if err != nil {
 			return err
 		}

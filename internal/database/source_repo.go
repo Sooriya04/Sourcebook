@@ -14,6 +14,10 @@ func (r *Repository) AddSource(src *models.SourceRecord) error {
 	src.CreatedAt = time.Now().UTC()
 	src.UpdatedAt = src.CreatedAt
 
+	if src.Provider == "" && src.Type != "" {
+		src.Provider = src.Type
+	}
+
 	query := `INSERT INTO sources (id, notebook_id, job_id, query, provider, title, url, canonical_url, snippet, content, image_url, created_at, updated_at) 
 	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	_, err := r.db.Exec(query, src.ID, src.NotebookID, src.JobID, src.Query, src.Provider, src.Title, src.URL, src.CanonicalURL, src.Snippet, src.Content, src.ImageURL, src.CreatedAt, src.UpdatedAt)
@@ -35,7 +39,9 @@ func (r *Repository) GetSourcesByNotebook(notebookID string) ([]models.SourceRec
 		if err := rows.Scan(&src.ID, &src.NotebookID, &src.JobID, &src.Query, &src.Provider, &src.Title, &src.URL, &src.CanonicalURL, &src.Snippet, &src.Content, &src.ImageURL, &src.CreatedAt, &src.UpdatedAt); err != nil {
 			return nil, err
 		}
+		src.Type = src.Provider
 		sources = append(sources, src)
 	}
 	return sources, nil
 }
+

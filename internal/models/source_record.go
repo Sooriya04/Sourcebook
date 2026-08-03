@@ -8,6 +8,7 @@ type SourceRecord struct {
 	JobID        string                 `json:"job_id"`
 	Query        string                 `json:"query,omitempty"`
 	Provider     string                 `json:"provider,omitempty"`
+	Type         string                 `json:"type,omitempty"`
 	Title        string                 `json:"title,omitempty"`
 	URL          string                 `json:"url"`
 	CanonicalURL string                 `json:"canonical_url"`
@@ -18,3 +19,4 @@ type SourceRecord struct {
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
+

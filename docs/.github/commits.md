@@ -103,3 +103,11 @@
 
 ## Commit 14: DuckDuckGo Search Fallback
 Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/ddg/client.go` with specialized request headers to bypass CAPTCHA. Wired it into `UnifiedSearchController` as a default fallback when the primary SearXNG server is offline or returns empty results.
+
+## Commit 15: Agentic Search-and-Synthesis Pipeline Integration
+- **Automated Text Discovery**: Added an agentic ingestion loop in the Go backend (`internal/api/notebook_handler.go`) to automatically trigger subquery planning for newly added large text sources.
+- **Microservice Integration**: Built a robust Go client (`internal/utils/search_service_client.go`) to connect the Go backend to the Python search planner, parsing the returned `SearchPlan` to execute web discovery.
+- **Automated Batch Scraping**: For each planned query, the pipeline automatically fetches the top results via SearXNG and scrapes their content using Searqon, immediately persisting the rich context into the notebook.
+- **Robust Pydantic Configs**: Rewrote the Python search service's configuration schema (`services/search/config.py`) using `AliasChoices`, allowing it to cleanly load LLM and SearXNG URLs natively from the root `.env` without any hardcoded localhost fallbacks.
+- **Payload Validation Relaxation**: Increased the `max_length` parameter in the `SearchRequest.query` Pydantic model (`services/search/models/request.py`) to `100_000` to support large text payloads without throwing `422 Unprocessable Content` errors.
+- **Go LLM Client Safety**: Hardened the Go LLM client (`internal/llm/client.go`) to explicitly fail with a fatal error if `LLM_URL` or `LLM_MODEL` are not provided in the environment, permanently preventing silent localhost fallbacks.

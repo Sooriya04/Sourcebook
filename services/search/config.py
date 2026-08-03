@@ -1,6 +1,7 @@
+from pathlib import Path
 from typing import Literal
 
-from pydantic import AnyHttpUrl, Field
+from pydantic import AliasChoices, AnyHttpUrl, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +9,7 @@ class Settings(BaseSettings):
     """Runtime configuration for the SourceBook Search Service."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(Path(__file__).resolve().parent.parent.parent / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -26,12 +27,12 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8010, ge=1, le=65535)
 
-    searxng_url: AnyHttpUrl = Field(default="http://localhost:8080")
+    searxng_url: AnyHttpUrl = Field(validation_alias=AliasChoices("searxng_url", "searx_url"))
     searxng_timeout_seconds: float = Field(default=15.0, gt=0)
     searxng_max_results: int = Field(default=10, ge=1, le=50)
 
-    ollama_url: AnyHttpUrl = Field(default="http://localhost:11434")
-    ollama_model: str = Field(default="gemma2", min_length=1)
+    ollama_url: AnyHttpUrl = Field(validation_alias=AliasChoices("llm_url", "ollama_url"))
+    ollama_model: str = Field(min_length=1, validation_alias=AliasChoices("llm_model", "ollama_model"))
     ollama_timeout_seconds: float = Field(default=60.0, gt=0)
 
     planner_max_queries: int = Field(default=5, ge=1, le=10)

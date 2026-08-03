@@ -44,7 +44,9 @@ class OllamaClient:
                 raise ExternalServiceError("Ollama response did not contain text.")
             parsed = json.loads(generated)
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
-            raise ExternalServiceError("Ollama planner request failed.") from exc
+            import logging
+            logging.error("Ollama client error detail: %s", exc, exc_info=True)
+            raise ExternalServiceError(f"Ollama planner request failed: {exc}") from exc
 
         if not isinstance(parsed, dict):
             raise ExternalServiceError("Ollama response was not a JSON object.")

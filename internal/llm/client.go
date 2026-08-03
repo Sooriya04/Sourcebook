@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -22,25 +23,17 @@ type Client struct {
 func NewClient() *Client {
 	provider := os.Getenv("LLM_PROVIDER")
 	if provider == "" {
-		provider = "ollama"
+		log.Fatalf("LLM_PROVIDER environment variable is not set")
 	}
 
 	baseURL := os.Getenv("LLM_URL")
 	if baseURL == "" {
-		if provider == "openai" {
-			baseURL = "https://api.openai.com/v1"
-		} else {
-			baseURL = "http://localhost:11434"
-		}
+		log.Fatalf("LLM_URL environment variable is not set")
 	}
 
 	model := os.Getenv("LLM_MODEL")
 	if model == "" {
-		if provider == "openai" {
-			model = "gpt-4o-mini"
-		} else {
-			model = "gemma2"
-		}
+		log.Fatalf("LLM_MODEL environment variable is not set")
 	}
 
 	return &Client{
