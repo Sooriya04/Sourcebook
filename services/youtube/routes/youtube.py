@@ -10,6 +10,7 @@ from youtube_transcript_api import (
     NoTranscriptFound,
     TranscriptsDisabled,
 )
+from youtube_transcript_api._errors import RequestBlocked
 
 router = APIRouter()
 
@@ -53,9 +54,18 @@ def transcript(req: VideoRequest):
             detail="Transcript disabled",
         )
 
-    except Exception:
+    except RequestBlocked:
 
-        logger.exception("Unexpected error")
+        logger.warning("YouTube blocked the request (Rate Limit / IP Block)")
+
+        raise HTTPException(
+            status_code=429,
+            detail="YouTube rate-limit or IP block",
+        )
+
+    except Exception as e:
+
+        logger.warning(f"Unexpected error: {type(e).__name__} - {str(e)}")
 
         raise HTTPException(
             status_code=500,

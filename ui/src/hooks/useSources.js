@@ -60,6 +60,17 @@ export function useSources(initialSources = []) {
     setSelectedSource(null);
     setActiveCitation(null);
   };
+  const updateMultipleSources = (updatedSources) => {
+    setSources(prev => {
+      return prev.map(s => {
+        const matched = updatedSources.find(us => us.url === s.url || (s.id && us.id === s.id));
+        if (matched) {
+          return { ...s, ...matched };
+        }
+        return s;
+      });
+    });
+  };
 
   return {
     sources,
@@ -70,6 +81,7 @@ export function useSources(initialSources = []) {
     setActiveCitation,
     addSource,
     addMultipleSources,
+    updateMultipleSources,
     removeSource,
     clearSources
   };

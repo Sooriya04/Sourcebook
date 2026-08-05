@@ -80,7 +80,7 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("[Discovery] Calling Searqon discovery endpoint: %s", searchEndpoint)
 
-		client := &http.Client{Timeout: 5 * time.Second}
+		client := &http.Client{Timeout: 15 * time.Second}
 		resp, err := client.Do(searchReq)
 		if err == nil && resp.StatusCode == http.StatusOK {
 			defer resp.Body.Close()

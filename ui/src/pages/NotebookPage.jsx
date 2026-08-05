@@ -45,6 +45,7 @@ export default function NotebookPage({ getNotebook }) {
     setActiveCitation,
     addSource,
     addMultipleSources,
+    updateMultipleSources,
     removeSource
   } = useSources(EMPTY_SOURCES);
 
@@ -169,6 +170,16 @@ export default function NotebookPage({ getNotebook }) {
     setIsScraping(true);
     setDiscoveryTopic(null);
 
+    // Immediately add sources with 'Indexing...' status
+    const pendingSources = imported.map(item => ({
+      title: item.title || 'Web Source',
+      url: item.url || '',
+      snippet: item.snippet || '',
+      type: 'web',
+      status: 'Indexing...'
+    }));
+    addMultipleSources(pendingSources);
+
     try {
       let scrapedDocsMap = new Map();
       if (urls.length > 0) {
@@ -184,27 +195,23 @@ export default function NotebookPage({ getNotebook }) {
         }
       }
 
-      const finalSources = imported.map(item => {
+      const finalSources = pendingSources.map(item => {
         const itemUrl = (item.url || '').toLowerCase();
         const scrapedText = scrapedDocsMap.get(itemUrl);
         return {
-          title: item.title || 'Web Source',
-          url: item.url || '',
+          ...item,
           content: scrapedText || item.snippet || item.title,
-          snippet: item.snippet || '',
-          type: 'web'
+          status: 'Ready'
         };
       });
 
-      addMultipleSources(finalSources);
+      updateMultipleSources(finalSources);
     } catch (err) {
       console.warn("Backend scraping pipeline offline, falling back to direct import:", err);
-      addMultipleSources(imported.map(item => ({
-        title: item.title || 'Web Source',
-        url: item.url || '',
+      updateMultipleSources(pendingSources.map(item => ({
+        ...item,
         content: item.snippet || item.title,
-        snippet: item.snippet || '',
-        type: 'web'
+        status: 'Ready'
       })));
     } finally {
       setIsScraping(false);
