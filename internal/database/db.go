@@ -85,6 +85,8 @@ func createTables(db *sql.DB) error {
 			max_sources INTEGER NOT NULL,
 			searxng_split INTEGER NOT NULL,
 			ddg_split INTEGER NOT NULL,
+			youtube_enabled BOOLEAN DEFAULT 0,
+			youtube_max_sources INTEGER DEFAULT 3,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);`,
 	}
@@ -97,6 +99,10 @@ func createTables(db *sql.DB) error {
 
 	// Auto-migrate: Add content column to sources if it doesn't exist
 	_, _ = db.Exec("ALTER TABLE sources ADD COLUMN content TEXT;")
+	
+	// Auto-migrate: Add youtube settings if they don't exist
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN youtube_enabled BOOLEAN DEFAULT 0;")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN youtube_max_sources INTEGER DEFAULT 3;")
 
 	return nil
 }

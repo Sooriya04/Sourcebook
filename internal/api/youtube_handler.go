@@ -33,10 +33,11 @@ func (a *API) HandleYouTubeTranscript(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[YouTube] Forwarding transcript request for URL %q to %s", req.URL, ytServiceURL)
+	log.Printf("[YouTube] Forwarding transcript request for URL %q to base %s", req.URL, ytServiceURL)
 
+	endpoint := fmt.Sprintf("%s/youtube/transcript", ytServiceURL)
 	bodyBytes, _ := json.Marshal(map[string]string{"url": req.URL})
-	ytReq, err := http.NewRequestWithContext(r.Context(), "POST", ytServiceURL, bytes.NewBuffer(bodyBytes))
+	ytReq, err := http.NewRequestWithContext(r.Context(), "POST", endpoint, bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
 		return

@@ -5,3 +5,4 @@ sourcebook-server
 *.db
 *.db-journal
 *.log
+/server

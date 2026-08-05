@@ -8,5 +8,7 @@ type UserSettings struct {
 	MaxSources     int       `json:"max_sources"`
 	SearxngSplit   int       `json:"searxng_split"` // e.g. 3
 	DdgSplit       int       `json:"ddg_split"`     // e.g. 2
-	UpdatedAt      time.Time `json:"updated_at"`
+	YoutubeEnabled    bool      `json:"youtube_enabled"`
+	YoutubeMaxSources int       `json:"youtube_max_sources"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }

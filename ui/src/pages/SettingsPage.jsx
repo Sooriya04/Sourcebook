@@ -24,15 +24,8 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     try {
       const data = await fetchSettings();
-      // Load local youtube settings since backend doesn't persist them yet
-      const ytEnabled = localStorage.getItem('youtube_enabled') === 'true';
-      const ytMax = parseInt(localStorage.getItem('youtube_max_sources')) || 3;
-      
-      setSettings({
-        ...data,
-        youtube_enabled: ytEnabled,
-        youtube_max_sources: ytMax
-      });
+      // Load all settings directly from backend
+      setSettings(data);
     } catch (err) {
       console.error("Failed to load settings:", err);
     } finally {
@@ -48,11 +41,7 @@ export default function SettingsPage() {
     setSaving(true);
     setSaveMessage('');
     try {
-      // Save youtube settings to local storage
-      localStorage.setItem('youtube_enabled', settings.youtube_enabled);
-      localStorage.setItem('youtube_max_sources', settings.youtube_max_sources);
-
-      // Save backend settings
+      // Save backend settings (now includes youtube config)
       await updateSettings(settings);
       setSaveMessage('Settings saved successfully!');
       setTimeout(() => setSaveMessage(''), 3000);

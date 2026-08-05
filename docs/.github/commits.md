@@ -127,3 +127,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Frontend Settings Page**: Created a responsive Settings page (`/settings`) allowing users to easily toggle their preferred web search configuration, define the maximum source scraping limits, and balance the provider split dynamically.
 - **Isolated YouTube Integration UI**: Implemented an independent YouTube Agent configuration section on the settings page, saving limits safely to local storage per user direction.
 - **Scroll Fix**: Fixed an overarching layout bug where the settings page was unscrollable due to inherited `overflow: hidden` properties from the main app workspace.
+
+## Commit 18: YouTube Discovery and High-Speed Concurrent Pipeline Execution
+- **Unified Discovery Handlers**: Upgraded the `discovery_handler.go` endpoint to concurrently query the Searqon API (for web results) and the YouTube microservice `POST /youtube/discover` endpoint, gracefully merging results into a unified discovery payload.
+- **Robust Pipeline Interception**: Refactored the `POST /pipeline` backend execution (`pipeline_handler.go`) so that when users import selected sources, YouTube URLs are intelligently intercepted from the batch.
+- **Direct Transcript Extraction**: Instead of sending YouTube URLs to the Searqon web scraper (which fails on video players), the backend intercepts them and pipes them directly to a new `FetchSingleYouTubeTranscript` Go client pointing at the Python microservice.
+- **Blazing-Fast Parallel Ingestion**: Rebuilt the ingestion pipeline loop using Go `sync.WaitGroup` and `sync.Mutex` to fire off all YouTube transcript extractions AND the batch Searqon web scrape *completely concurrently*.
+- **Searqon Response Mapping Fix**: Fixed a silent mapping bug in `discovery_handler.go` where Searqon's JSON `{ "success": true, "data": [...] }` payload was incorrectly parsed, causing web results to be erased. 
+- **UI Slice Limit Removal**: Increased the hardcoded `slice(0, 10)` limit in the React `SourceDiscovery.jsx` component to `slice(0, 20)` to ensure YouTube results (appended at the end of the array) correctly render on the screen.

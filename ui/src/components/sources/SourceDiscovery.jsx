@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Check, FileSearch } from 'lucide-react';
+import { ChevronLeft, Check, FileSearch, PlayCircle } from 'lucide-react';
 
 export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
         .then(data => {
           if (!isMounted) return;
           const searchResults = data.results || (data.data && data.data.results) || [];
-          const topResults = searchResults.slice(0, 10);
+          const topResults = searchResults.slice(0, 20); // Increased to allow room for YouTube results appended at the end
           setResults(topResults);
           setSelectedUrls(new Set(topResults.map(r => r.url)));
           setLoading(false);
@@ -88,14 +88,16 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
             </div>
             
             <div className="discovery-list">
-              {results.map((res, i) => (
+              {results.map((res, i) => {
+                const isYouTube = res.url.includes('youtube.com') || res.url.includes('youtu.be') || res.source === 'YouTube';
+                return (
                 <div 
                   key={i} 
                   className={`discovery-item ${selectedUrls.has(res.url) ? 'selected' : ''}`}
                   onClick={() => toggleSelection(res.url)}
                 >
                   <div className="discovery-item-icon">
-                    <FileSearch size={14} />
+                    {isYouTube ? <PlayCircle size={14} color="#ff0000" /> : <FileSearch size={14} />}
                   </div>
                   <div className="discovery-item-content">
                     <div className="discovery-item-title">{res.title}</div>
@@ -105,7 +107,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
                     {selectedUrls.has(res.url) && <Check size={13} strokeWidth={3} />}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </>
         )}
