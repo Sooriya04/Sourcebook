@@ -217,6 +217,46 @@ func (a *API) handleNotebookDetail(w http.ResponseWriter, r *http.Request, id st
 			return
 		}
 
+		// Generate and save vector chunks for each source with content
+		var allChunks []models.DocumentChunk
+		for _, src := range req.Sources {
+			if strings.TrimSpace(src.Content) == "" {
+				continue
+			}
+
+			log.Printf("[Embeddings] Chunking and embedding source: %q (id=%s)...", src.Title, src.ID)
+			pythonChunks, err := a.vectorClient.GenerateEmbeddings(r.Context(), src.Content)
+			if err != nil {
+				log.Printf("[Embeddings] Failed to generate embeddings for source %s: %v", src.ID, err)
+				continue
+			}
+
+			log.Printf("[Embeddings] Generated %d chunks for source %q", len(pythonChunks), src.Title)
+			for i, pc := range pythonChunks {
+				allChunks = append(allChunks, models.DocumentChunk{
+					ID:         uuid.NewString(),
+					NotebookID: id,
+					SourceID:   src.ID,
+					ChunkIndex: i,
+					Content:    pc.Chunk,
+					Embedding:  pc.Embedding,
+				})
+			}
+		}
+
+		if len(allChunks) > 0 {
+			if err := a.repo.SaveChunks(id, allChunks); err != nil {
+				log.Printf("[Embeddings] Failed to save chunks to database: %v", err)
+			} else {
+				log.Printf("[Embeddings] Successfully saved %d chunks for notebook %s", len(allChunks), id)
+			}
+		} else {
+			// Clear all chunks if notebook has no sources with content
+			if err := a.repo.SaveChunks(id, nil); err != nil {
+				log.Printf("[Embeddings] Failed to clean up chunks: %v", err)
+			}
+		}
+
 		if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

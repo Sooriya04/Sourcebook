@@ -337,6 +337,10 @@ button {
   flex: 1;
   font-size: 0.84rem;
   line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .notebook-card-top,

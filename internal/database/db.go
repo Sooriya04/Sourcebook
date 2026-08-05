@@ -60,6 +60,17 @@ func createTables(db *sql.DB) error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS document_chunks (
+			id TEXT PRIMARY KEY,
+			notebook_id TEXT,
+			source_id TEXT,
+			chunk_index INTEGER,
+			content TEXT,
+			embedding BLOB,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE,
+			FOREIGN KEY(source_id) REFERENCES sources(id) ON DELETE CASCADE
+		);`,
 		`CREATE TABLE IF NOT EXISTS chat_messages (
 			id TEXT PRIMARY KEY,
 			notebook_id TEXT,

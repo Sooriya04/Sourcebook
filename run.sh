@@ -5,6 +5,7 @@
 fuser -k 5000/tcp
 fuser -k 6001/tcp
 fuser -k 8010/tcp
+fuser -k 8020/tcp
 
 
 set -e
@@ -54,6 +55,14 @@ if [ -d "services/search" ]; then
 else
   echo "⚠️ Search service directory not found, skipping..."
 fi
+
+if [ -d "services/embeddings" ]; then
+  echo "🧠 Starting Embeddings Microservice on port 8020..."
+  (cd services/embeddings && uvicorn main:app --port 8020 --host 0.0.0.0) &
+else
+  echo "⚠️ Embeddings service directory not found, skipping..."
+fi
+
 
 # 2. Build and Start Go SourceBook Backend Server
 echo "⚡ Starting Go SourceBook Backend Server on port ${PORT:-5000}..."

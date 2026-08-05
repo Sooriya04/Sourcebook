@@ -8,3 +8,4 @@ loguru==0.7.3
 orjson==3.11.1
 pytest==8.4.1
 pytest-asyncio==1.1.0
+

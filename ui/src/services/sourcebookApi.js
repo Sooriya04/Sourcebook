@@ -85,11 +85,9 @@ export async function fetchYouTubeTranscript(url) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   });
-
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to fetch YouTube transcript (Status ${response.status})`);
+    const errorData = await response.text();
+    throw new Error(`Failed to fetch YouTube transcript: ${response.status} ${errorData}`);
   }
-
   return await response.json();
 }

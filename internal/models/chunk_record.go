@@ -13,3 +13,14 @@ type ChunkRecord struct {
 	CreatedAt  time.Time              `json:"created_at"`
 	UpdatedAt  time.Time              `json:"updated_at"`
 }
+
+type DocumentChunk struct {
+	ID         string    `json:"id"`
+	NotebookID string    `json:"notebook_id"`
+	SourceID   string    `json:"source_id"`
+	ChunkIndex int       `json:"chunk_index"`
+	Content    string    `json:"content"`
+	Embedding  []float32 `json:"embedding"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+

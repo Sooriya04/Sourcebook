@@ -51,7 +51,7 @@ func main() {
 	pipelineStore := pipeline.NewStore()
 
 	// Wire the HTTP API.
-	apiHandler := api.NewAPI(searchController, searxProvider, pipelineStore, repo)
+	apiHandler := api.NewAPI(searchController, ddgProvider, pipelineStore, repo)
 
 	// Register routes.
 	mux := http.NewServeMux()

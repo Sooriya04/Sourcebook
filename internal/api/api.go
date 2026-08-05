@@ -6,6 +6,7 @@ import (
 	"sourcebook/internal/pipeline"
 	"sourcebook/internal/providers"
 	"sourcebook/internal/synthesis"
+	"sourcebook/internal/vector"
 )
 
 type API struct {
@@ -14,6 +15,7 @@ type API struct {
 	pipelineStore        *pipeline.Store
 	synthesizer          *synthesis.Synthesizer
 	repo                 *database.Repository
+	vectorClient         *vector.Client
 }
 
 func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource providers.SearchProvider, pipelineStore *pipeline.Store, repo *database.Repository) *API {
@@ -23,5 +25,6 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		pipelineStore:        pipelineStore,
 		synthesizer:          synthesis.NewSynthesizer(),
 		repo:                 repo,
+		vectorClient:         vector.NewClient(),
 	}
 }

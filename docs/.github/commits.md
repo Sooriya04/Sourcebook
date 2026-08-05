@@ -111,3 +111,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Robust Pydantic Configs**: Rewrote the Python search service's configuration schema (`services/search/config.py`) using `AliasChoices`, allowing it to cleanly load LLM and SearXNG URLs natively from the root `.env` without any hardcoded localhost fallbacks.
 - **Payload Validation Relaxation**: Increased the `max_length` parameter in the `SearchRequest.query` Pydantic model (`services/search/models/request.py`) to `100_000` to support large text payloads without throwing `422 Unprocessable Content` errors.
 - **Go LLM Client Safety**: Hardened the Go LLM client (`internal/llm/client.go`) to explicitly fail with a fatal error if `LLM_URL` or `LLM_MODEL` are not provided in the environment, permanently preventing silent localhost fallbacks.
+
+## Commit 16: SQLite Local Semantic RAG & Offline Vector Storage
+- **Offline Semantic Search**: Shifted to SQLite as the single source of truth for semantic vector embeddings by defining the `document_chunks` table and binary `BLOB` persistence in `internal/database/chunk_repo.go`.
+- **Dependency-Free Fallbacks**: Rewrote the Python embedding microservice (`services/embeddings/main.py`) to gracefully fallback to a pure-Python FNV-1a Hashing Term-Frequency (TF) Vectorizer (384 dimensions) when PyTorch is unavailable, enabling fully offline semantic search without internet downloads.
+- **Go Vector Library**: Developed a pure Go vector mathematics library (`internal/vector/vector.go`) for high-performance, in-memory Cosine Similarity operations and float32-to-byte serialization for SQLite.
+- **Automated Text Chunking Pipeline**: Updated `internal/api/notebook_handler.go` to automatically chunk and embed all text sources/scraped websites into SQLite vectors whenever a notebook is saved.
+- **Scoped Chat Retrieval**: Updated `internal/api/chat_handler.go` to retrieve vectors using Cosine Similarity strictly within the active notebook's bounds, gracefully falling back to a structured text-citation response when a local LLM is missing.
+- **Primary Search Swap**: Made DuckDuckGo the primary HTML search source instead of SearXNG inside the `UnifiedSearchController` and `api.NewAPI` initialization.
+- **UI Tweaks**: Fixed a visual bug on the UI dashboard where notebooks incorrectly reported "0 Sources", and added CSS line-clamping to prevent long notebook descriptions from breaking the UI layout.

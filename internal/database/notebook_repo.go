@@ -42,6 +42,18 @@ func (r *Repository) GetNotebooks() ([]models.Notebook, error) {
 		}
 		notebooks = append(notebooks, nb)
 	}
+	
+	// Close rows before executing new queries
+	rows.Close()
+
+	// Fetch sources for each notebook to populate the count
+	for i := range notebooks {
+		sources, err := r.GetSourcesByNotebook(notebooks[i].ID)
+		if err == nil {
+			notebooks[i].Sources = sources
+		}
+	}
+
 	return notebooks, nil
 }
 
