@@ -82,10 +82,25 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 		resp.Body.Close()
 	}
 
-	log.Printf("[Discovery] Searqon offline or failed (%v). Falling back to direct SearXNG controller.", err)
+	log.Printf("[Discovery] Searqon offline or failed (%v). Falling back to direct controller.", err)
 
-	// Fallback to direct SearXNG search
-	results, searchErr := a.searchController.Search(r.Context(), req.Query, models.SearchOptions{Web: true})
+	settings, err := a.repo.GetSettings()
+	if err != nil {
+		log.Printf("[Discovery] Failed to get settings: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to get settings: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	options := models.SearchOptions{
+		Web:          true,
+		Provider:     settings.SearchProvider,
+		MaxResults:   settings.MaxSources,
+		SearxngLimit: settings.SearxngSplit,
+		DdgLimit:     settings.DdgSplit,
+	}
+
+	// Fallback to direct search controller
+	results, searchErr := a.searchController.Search(r.Context(), req.Query, options)
 	if searchErr != nil {
 		log.Printf("[Discovery] Fallback search also failed: %v", searchErr)
 		http.Error(w, fmt.Sprintf("Search discovery failed: %v", searchErr), http.StatusInternalServerError)

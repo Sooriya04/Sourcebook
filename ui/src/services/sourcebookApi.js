@@ -91,3 +91,19 @@ export async function fetchYouTubeTranscript(url) {
   }
   return await response.json();
 }
+
+export async function fetchSettings() {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/settings`);
+  if (!response.ok) throw new Error(`Failed to fetch settings: ${response.status}`);
+  return await response.json();
+}
+
+export async function updateSettings(settings) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) throw new Error(`Failed to update settings: ${response.status}`);
+  return await response.json();
+}

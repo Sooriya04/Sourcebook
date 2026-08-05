@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function AppShell({ children }) {
@@ -19,11 +19,14 @@ export default function AppShell({ children }) {
             </Link>
           </div>
 
-          <div className="nav-right">
+          <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div className="pipeline-status">
               <span className="status-dot"></span>
               <span>Local Engine Connected</span>
             </div>
+            <Link to="/settings" title="Settings" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+              <Settings size={20} />
+            </Link>
           </div>
         </header>
       )}

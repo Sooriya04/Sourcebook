@@ -18,18 +18,26 @@ import (
 // fetchPipelineSources performs Search -> Searqon /scrape/batch and returns clean docs.
 func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources int, urls []string, jobID string) ([]synthesis.ScrapedDoc, []byte, error) {
 	if len(urls) == 0 {
-		options := models.SearchOptions{Web: true}
+		settings, err := a.repo.GetSettings()
+		if err != nil {
+			log.Printf("[Pipeline] Failed to fetch settings: %v", err)
+			return nil, nil, fmt.Errorf("failed to fetch settings: %w", err)
+		}
+		
+		options := models.SearchOptions{
+			Web:          true,
+			Provider:     settings.SearchProvider,
+			MaxResults:   settings.MaxSources,
+			SearxngLimit: settings.SearxngSplit,
+			DdgLimit:     settings.DdgSplit,
+		}
+		
 		var results []models.SearchResult
-		var err error
 
-		log.Printf("[Pipeline] Querying Unified Search (SearXNG) for query: %q", query)
+		log.Printf("[Pipeline] Querying Unified Search (%s) for query: %q", options.Provider, query)
 		searchStart := time.Now()
 
-		if a.pipelineSearchSource != nil {
-			results, err = a.pipelineSearchSource.Search(ctx, query, options)
-		} else {
-			results, err = a.searchController.Search(ctx, query, options)
-		}
+		results, err = a.searchController.Search(ctx, query, options)
 
 		if err != nil {
 			log.Printf("[Pipeline] Search failed after %v: %v", time.Since(searchStart), err)

@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell';
 import HomePage from '../pages/HomePage';
 import NotebookPage from '../pages/NotebookPage';
+import SettingsPage from '../pages/SettingsPage';
 import { useNotebooks } from '../hooks/useNotebooks';
 
 export default function AppRouter() {
@@ -29,6 +30,10 @@ export default function AppRouter() {
               updateNotebook={updateNotebook}
             />
           }
+        />
+        <Route
+          path="/settings"
+          element={<SettingsPage />}
         />
       </Routes>
     </AppShell>

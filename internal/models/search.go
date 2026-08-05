@@ -10,9 +10,12 @@ type SearchOptions struct {
 	News       bool
 	PDFs       bool
 	Docs       bool
-	MaxResults int
-	Language   string
-	SafeSearch bool
+	MaxResults   int
+	Language     string
+	SafeSearch   bool
+	Provider     string // "searxng", "duckduckgo", "both"
+	SearxngLimit int
+	DdgLimit     int
 }
 
 // SearchResult is the normalized cross-provider result shape.

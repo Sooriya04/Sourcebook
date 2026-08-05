@@ -79,6 +79,14 @@ func createTables(db *sql.DB) error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS user_settings (
+			id TEXT PRIMARY KEY,
+			search_provider TEXT NOT NULL,
+			max_sources INTEGER NOT NULL,
+			searxng_split INTEGER NOT NULL,
+			ddg_split INTEGER NOT NULL,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
 	}
 
 	for _, query := range queries {

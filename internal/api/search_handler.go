@@ -37,6 +37,19 @@ func (a *API) HandleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	settings, err := a.repo.GetSettings()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	req.Options.Provider = settings.SearchProvider
+	if req.Options.MaxResults == 0 {
+		req.Options.MaxResults = settings.MaxSources
+	}
+	req.Options.SearxngLimit = settings.SearxngSplit
+	req.Options.DdgLimit = settings.DdgSplit
+
 	if !req.Options.Web && !req.Options.Images && !req.Options.Videos && !req.Options.News && !req.Options.PDFs && !req.Options.Docs {
 		req.Options.Web = true
 	}

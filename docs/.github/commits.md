@@ -120,3 +120,10 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Scoped Chat Retrieval**: Updated `internal/api/chat_handler.go` to retrieve vectors using Cosine Similarity strictly within the active notebook's bounds, gracefully falling back to a structured text-citation response when a local LLM is missing.
 - **Primary Search Swap**: Made DuckDuckGo the primary HTML search source instead of SearXNG inside the `UnifiedSearchController` and `api.NewAPI` initialization.
 - **UI Tweaks**: Fixed a visual bug on the UI dashboard where notebooks incorrectly reported "0 Sources", and added CSS line-clamping to prevent long notebook descriptions from breaking the UI layout.
+
+## Commit 17: User Configurable Search Settings & YouTube Extension
+- **SQLite Settings Persistence**: Built a dedicated `user_settings` table in `sourcebook.db` and exposed `GET` and `PUT` endpoints under `/api/sourcebook/v1/settings` for fully local, browser-independent configuration persistence.
+- **Dynamic Search Routing**: Upgraded the `UnifiedSearchController` to dynamically read user preferences from SQLite and route requests to DuckDuckGo, SearXNG, or both simultaneously using concurrent Go routines with user-defined query limits.
+- **Frontend Settings Page**: Created a responsive Settings page (`/settings`) allowing users to easily toggle their preferred web search configuration, define the maximum source scraping limits, and balance the provider split dynamically.
+- **Isolated YouTube Integration UI**: Implemented an independent YouTube Agent configuration section on the settings page, saving limits safely to local storage per user direction.
+- **Scroll Fix**: Fixed an overarching layout bug where the settings page was unscrollable due to inherited `overflow: hidden` properties from the main app workspace.
