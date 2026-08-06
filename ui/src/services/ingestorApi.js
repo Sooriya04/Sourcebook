@@ -19,6 +19,23 @@ export async function parsePDF(file) {
   return await response.json();
 }
 
+export async function parseMarkdown(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${INGESTOR_BASE_URL}/parse/markdown`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || `Markdown parse failed: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export async function parseYouTube(url) {
   const response = await fetch(`${INGESTOR_BASE_URL}/parse/youtube`, {
     method: 'POST',

@@ -37,8 +37,8 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
     if (newSelection.has(url)) {
       newSelection.delete(url);
     } else {
-      if (newSelection.size >= 10) {
-        alert("Maximum 10 sources can be imported at once.");
+      if (newSelection.size >= 20) {
+        alert("Maximum 20 sources can be imported at once.");
         return;
       }
       newSelection.add(url);
@@ -50,7 +50,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
     if (selectedUrls.size === results.length) {
       setSelectedUrls(new Set());
     } else {
-      const allUrls = results.slice(0, 10).map(r => r.url);
+      const allUrls = results.slice(0, 20).map(r => r.url);
       setSelectedUrls(new Set(allUrls));
     }
   };

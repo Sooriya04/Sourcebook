@@ -107,3 +107,17 @@ export async function updateSettings(settings) {
   if (!response.ok) throw new Error(`Failed to update settings: ${response.status}`);
   return await response.json();
 }
+
+export async function generateFlashcards(notebookId) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/flashcards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to generate flashcards: ${response.status}`);
+  }
+  
+  return await response.json();
+}

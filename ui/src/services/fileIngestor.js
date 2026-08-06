@@ -1,44 +1,28 @@
-// Pure frontend client-side document and link extractor (No python backend required)
+import { parsePDF, parseMarkdown } from './ingestorApi';
 
 export async function parseFileClientSide(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-
+  try {
     if (file.name.endsWith('.pdf')) {
-      // For PDFs in pure browser, extract raw text stream
-      reader.onload = (e) => {
-        const buffer = e.target.result;
-        const decoder = new TextDecoder('utf-8');
-        const rawText = decoder.decode(buffer);
-        
-        // Extract text matching printable ASCII / UTF-8 blocks from raw PDF stream
-        const textMatches = rawText.match(/[\x20-\x7E\s]{4,}/g) || [];
-        const cleanedText = textMatches
-          .filter(chunk => !chunk.includes('obj') && !chunk.includes('endobj') && !chunk.includes('stream'))
-          .join(' ')
-          .slice(0, 5000);
-
-        resolve({
-          title: file.name.replace('.pdf', ''),
-          filename: file.name,
-          text: cleanedText || `[Extracted text content from ${file.name}]`,
-          type: 'pdf'
-        });
+      const resp = await parsePDF(file);
+      return {
+        title: resp.title || file.name.replace('.pdf', ''),
+        filename: file.name,
+        text: resp.text || '',
+        type: 'pdf'
       };
-      reader.readAsArrayBuffer(file);
     } else {
-      // Plain text, markdown, code, csv
-      reader.onload = (e) => {
-        resolve({
-          title: file.name,
-          filename: file.name,
-          text: e.target.result,
-          type: 'file'
-        });
+      const resp = await parseMarkdown(file);
+      return {
+        title: resp.title || file.name,
+        filename: file.name,
+        text: resp.text || '',
+        type: 'file'
       };
-      reader.readAsText(file);
     }
-  });
+  } catch (err) {
+    console.error("Backend ingestor failed:", err);
+    throw err;
+  }
 }
 
 export function parseYouTubeURL(url) {

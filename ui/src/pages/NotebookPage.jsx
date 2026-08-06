@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import Sidebar from '../components/layout/Sidebar';
 import ChatStudio from '../components/chat/ChatStudio';
+import StudyStudio from '../components/study/StudyStudio';
 import NotesPanel from '../components/layout/NotesPanel';
 import NotebookHeader from '../components/notebook/NotebookHeader';
 
@@ -20,7 +21,6 @@ const EMPTY_MESSAGES = [];
 export default function NotebookPage({ getNotebook }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  // We still get the basic shell (title/desc) from the router for instant render
   const shellNotebook = getNotebook(id);
 
   const [notebook, setNotebook] = useState(shellNotebook || null);
@@ -30,10 +30,13 @@ export default function NotebookPage({ getNotebook }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [discoveryTopic, setDiscoveryTopic] = useState(null);
   const [isScraping, setIsScraping] = useState(false);
+  const [activeMode, setActiveMode] = useState('chat');
 
-  // Auto-sync debouncer ref
+  // Panel Collapsing State
+  const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
+  const [isStudioCollapsed, setIsStudioCollapsed] = useState(false);
+
   const syncTimeoutRef = useRef(null);
-  // Initial load flag to prevent saving empty state immediately on mount
   const hasLoadedRef = useRef(false);
 
   const {
@@ -97,7 +100,6 @@ export default function NotebookPage({ getNotebook }) {
   useEffect(() => {
     if (!hasLoadedRef.current || !notebook) return;
 
-    // Debounce the save operation by 1 second
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
@@ -120,7 +122,6 @@ export default function NotebookPage({ getNotebook }) {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
   }, [notebook, sources, notes, messages, id]);
-
 
   if (loadingNotebook) {
     return (
@@ -170,7 +171,6 @@ export default function NotebookPage({ getNotebook }) {
     setIsScraping(true);
     setDiscoveryTopic(null);
 
-    // Immediately add sources with 'Indexing...' status
     const pendingSources = imported.map(item => ({
       title: item.title || 'Web Source',
       url: item.url || '',
@@ -218,16 +218,23 @@ export default function NotebookPage({ getNotebook }) {
     }
   };
 
+  const gridColumnsStyle = {
+    gridTemplateColumns: `${isSourcesCollapsed ? '0px' : '310px'} minmax(0, 1fr) ${isStudioCollapsed ? '0px' : '320px'}`,
+    gap: (isSourcesCollapsed && isStudioCollapsed) ? '0px' : '12px'
+  };
+
   return (
     <div className="notebook-workspace-3panel">
       <NotebookHeader
         title={notebook.title}
         onClearChat={clearChat}
         messageCount={messages.length}
+        activeMode={activeMode}
+        setActiveMode={setActiveMode}
       />
 
-      <div className="three-panel-body">
-        {/* Left Panel: Sources */}
+      <div className="three-panel-body" style={gridColumnsStyle}>
+        {/* Slot 1: Left Panel (Sources) */}
         <Sidebar
           sources={sources}
           activeCitation={activeCitation}
@@ -237,28 +244,44 @@ export default function NotebookPage({ getNotebook }) {
           discoveryTopic={discoveryTopic}
           setDiscoveryTopic={setDiscoveryTopic}
           onImportDiscovery={handleImportDiscovery}
+          isCollapsed={isSourcesCollapsed}
+          onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
         />
 
-        {/* Center Panel: Chat Studio */}
-        <ChatStudio
-          messages={messages}
-          loading={chatLoading}
-          maxSources={maxSources}
-          setMaxSources={setMaxSources}
-          onSendMessage={sendMessage}
-          allSources={sources}
-          onCitationClick={handleCitationClick}
-          activeCitation={activeCitation}
-          onSaveNote={handleSaveNote}
-          chatEndRef={chatEndRef}
-          notebookTitle={notebook.title}
-          notebookDescription={notebook.description}
-        />
+        {/* Slot 2: Center Workspace (Always anchored to grid column 2) */}
+        <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {activeMode === 'chat' ? (
+            <ChatStudio
+              messages={messages}
+              loading={chatLoading}
+              maxSources={maxSources}
+              setMaxSources={setMaxSources}
+              onSendMessage={sendMessage}
+              allSources={sources}
+              onCitationClick={handleCitationClick}
+              activeCitation={activeCitation}
+              onSaveNote={handleSaveNote}
+              chatEndRef={chatEndRef}
+              notebookTitle={notebook.title}
+              notebookDescription={notebook.description}
+              isSourcesCollapsed={isSourcesCollapsed}
+              onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+              isStudioCollapsed={isStudioCollapsed}
+              onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
+            />
+          ) : (
+            <StudyStudio notebookId={id} />
+          )}
+        </div>
 
-        {/* Right Panel: Notes & Audio Overview */}
+        {/* Slot 3: Right Panel (Notes & Audio Overview) */}
         <NotesPanel
           notes={notes}
           onDeleteNote={handleDeleteNote}
+          activeMode={activeMode}
+          setActiveMode={setActiveMode}
+          isCollapsed={isStudioCollapsed}
+          onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
         />
       </div>
 

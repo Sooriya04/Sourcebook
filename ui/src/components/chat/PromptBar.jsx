@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Send } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 
-export default function PromptBar({ onSend, loading }) {
+export default function PromptBar({ onSend, loading, sourceCount = 0 }) {
   const [query, setQuery] = useState('');
 
   const handleSubmit = (e) => {
@@ -23,19 +23,24 @@ export default function PromptBar({ onSend, loading }) {
       <form className="prompt-bar" onSubmit={handleSubmit}>
         <textarea
           className="prompt-input"
-          placeholder="Ask SourceBook anything..."
+          placeholder="Ask a question or create something..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={1}
         />
-        <div className="prompt-actions">
+        <div className="prompt-controls-right">
+          <div className="sources-count-pill" title="Active notebook sources indexed">
+            <Layers size={13} />
+            <span>{sourceCount} {sourceCount === 1 ? 'source' : 'sources'}</span>
+          </div>
           <button
             type="submit"
-            className="send-btn"
+            className="circular-send-btn"
             disabled={!query.trim() || loading}
+            title="Send query"
           >
-            <Send size={16} />
+            <ArrowRight size={18} />
           </button>
         </div>
       </form>

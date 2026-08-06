@@ -6,6 +6,7 @@ fuser -k 5000/tcp
 fuser -k 6001/tcp
 fuser -k 8010/tcp
 fuser -k 8020/tcp
+fuser -k 4002/tcp
 
 
 set -e
@@ -61,6 +62,13 @@ if [ -d "services/embeddings" ]; then
   (cd services/embeddings && uvicorn main:app --port 8020 --host 0.0.0.0) &
 else
   echo "⚠️ Embeddings service directory not found, skipping..."
+fi
+
+if [ -d "services/document" ]; then
+  echo "📄 Starting Go Document Ingestion Microservice on port 4002..."
+  (cd services/document && go run main.go) &
+else
+  echo "⚠️ Document service directory not found, skipping..."
 fi
 
 

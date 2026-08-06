@@ -49,3 +49,31 @@ Rules:
 
 	return messages, citations
 }
+
+// BuildFlashcardPrompt constructs a system and user prompt for generating JSON flashcards.
+func BuildFlashcardPrompt(docs []DocumentContext) []Message {
+	var contextBuilder strings.Builder
+
+	for _, doc := range docs {
+		contextBuilder.WriteString(fmt.Sprintf("Source: %s\nContent:\n%s\n\n---\n\n", doc.Title, doc.Content))
+	}
+
+	systemPrompt := `You are a strict JSON-only flashcard generator.
+Your task is to extract key facts, concepts, and definitions from the provided text and turn them into a JSON array of flashcards.
+
+Rules:
+1. ONLY output valid JSON. Do not include markdown blocks like ` + "```json" + ` or conversational text.
+2. The format MUST be exactly:
+[
+  {"q": "Question text here?", "a": "Answer text here."},
+  {"q": "Another question?", "a": "Another answer."}
+]
+3. Generate exactly 5 flashcards.`
+
+	userPrompt := fmt.Sprintf("Source Material:\n%s\nGenerate the JSON flashcards.", contextBuilder.String())
+
+	return []Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+}

@@ -70,3 +70,45 @@ func (s *Synthesizer) Synthesize(ctx context.Context, query string, docs []Scrap
 		DurationMs: time.Since(startTime).Milliseconds(),
 	}, nil
 }
+
+// GenerateFlashcards constructs a prompt from the given docs and returns raw JSON string from LLM.
+func (s *Synthesizer) GenerateFlashcards(ctx context.Context, docs []ScrapedDoc) (string, error) {
+	var docContexts []llm.DocumentContext
+	for i, doc := range docs {
+		cleaned := utils.CleanText(doc.Content)
+		if cleaned == "" {
+			continue
+		}
+		docContexts = append(docContexts, llm.DocumentContext{
+			Index:   i + 1,
+			Title:   doc.Title,
+			URL:     doc.URL,
+			Content: cleaned,
+		})
+	}
+
+	if len(docContexts) == 0 {
+		return "[]", nil
+	}
+
+	messages := llm.BuildFlashcardPrompt(docContexts)
+	
+	log.Printf("[Synthesizer] Calling LLM engine for Flashcards...")
+	answer, err := s.llmClient.Generate(ctx, messages)
+	if err != nil {
+		return "", fmt.Errorf("LLM flashcard error: %w", err)
+	}
+
+	// Sometimes LLMs still wrap in markdown despite being told not to. 
+	// Basic sanitation to strip ```json and ``` 
+	if len(answer) > 7 && answer[:7] == "```json" {
+		answer = answer[7:]
+	} else if len(answer) > 3 && answer[:3] == "```" {
+		answer = answer[3:]
+	}
+	if len(answer) > 3 && answer[len(answer)-3:] == "```" {
+		answer = answer[:len(answer)-3]
+	}
+
+	return answer, nil
+}
