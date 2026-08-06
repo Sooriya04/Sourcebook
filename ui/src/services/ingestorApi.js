@@ -1,12 +1,10 @@
-// API service for Python Ingestor Microservice (http://127.0.0.1:4002)
-
-const INGESTOR_BASE_URL = 'http://127.0.0.1:4002';
+// API service for Python Ingestor Microservice (proxied to 127.0.0.1:4002 via Vite)
 
 export async function parsePDF(file) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${INGESTOR_BASE_URL}/parse/pdf`, {
+  const response = await fetch('/parse/pdf', {
     method: 'POST',
     body: formData,
   });
@@ -23,7 +21,7 @@ export async function parseMarkdown(file) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${INGESTOR_BASE_URL}/parse/markdown`, {
+  const response = await fetch('/parse/markdown', {
     method: 'POST',
     body: formData,
   });
@@ -37,7 +35,7 @@ export async function parseMarkdown(file) {
 }
 
 export async function parseYouTube(url) {
-  const response = await fetch(`${INGESTOR_BASE_URL}/parse/youtube`, {
+  const response = await fetch('/parse/youtube', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),

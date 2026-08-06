@@ -149,3 +149,8 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Hidden Collapse States**: Re-engineered the Sidebar and Studio panels to render hidden `display: none` DOM placeholders instead of returning `null` when collapsed, guaranteeing the central Chat panel always securely anchors to the middle `1fr` column.
 - **Inline Header Toggles**: Introduced dual `[ Sources ]` and `[ Studio ]` toggle pill buttons inside the Chat header. These buttons feature dynamic active/collapsed CSS states, allowing users to smoothly minimize or expand the side panels directly from the top bar.
 - **Fixed Panel Widths**: Enforced strict `max-width` constraints (`310px` for Sources, `320px` for Studio) to ensure they never consume flexible screen space intended for the primary Chat or Study components.
+
+## Commit 21: Finalize Phase 3 (Local Document Ingestion Polish)
+- **Vite Proxy Consolidation**: Updated `ui/vite.config.js` to proxy `/parse` endpoints directly to the `services/document` Go microservice on port 4002, eliminating CORS boundaries and hardcoded localhost URLs in the frontend API calls.
+- **Backend Schema Alignment**: Fixed a critical frontend schema mismatch in `ui/src/services/fileIngestor.js` where parsed documents were returning `text` instead of `content`. This ensures that when PDFs and Markdown are uploaded, the Go backend correctly receives the payload, saves it into SQLite `sources`, and generates vector embeddings.
+- **Roadmap Completion**: Officially marked Phase 3 (Local Notebooks & Document Ingestion) as completely implemented in `AGENTS.md`.

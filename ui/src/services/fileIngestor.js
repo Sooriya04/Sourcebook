@@ -7,7 +7,7 @@ export async function parseFileClientSide(file) {
       return {
         title: resp.title || file.name.replace('.pdf', ''),
         filename: file.name,
-        text: resp.text || '',
+        content: resp.text || '',
         type: 'pdf'
       };
     } else {
@@ -15,7 +15,7 @@ export async function parseFileClientSide(file) {
       return {
         title: resp.title || file.name,
         filename: file.name,
-        text: resp.text || '',
+        content: resp.text || '',
         type: 'file'
       };
     }
