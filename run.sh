@@ -57,12 +57,7 @@ else
   echo "⚠️ Search service directory not found, skipping..."
 fi
 
-if [ -d "services/embeddings" ]; then
-  echo "🧠 Starting Embeddings Microservice on port 8020..."
-  (cd services/embeddings && uvicorn main:app --port 8020 --host 0.0.0.0) &
-else
-  echo "⚠️ Embeddings service directory not found, skipping..."
-fi
+
 
 if [ -d "services/document" ]; then
   echo "📄 Starting Go Document Ingestion Microservice on port 4002..."

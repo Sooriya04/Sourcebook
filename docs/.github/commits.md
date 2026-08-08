@@ -154,3 +154,9 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Vite Proxy Consolidation**: Updated `ui/vite.config.js` to proxy `/parse` endpoints directly to the `services/document` Go microservice on port 4002, eliminating CORS boundaries and hardcoded localhost URLs in the frontend API calls.
 - **Backend Schema Alignment**: Fixed a critical frontend schema mismatch in `ui/src/services/fileIngestor.js` where parsed documents were returning `text` instead of `content`. This ensures that when PDFs and Markdown are uploaded, the Go backend correctly receives the payload, saves it into SQLite `sources`, and generates vector embeddings.
 - **Roadmap Completion**: Officially marked Phase 3 (Local Notebooks & Document Ingestion) as completely implemented in `AGENTS.md`.
+
+## Commit 22: Native Ollama Embeddings Integration
+- **Direct LLM Embeddings**: Ripped out the entire Python `sentence-transformers` microservice (port 8020). Rewrote the Go `internal/vector/client.go` to natively send chunked text directly to Ollama's `/api/embeddings` endpoint over Tailscale (`LLM_URL`).
+- **Nomic-Embed-Text**: Switched the embedding model from `all-MiniLM-L6-v2` (384 dimensions) to Ollama's state-of-the-art `nomic-embed-text` (768 dimensions), which provides vastly superior semantic matching.
+- **Native Go Text Chunking**: Implemented a pure-Go text chunking fallback (`chunkTextFallback`) inside the vector client that intelligently splits large documents by paragraphs and sentence boundaries to cleanly fit Ollama's context window without breaking mid-sentence.
+- **Resource Optimization**: Deleted the `services/embeddings` directory and stripped it from the `run.sh` launch script, significantly reducing the system's idle RAM footprint and completely eliminating Python ML dependencies from the core search execution loop.
