@@ -1,33 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Check, FileSearch, PlayCircle } from 'lucide-react';
+import { searchSources } from '../../services/sourcebookApi';
 
 export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState([]);
   const [selectedUrls, setSelectedUrls] = useState(new Set());
+  const searchedQueryRef = useRef(null);
 
   useEffect(() => {
+    if (!query || searchedQueryRef.current === query) return;
+    searchedQueryRef.current = query;
     let isMounted = true;
     setLoading(true);
 
-    import('../../services/sourcebookApi').then(({ searchSources }) => {
-      searchSources(query)
-        .then(data => {
-          if (!isMounted) return;
-          const searchResults = data.results || (data.data && data.data.results) || [];
-          const topResults = searchResults.slice(0, 20); // Increased to allow room for YouTube results appended at the end
-          setResults(topResults);
-          setSelectedUrls(new Set(topResults.map(r => r.url)));
+    searchSources(query)
+      .then(data => {
+        if (!isMounted) return;
+        const searchResults = data.results || (data.data && data.data.results) || [];
+        const topResults = searchResults.slice(0, 20);
+        setResults(topResults);
+        setSelectedUrls(new Set(topResults.map(r => r.url)));
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Search failed:", err);
+        if (isMounted) {
+          setResults([]);
           setLoading(false);
-        })
-        .catch(err => {
-          console.error("Search failed:", err);
-          if (isMounted) {
-            setResults([]);
-            setLoading(false);
-          }
-        });
-    });
+        }
+      });
 
     return () => { isMounted = false; };
   }, [query]);

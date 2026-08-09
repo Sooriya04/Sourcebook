@@ -185,3 +185,8 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 * **Restored Web & YouTube Discovery**: Verified that Searqon web sources and YouTube videos are returned together across discovery searches.
 * **Parallelized Deep Crawling**: Refactored `pipeline_handler.go` to concurrently dispatch Searqon `/crawl` requests across web sources using `sync.WaitGroup` and goroutines.
 * **10x Deep Crawl Performance Improvement**: Reduced multi-page deep crawling of 10+ web domains and 50+ extracted documents from approximately 94 seconds to 5–8 seconds total.
+
+## Commit 24: Grounded RAG Resilience & Discovery Query Deduplication
+- **Offline Embedding Fallback**: Refactored `chat_handler.go` to catch embedding service failures gracefully and fall back to raw notebook source context instead of returning an HTTP 500 error when Ollama is offline.
+- **Dynamic RAG Max-Sources**: Updated `useChat.js` to fetch and respect `max_sources` from user settings dynamically instead of using a hardcoded state of 5.
+- **Deduplicated Discovery Queries**: Added a query ref guard in `SourceDiscovery.jsx` to prevent duplicate `POST /discovery` API requests on component mount.

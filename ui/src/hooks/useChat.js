@@ -1,11 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
-import { chatQuery } from '../services/sourcebookApi';
+import { chatQuery, fetchSettings } from '../services/sourcebookApi';
 
 export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId = null) {
   const [messages, setMessages] = useState(initialMessages);
   const [loading, setLoading] = useState(false);
   const [maxSources, setMaxSources] = useState(5);
   const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    fetchSettings().then(s => {
+      if (s && s.max_sources) {
+        setMaxSources(s.max_sources);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setMessages(initialMessages);

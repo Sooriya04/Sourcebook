@@ -55,22 +55,6 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 	if req.NotebookID != "" {
 		log.Printf("[Chat] Running notebook semantic search for notebook: %s", req.NotebookID)
 
-		// 1. Generate query embedding via Python embedding service
-		queryEmb, err := a.vectorClient.GenerateQueryEmbedding(r.Context(), req.Query)
-		if err != nil {
-			log.Printf("[Chat] Failed to generate query embedding: %v", err)
-			http.Error(w, fmt.Sprintf("failed to generate query embedding: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		// 2. Fetch all document chunks and sources for this notebook
-		chunks, err := a.repo.GetChunksByNotebook(req.NotebookID)
-		if err != nil {
-			log.Printf("[Chat] Failed to retrieve notebook chunks: %v", err)
-			http.Error(w, fmt.Sprintf("failed to retrieve chunks: %v", err), http.StatusInternalServerError)
-			return
-		}
-
 		sources, err := a.repo.GetSourcesByNotebook(req.NotebookID)
 		if err != nil {
 			log.Printf("[Chat] Failed to retrieve notebook sources: %v", err)
@@ -83,49 +67,94 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 			sourceMap[src.ID] = src
 		}
 
-		// 3. Compute cosine similarity in memory
-		var scores []chunkScore
-		for _, chunk := range chunks {
-			if len(chunk.Embedding) == 0 {
-				continue
+		// 1. Attempt to generate query embedding via embedding service
+		queryEmb, err := a.vectorClient.GenerateQueryEmbedding(r.Context(), req.Query)
+		if err != nil {
+			log.Printf("[Chat] Warning: Ollama embedding service offline/failed (%v). Falling back to raw notebook source context.", err)
+			limit := maxSources
+			if len(sources) < limit {
+				limit = len(sources)
 			}
-			score := vector.CosineSimilarity(queryEmb, chunk.Embedding)
-			scores = append(scores, chunkScore{chunk: chunk, score: score})
-		}
+			for i := 0; i < limit; i++ {
+				src := sources[i]
+				docs = append(docs, synthesis.ScrapedDoc{
+					Title:   src.Title,
+					URL:     src.URL,
+					Content: src.Content,
+				})
+				citations = append(citations, llm.SourceCitation{
+					Index: i + 1,
+					Title: src.Title,
+					URL:   src.URL,
+				})
+			}
+		} else {
+			// 2. Fetch all document chunks for this notebook
+			chunks, err := a.repo.GetChunksByNotebook(req.NotebookID)
+			if err == nil && len(chunks) > 0 {
+				var scores []chunkScore
+				for _, chunk := range chunks {
+					if len(chunk.Embedding) == 0 {
+						continue
+					}
+					score := vector.CosineSimilarity(queryEmb, chunk.Embedding)
+					scores = append(scores, chunkScore{chunk: chunk, score: score})
+				}
 
-		// 4. Sort by score descending
-		sort.Slice(scores, func(i, j int) bool {
-			return scores[i].score > scores[j].score
-		})
+				sort.Slice(scores, func(i, j int) bool {
+					return scores[i].score > scores[j].score
+				})
 
-		// 5. Select Top-K chunks
-		limit := maxSources
-		if len(scores) < limit {
-			limit = len(scores)
-		}
+				limit := maxSources
+				if len(scores) < limit {
+					limit = len(scores)
+				}
 
-		log.Printf("[Chat] Found %d matching chunks. Selecting top %d.", len(scores), limit)
+				log.Printf("[Chat] Found %d matching chunks. Selecting top %d.", len(scores), limit)
 
-		for i := 0; i < limit; i++ {
-			c := scores[i].chunk
-			title := "Untitled Source"
-			url := ""
-			if src, ok := sourceMap[c.SourceID]; ok {
-				title = src.Title
-				url = src.URL
+				for i := 0; i < limit; i++ {
+					c := scores[i].chunk
+					title := "Untitled Source"
+					url := ""
+					if src, ok := sourceMap[c.SourceID]; ok {
+						title = src.Title
+						url = src.URL
+					}
+
+					docs = append(docs, synthesis.ScrapedDoc{
+						Title:   title,
+						URL:     url,
+						Content: c.Content,
+					})
+
+					citations = append(citations, llm.SourceCitation{
+						Index: i + 1,
+						Title: title,
+						URL:   url,
+					})
+				}
 			}
 
-			docs = append(docs, synthesis.ScrapedDoc{
-				Title:   title,
-				URL:     url,
-				Content: c.Content,
-			})
-
-			citations = append(citations, llm.SourceCitation{
-				Index: i + 1,
-				Title: title,
-				URL:   url,
-			})
+			// Fallback if no matching chunks were found
+			if len(docs) == 0 {
+				limit := maxSources
+				if len(sources) < limit {
+					limit = len(sources)
+				}
+				for i := 0; i < limit; i++ {
+					src := sources[i]
+					docs = append(docs, synthesis.ScrapedDoc{
+						Title:   src.Title,
+						URL:     src.URL,
+						Content: src.Content,
+					})
+					citations = append(citations, llm.SourceCitation{
+						Index: i + 1,
+						Title: src.Title,
+						URL:   src.URL,
+					})
+				}
+			}
 		}
 	} else {
 		// Fallback to global web search if no NotebookID is supplied
