@@ -169,3 +169,26 @@ func FetchSingleYouTubeTranscript(ctx context.Context, url string) (string, erro
 
 	return data.Text, nil
 }
+
+// FetchYouTubeTitle attempts to fetch the real title of a YouTube video via YouTube's public oEmbed API.
+func FetchYouTubeTitle(ctx context.Context, videoURL string) string {
+	oembedURL := fmt.Sprintf("https://www.youtube.com/oembed?url=%s&format=json", videoURL)
+	req, err := http.NewRequestWithContext(ctx, "GET", oembedURL, nil)
+	if err != nil {
+		return "YouTube Video"
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return "YouTube Video"
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil && data.Title != "" {
+		return data.Title
+	}
+	return "YouTube Video"
+}

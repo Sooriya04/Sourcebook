@@ -165,13 +165,12 @@ func (r *Repository) SyncNotebookMessages(notebookID string, messages []models.C
 	}
 	defer tx.Rollback()
 
-	// 1. Delete existing
-	if _, err := tx.Exec(`DELETE FROM chat_messages WHERE notebook_id = ?`, notebookID); err != nil {
-		return err
-	}
+	validIDs := make(map[string]bool)
+	now := time.Now().UTC()
 
-	// 2. Insert new
-	query := `INSERT INTO chat_messages (id, notebook_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)`
+	query := `INSERT INTO chat_messages (id, notebook_id, role, content, created_at) 
+	          VALUES (?, ?, ?, ?, ?) 
+	          ON CONFLICT(id) DO UPDATE SET content=excluded.content, role=excluded.role`
 	stmt, err := tx.Prepare(query)
 	if err != nil {
 		return err
@@ -183,16 +182,39 @@ func (r *Repository) SyncNotebookMessages(notebookID string, messages []models.C
 		if id == "" {
 			id = uuid.NewString()
 		}
-		
-		// Ensure CreatedAt is not zero
+		validIDs[id] = true
+
 		createdAt := m.CreatedAt
 		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
+			createdAt = now
 		}
 
 		_, err := stmt.Exec(id, notebookID, m.Role, m.Content, createdAt)
 		if err != nil {
 			return err
+		}
+	}
+
+	if len(validIDs) == 0 {
+		if _, err := tx.Exec(`DELETE FROM chat_messages WHERE notebook_id = ?`, notebookID); err != nil {
+			return err
+		}
+	} else {
+		rows, err := tx.Query(`SELECT id FROM chat_messages WHERE notebook_id = ?`, notebookID)
+		if err == nil {
+			var toDelete []string
+			for rows.Next() {
+				var existingID string
+				if err := rows.Scan(&existingID); err == nil {
+					if !validIDs[existingID] {
+						toDelete = append(toDelete, existingID)
+					}
+				}
+			}
+			rows.Close()
+			for _, delID := range toDelete {
+				tx.Exec(`DELETE FROM chat_messages WHERE id = ?`, delID)
+			}
 		}
 	}
 

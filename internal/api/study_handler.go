@@ -65,23 +65,48 @@ func (a *API) HandleFlashcards(w http.ResponseWriter, r *http.Request) {
 
 	// Format them for the synthesizer
 	var docs []synthesis.ScrapedDoc
-	
-	// Limit to the first N chunks to not blow up context window
-	limit := 15
-	if len(chunks) < limit {
-		limit = len(chunks)
-	}
 
-	for i := 0; i < limit; i++ {
-		c := chunks[i]
-		title := "Untitled Source"
-		if src, ok := sourceMap[c.SourceID]; ok {
-			title = src.Title
+	if len(chunks) > 0 {
+		chunksBySource := make(map[string][]models.DocumentChunk)
+		for _, c := range chunks {
+			chunksBySource[c.SourceID] = append(chunksBySource[c.SourceID], c)
 		}
-		docs = append(docs, synthesis.ScrapedDoc{
-			Title:   title,
-			Content: c.Content,
-		})
+
+		limit := 15
+		count := 0
+		maxPerSource := 15
+		for pass := 0; pass < maxPerSource && count < limit; pass++ {
+			for srcID, srcChunks := range chunksBySource {
+				if pass < len(srcChunks) {
+					c := srcChunks[pass]
+					title := "Untitled Source"
+					if src, ok := sourceMap[srcID]; ok {
+						title = src.Title
+					}
+					docs = append(docs, synthesis.ScrapedDoc{
+						Title:   title,
+						Content: c.Content,
+					})
+					count++
+					if count >= limit {
+						break
+					}
+				}
+			}
+		}
+	} else {
+		// Fallback to raw source contents if vector chunks are not yet indexed
+		for _, src := range sources {
+			if strings.TrimSpace(src.Content) != "" {
+				docs = append(docs, synthesis.ScrapedDoc{
+					Title:   src.Title,
+					Content: src.Content,
+				})
+				if len(docs) >= 5 {
+					break
+				}
+			}
+		}
 	}
 
 	// 2. Synthesize

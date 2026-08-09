@@ -10,5 +10,8 @@ type UserSettings struct {
 	DdgSplit       int       `json:"ddg_split"`     // e.g. 2
 	YoutubeEnabled    bool      `json:"youtube_enabled"`
 	YoutubeMaxSources int       `json:"youtube_max_sources"`
+	DeepCrawlEnabled  bool      `json:"deep_crawl_enabled"`
+	DeepCrawlLimit    int       `json:"deep_crawl_limit"`
+	DeepCrawlDepth    int       `json:"deep_crawl_depth"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

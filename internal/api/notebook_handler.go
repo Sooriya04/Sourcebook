@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"sourcebook/internal/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -217,45 +219,56 @@ func (a *API) handleNotebookDetail(w http.ResponseWriter, r *http.Request, id st
 			return
 		}
 
-		// Generate and save vector chunks for each source with content
-		var allChunks []models.DocumentChunk
-		for _, src := range req.Sources {
-			if strings.TrimSpace(src.Content) == "" {
-				continue
-			}
-
-			log.Printf("[Embeddings] Chunking and embedding source: %q (id=%s)...", src.Title, src.ID)
-			pythonChunks, err := a.vectorClient.GenerateEmbeddings(r.Context(), src.Content)
-			if err != nil {
-				log.Printf("[Embeddings] Failed to generate embeddings for source %s: %v", src.ID, err)
-				continue
-			}
-
-			log.Printf("[Embeddings] Generated %d chunks for source %q", len(pythonChunks), src.Title)
-			for i, pc := range pythonChunks {
-				allChunks = append(allChunks, models.DocumentChunk{
-					ID:         uuid.NewString(),
-					NotebookID: id,
-					SourceID:   src.ID,
-					ChunkIndex: i,
-					Content:    pc.Chunk,
-					Embedding:  pc.Embedding,
-				})
-			}
+		// Generate and save vector chunks asynchronously to prevent HTTP 502 proxy timeouts
+		existingChunks, _ := a.repo.GetChunksByNotebook(id)
+		chunksBySource := make(map[string][]models.DocumentChunk)
+		for _, ch := range existingChunks {
+			chunksBySource[ch.SourceID] = append(chunksBySource[ch.SourceID], ch)
 		}
 
-		if len(allChunks) > 0 {
-			if err := a.repo.SaveChunks(id, allChunks); err != nil {
-				log.Printf("[Embeddings] Failed to save chunks to database: %v", err)
-			} else {
-				log.Printf("[Embeddings] Successfully saved %d chunks for notebook %s", len(allChunks), id)
+		go func(notebookID string, sourcesToEmbed []models.SourceRecord, existingChunksMap map[string][]models.DocumentChunk) {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+			defer cancel()
+
+			var allChunks []models.DocumentChunk
+			for _, src := range sourcesToEmbed {
+				if strings.TrimSpace(src.Content) == "" {
+					continue
+				}
+
+				if existing, ok := existingChunksMap[src.ID]; ok && len(existing) > 0 {
+					allChunks = append(allChunks, existing...)
+					continue
+				}
+
+				log.Printf("[Embeddings] Chunking and embedding new source: %q (id=%s)...", src.Title, src.ID)
+				pythonChunks, err := a.vectorClient.GenerateEmbeddings(bgCtx, src.Content)
+				if err != nil {
+					log.Printf("[Embeddings] Failed to generate embeddings for source %s: %v", src.ID, err)
+					continue
+				}
+
+				log.Printf("[Embeddings] Generated %d chunks for source %q", len(pythonChunks), src.Title)
+				for i, pc := range pythonChunks {
+					allChunks = append(allChunks, models.DocumentChunk{
+						ID:         uuid.NewString(),
+						NotebookID: notebookID,
+						SourceID:   src.ID,
+						ChunkIndex: i,
+						Content:    pc.Chunk,
+						Embedding:  pc.Embedding,
+					})
+				}
 			}
-		} else {
-			// Clear all chunks if notebook has no sources with content
-			if err := a.repo.SaveChunks(id, nil); err != nil {
-				log.Printf("[Embeddings] Failed to clean up chunks: %v", err)
+
+			if len(allChunks) > 0 {
+				if err := a.repo.SaveChunks(notebookID, allChunks); err != nil {
+					log.Printf("[Embeddings] Failed to save chunks to database: %v", err)
+				} else {
+					log.Printf("[Embeddings] Successfully saved %d chunks for notebook %s", len(allChunks), notebookID)
+				}
 			}
-		}
+		}(id, req.Sources, chunksBySource)
 
 		if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

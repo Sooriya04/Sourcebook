@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Search, Server, Cpu, Database, Settings, PlayCircle } from 'lucide-react';
+import { Save, Search, Server, Cpu, Database, Settings, PlayCircle, Globe } from 'lucide-react';
 import { fetchSettings, updateSettings } from '../services/sourcebookApi';
 import { useNavigate } from 'react-router-dom';
 
@@ -183,6 +183,69 @@ export default function SettingsPage() {
             />
             <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Maximum number of video transcripts to fetch per query.</p>
           </div>
+        )}
+      </div>
+
+      <div className="settings-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <Globe size={20} color="var(--accent-primary)" />
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Searqon Deep Sub-URL Crawling</h2>
+        </div>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
+          When enabled, visiting a URL will recursively discover and scrape sub-URLs under the target domain using Searqon crawler (http://localhost:4001/crawl).
+        </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 500 }}>Enable Deep Sub-URL Crawling</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>Scrape sub-pages under target domain via Searqon.</p>
+          </div>
+          <label className="toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+            <input 
+              type="checkbox" 
+              checked={!!settings.deep_crawl_enabled}
+              onChange={(e) => handleChange('deep_crawl_enabled', e.target.checked)}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{ 
+              position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, 
+              backgroundColor: settings.deep_crawl_enabled ? 'var(--accent-primary)' : '#4b5563', 
+              transition: '.4s', borderRadius: '24px' 
+            }}>
+              <span style={{
+                position: 'absolute', content: '""', height: '18px', width: '18px', left: '3px', bottom: '3px',
+                backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+                transform: settings.deep_crawl_enabled ? 'translateX(20px)' : 'translateX(0)'
+              }}></span>
+            </span>
+          </label>
+        </div>
+
+        {settings.deep_crawl_enabled && (
+          <>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Max Sub-Pages to Scrape</label>
+              <input 
+                type="number" 
+                value={settings.deep_crawl_limit || 5} 
+                onChange={(e) => handleChange('deep_crawl_limit', parseInt(e.target.value) || 5)}
+                min="1" max="20"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+              />
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Maximum number of sub-pages Searqon will crawl per domain.</p>
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Crawl Depth</label>
+              <input 
+                type="number" 
+                value={settings.deep_crawl_depth || 1} 
+                onChange={(e) => handleChange('deep_crawl_depth', parseInt(e.target.value) || 1)}
+                min="1" max="3"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+              />
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Recursion link depth (1 = direct child pages, max 3).</p>
+            </div>
+          </>
         )}
       </div>
 

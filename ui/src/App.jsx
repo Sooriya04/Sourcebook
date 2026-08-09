@@ -35,6 +35,18 @@ export default function App() {
     scrollToBottom();
   }, [messages, loading]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        setSelectedSource(null);
+      }
+    };
+    if (selectedSource) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedSource]);
+
   const handleSubmit = async (overrideQuery) => {
     const q = overrideQuery || query;
     if (!q.trim() || loading) return;

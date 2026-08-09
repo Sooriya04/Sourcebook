@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { chatQuery } from '../services/sourcebookApi';
 
-export function useChat(initialMessages = [], onNewSourcesRetrieved) {
+export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId = null) {
   const [messages, setMessages] = useState(initialMessages);
   const [loading, setLoading] = useState(false);
   const [maxSources, setMaxSources] = useState(5);
@@ -27,7 +27,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved) {
     setLoading(true);
 
     try {
-      const data = await chatQuery({ query: queryText, maxSources });
+      const data = await chatQuery({ query: queryText, notebookId, maxSources });
 
       const aiMessage = {
         role: 'assistant',

@@ -65,7 +65,7 @@ export default function NotebookPage({ getNotebook }) {
     sendMessage,
     clearChat,
     chatEndRef
-  } = useChat(EMPTY_MESSAGES, handleNewSourcesFromAPI);
+  } = useChat(EMPTY_MESSAGES, handleNewSourcesFromAPI, id);
 
   // Fetch full details on mount
   useEffect(() => {

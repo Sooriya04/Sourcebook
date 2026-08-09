@@ -104,5 +104,10 @@ func createTables(db *sql.DB) error {
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN youtube_enabled BOOLEAN DEFAULT 0;")
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN youtube_max_sources INTEGER DEFAULT 3;")
 
+	// Auto-migrate: Add Searqon deep crawl settings if they don't exist
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN deep_crawl_enabled BOOLEAN DEFAULT 0;")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN deep_crawl_limit INTEGER DEFAULT 5;")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN deep_crawl_depth INTEGER DEFAULT 1;")
+
 	return nil
 }

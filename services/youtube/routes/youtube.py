@@ -97,11 +97,8 @@ def search_youtube(request: SearchRequest):
         full_text = None
         status = "success"
         try:
-            transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
-            full_text = " ".join([
-                item['text'] if isinstance(item, dict) else getattr(item, 'text', '')
-                for item in transcript_data
-            ])
+            res = TranscriptService.fetch(video["url"])
+            full_text = res["text"]
         except Exception as e:
             status = f"Transcript unavailable: {type(e).__name__}"
 

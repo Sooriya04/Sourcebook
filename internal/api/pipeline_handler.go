@@ -128,9 +128,10 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 			if ytErr == nil && transcript != "" {
 				cleanText := utils.CleanText(transcript)
 				if cleanText != "" {
+					title := FetchYouTubeTitle(ctx, url)
 					mu.Lock()
 					youtubeDocs = append(youtubeDocs, synthesis.ScrapedDoc{
-						Title:   "YouTube Video",
+						Title:   title,
 						URL:     url,
 						Content: cleanText,
 					})
@@ -142,11 +143,93 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		}(yu)
 	}
 
-	// 2. Process Web URLs via Searqon concurrently
+	// 2. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
 	if len(webUrls) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
+			settings, _ := a.repo.GetSettings()
+			deepCrawl := settings != nil && settings.DeepCrawlEnabled
+
+			if deepCrawl {
+				searqonURL := os.Getenv("SEARQON_URL")
+				if searqonURL == "" {
+					searqonURL = "http://localhost:4001"
+				}
+				log.Printf("[Pipeline] Deep Crawl Enabled! Crawling sub-URLs for %d web sources via Searqon (%s)...", len(webUrls), searqonURL)
+
+				limit := 5
+				depth := 1
+				if settings.DeepCrawlLimit > 0 {
+					limit = settings.DeepCrawlLimit
+				}
+				if settings.DeepCrawlDepth > 0 {
+					depth = settings.DeepCrawlDepth
+				}
+
+				client := &http.Client{Timeout: 30 * time.Second}
+				var crawlWg sync.WaitGroup
+				for _, webURL := range webUrls {
+					crawlWg.Add(1)
+					go func(u string) {
+						defer crawlWg.Done()
+						crawlEndpoint := fmt.Sprintf("%s/crawl", searqonURL)
+						crawlBody, _ := json.Marshal(map[string]interface{}{
+							"url":    u,
+							"limit":  limit,
+							"depth":  depth,
+							"format": "markdown",
+						})
+						req, err := http.NewRequestWithContext(ctx, "POST", crawlEndpoint, bytes.NewBuffer(crawlBody))
+						if err != nil {
+							return
+						}
+						req.Header.Set("Content-Type", "application/json")
+						resp, err := client.Do(req)
+						if err != nil || resp.StatusCode != http.StatusOK {
+							if resp != nil {
+								resp.Body.Close()
+							}
+							return
+						}
+						var searqonCrawlData struct {
+							Success bool `json:"success"`
+							Data    struct {
+								Pages []struct {
+									Title    string `json:"title"`
+									URL      string `json:"url"`
+									Markdown string `json:"markdown"`
+									Content  string `json:"content"`
+								} `json:"pages"`
+							} `json:"data"`
+						}
+						if err := json.NewDecoder(resp.Body).Decode(&searqonCrawlData); err == nil && searqonCrawlData.Success {
+							mu.Lock()
+							for _, item := range searqonCrawlData.Data.Pages {
+								text := item.Markdown
+								if text == "" {
+									text = item.Content
+								}
+								text = utils.CleanText(text)
+								if text != "" {
+									docs = append(docs, synthesis.ScrapedDoc{
+										Title:   item.Title,
+										URL:     item.URL,
+										Content: text,
+									})
+								}
+							}
+							mu.Unlock()
+						}
+						resp.Body.Close()
+					}(webURL)
+				}
+				crawlWg.Wait()
+				return
+			}
+
+			// Standard Batch Scrape
 			searqonURL := os.Getenv("SEARQON_SCRAPE_URL")
 			if searqonURL == "" {
 				log.Printf("[Pipeline] SEARQON_SCRAPE_URL is not configured")

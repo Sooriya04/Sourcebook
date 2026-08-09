@@ -35,7 +35,8 @@ func main() {
 	// Initialize the primary search provider.
 	searxURL := os.Getenv("SEARXNG_URL")
 	if searxURL == "" {
-		log.Fatalf("SEARXNG_URL environment variable is required")
+		searxURL = "http://localhost:8080"
+		log.Println("SEARXNG_URL environment variable not set, defaulting to http://localhost:8080")
 	}
 
 	searxProvider := searx.NewSearXNGProvider(searxURL)
@@ -64,6 +65,7 @@ func main() {
 	mux.HandleFunc("/api/sourcebook/v1/notebooks", apiHandler.HandleNotebooks)
 	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebooks)
 	mux.HandleFunc("/api/sourcebook/v1/settings", apiHandler.HandleSettings)
+	mux.HandleFunc("/api/sourcebook/v1/crawl", apiHandler.HandleCrawl)
 
 	// Health endpoint.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

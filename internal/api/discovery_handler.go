@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"sourcebook/internal/models"
@@ -40,8 +41,7 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 
 	searqonURL := os.Getenv("SEARQON_URL")
 	if searqonURL == "" {
-		http.Error(w, "SEARQON_URL environment variable is not set", http.StatusInternalServerError)
-		return
+		searqonURL = "http://127.0.0.1:4001"
 	}
 
 	log.Printf("[Discovery] Initiating fast discovery search for query: %q", req.Query)
@@ -49,21 +49,27 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 
 	settings, err := a.repo.GetSettings()
 	if err != nil {
-		log.Printf("[Discovery] Failed to get settings: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to get settings: %v", err), http.StatusInternalServerError)
-		return
+		log.Printf("[Discovery] Warning: Failed to get settings (%v), using default settings", err)
+		settings = &models.UserSettings{
+			SearchProvider:    "duckduckgo",
+			MaxSources:        5,
+			SearxngSplit:      3,
+			DdgSplit:          2,
+			YoutubeEnabled:    false,
+			YoutubeMaxSources: 3,
+		}
 	}
 
-	errChan := make(chan error, 2)
-	var searqonData struct {
-		Query   string                `json:"query"`
-		Count   int                   `json:"count"`
-		Results []models.SearchResult `json:"results"`
-	}
+	var mu sync.Mutex
+	var webResults []models.SearchResult
 	var ytResults []models.SearchResult
+	var wg sync.WaitGroup
 
-	// 1. Web Search (Searqon /search scrape=false)
+	// 1. Web Search (Searqon /search scrape=false or Fallback Controller)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		searchBody, _ := json.Marshal(map[string]interface{}{
 			"query":  req.Query,
 			"limit":  req.Limit,
@@ -72,37 +78,34 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 
 		searchEndpoint := fmt.Sprintf("%s/search", searqonURL)
 		searchReq, err := http.NewRequestWithContext(r.Context(), "POST", searchEndpoint, bytes.NewBuffer(searchBody))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		searchReq.Header.Set("Content-Type", "application/json")
-
-		log.Printf("[Discovery] Calling Searqon discovery endpoint: %s", searchEndpoint)
-
-		client := &http.Client{Timeout: 15 * time.Second}
-		resp, err := client.Do(searchReq)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
-			var rawSearqon struct {
-				Success bool                  `json:"success"`
-				Data    []models.SearchResult `json:"data"`
+		if err == nil {
+			searchReq.Header.Set("Content-Type", "application/json")
+			client := &http.Client{Timeout: 15 * time.Second}
+			resp, err := client.Do(searchReq)
+			if err == nil && resp.StatusCode == http.StatusOK {
+				defer resp.Body.Close()
+				var rawSearqon struct {
+					Success bool `json:"success"`
+					Data    struct {
+						Results []models.SearchResult `json:"results"`
+					} `json:"data"`
+				}
+				if decodeErr := json.NewDecoder(resp.Body).Decode(&rawSearqon); decodeErr == nil && rawSearqon.Success && len(rawSearqon.Data.Results) > 0 {
+					log.Printf("[Discovery] Searqon discovery completed successfully (%d results) in %v.", len(rawSearqon.Data.Results), time.Since(startTime))
+					mu.Lock()
+					webResults = rawSearqon.Data.Results
+					mu.Unlock()
+					return
+				} else if decodeErr != nil {
+					log.Printf("[Discovery] Searqon JSON decode error: %v", decodeErr)
+				}
 			}
-			if decodeErr := json.NewDecoder(resp.Body).Decode(&rawSearqon); decodeErr == nil && rawSearqon.Success {
-				log.Printf("[Discovery] Searqon discovery completed successfully in %v.", time.Since(startTime))
-				searqonData.Query = req.Query
-				searqonData.Results = rawSearqon.Data
-				searqonData.Count = len(rawSearqon.Data)
-				errChan <- nil
-				return
+			if resp != nil {
+				resp.Body.Close()
 			}
 		}
 
-		if resp != nil {
-			resp.Body.Close()
-		}
-
-		log.Printf("[Discovery] Searqon offline or failed (%v). Falling back to direct controller.", err)
+		log.Printf("[Discovery] Searqon discovery unavailable/empty. Falling back to direct search controller...")
 
 		options := models.SearchOptions{
 			Web:          true,
@@ -112,45 +115,47 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 			DdgLimit:     settings.DdgSplit,
 		}
 
-		// Fallback to direct search controller
 		results, searchErr := a.searchController.Search(r.Context(), req.Query, options)
-		if searchErr == nil && results != nil {
-			searqonData.Query = req.Query
-			searqonData.Results = results
-			searqonData.Count = len(results)
+		if searchErr != nil {
+			log.Printf("[Discovery] Direct search controller fallback error: %v", searchErr)
+		} else if results != nil {
+			mu.Lock()
+			webResults = results
+			mu.Unlock()
 		}
-		errChan <- searchErr
 	}()
 
 	// 2. YouTube Discovery (if enabled)
-	go func() {
-		if settings.YoutubeEnabled && settings.YoutubeMaxSources > 0 {
+	if settings.YoutubeEnabled && settings.YoutubeMaxSources > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			res, err := DiscoverYouTubeMetadata(r.Context(), req.Query, settings.YoutubeMaxSources)
 			if err == nil && res != nil {
+				mu.Lock()
 				ytResults = res
+				mu.Unlock()
+			} else if err != nil {
+				log.Printf("[Discovery] YouTube discovery notice: %v", err)
 			}
-		}
-		errChan <- nil // Non-fatal
-	}()
-
-	// Wait for Web Search
-	if err := <-errChan; err != nil {
-		http.Error(w, fmt.Sprintf("Search discovery failed: %v", err), http.StatusInternalServerError)
-		return
+		}()
 	}
 
-	// Wait for YouTube Search
-	<-errChan
+	wg.Wait()
 
-	if ytResults != nil && len(ytResults) > 0 {
-		searqonData.Results = append(searqonData.Results, ytResults...)
-		searqonData.Count = len(searqonData.Results)
+	allResults := append([]models.SearchResult{}, webResults...)
+	if len(ytResults) > 0 {
+		allResults = append(allResults, ytResults...)
 	}
 
-	if searqonData.Results == nil {
-		searqonData.Results = []models.SearchResult{}
+	if allResults == nil {
+		allResults = []models.SearchResult{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(searqonData)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"query":   req.Query,
+		"count":   len(allResults),
+		"results": allResults,
+	})
 }

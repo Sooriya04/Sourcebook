@@ -40,20 +40,24 @@ class TranscriptService:
         transcript_list = api.list(video_id)
         
         target_transcript = None
-        # 1. Try finding English (manual or generated)
+        # 1. Try finding native or auto-generated English transcript
         try:
-            target_transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+            target_transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB', 'en-CA', 'en-AU'])
         except NoTranscriptFound:
             try:
-                target_transcript = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB'])
+                target_transcript = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB', 'en-CA', 'en-AU'])
             except NoTranscriptFound:
                 pass
 
-        # 2. If no English transcript, grab the first available transcript
+        # 2. If no native English transcript exists, attempt to translate non-English transcripts to English
         if target_transcript is None:
             for t in transcript_list:
-                target_transcript = t
-                break
+                if t.is_translatable:
+                    try:
+                        target_transcript = t.translate('en')
+                        break
+                    except Exception:
+                        pass
 
         if target_transcript is None:
             raise NoTranscriptFound(video_id, ['en'], transcript_list)
