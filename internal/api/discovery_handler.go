@@ -153,6 +153,11 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
+	// Opportunistically trigger one background scrape repair cycle.
+	// Non-blocking — does not delay the discovery response.
+	go a.sentinel.Trigger(r.Context())
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"query":   req.Query,
 		"count":   len(allResults),

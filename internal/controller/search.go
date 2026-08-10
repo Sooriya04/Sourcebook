@@ -27,14 +27,12 @@ func (c *UnifiedSearchController) Search(ctx context.Context, query string, opti
 		if ddgProv, err := c.registry.Get("duckduckgo"); err == nil {
 			provCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 			defer cancel()
-			options.MaxResults = options.MaxResults // use default
 			return ddgProv.Search(provCtx, query, options)
 		}
 	} else if provider == "searxng" {
 		if searxProv, err := c.registry.Get("searxng"); err == nil {
 			provCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 			defer cancel()
-			options.MaxResults = options.MaxResults
 			return searxProv.Search(provCtx, query, options)
 		}
 	} else if provider == "both" {

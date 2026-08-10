@@ -190,3 +190,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Offline Embedding Fallback**: Refactored `chat_handler.go` to catch embedding service failures gracefully and fall back to raw notebook source context instead of returning an HTTP 500 error when Ollama is offline.
 - **Dynamic RAG Max-Sources**: Updated `useChat.js` to fetch and respect `max_sources` from user settings dynamically instead of using a hardcoded state of 5.
 - **Deduplicated Discovery Queries**: Added a query ref guard in `SourceDiscovery.jsx` to prevent duplicate `POST /discovery` API requests on component mount.
+
+## Commit 25: Opportunistic Background Scrape Sentinel
+- **New Package `internal/agent/sentinel.go`**: Introduced the `Sentinel` struct — a lightweight background repair agent that watches for sources with empty or NULL `content` in SQLite and silently re-scrapes them via Searqon.
+- **Mutex-Guarded Single Execution**: `Sentinel.Trigger()` uses a `sync.Mutex` + `running` flag to guarantee at most one repair cycle runs at a time, even under concurrent search traffic.
+- **Fire-and-Forget Design**: The Sentinel is triggered via `go a.sentinel.Trigger(r.Context())` inside `HandleSearch` and `HandleDiscovery` — it never blocks or delays the user-facing search response.
+- **YouTube URL Exclusion**: Empty YouTube source rows are automatically skipped (handled by the transcript service, not Searqon batch scrape).
+- **Repository Accessor**: Added `DB()` method to `database.Repository` so the Sentinel holds a clean `*sql.DB` reference without coupling to the full Repository API.
+- **Zero Frontend Impact**: No new routes, no new UI, no polling loop — purely a background Go maintenance mechanism triggered by existing search activity.
+

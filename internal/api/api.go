@@ -1,6 +1,7 @@
 package api
 
 import (
+	"sourcebook/internal/agent"
 	"sourcebook/internal/controller"
 	"sourcebook/internal/database"
 	"sourcebook/internal/pipeline"
@@ -16,6 +17,7 @@ type API struct {
 	synthesizer          *synthesis.Synthesizer
 	repo                 *database.Repository
 	vectorClient         *vector.Client
+	sentinel             *agent.Sentinel
 }
 
 func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource providers.SearchProvider, pipelineStore *pipeline.Store, repo *database.Repository) *API {
@@ -26,5 +28,6 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		synthesizer:          synthesis.NewSynthesizer(),
 		repo:                 repo,
 		vectorClient:         vector.NewClient(),
+		sentinel:             agent.NewSentinel(repo.DB()),
 	}
 }
