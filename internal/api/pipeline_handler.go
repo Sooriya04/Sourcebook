@@ -108,6 +108,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	var youtubeUrls []string
 	var arxivUrls []string
 	var redditUrls []string
+	var socialUrls []string
 	for _, u := range urls {
 		if strings.Contains(u, "youtube.com") || strings.Contains(u, "youtu.be") {
 			youtubeUrls = append(youtubeUrls, u)
@@ -115,6 +116,8 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 			arxivUrls = append(arxivUrls, u)
 		} else if utils.IsRedditURL(u) {
 			redditUrls = append(redditUrls, u)
+		} else if utils.IsSocialURL(u) {
+			socialUrls = append(socialUrls, u)
 		} else {
 			webUrls = append(webUrls, u)
 		}
@@ -123,6 +126,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	var docs []synthesis.ScrapedDoc
 	var arxivDocs []synthesis.ScrapedDoc
 	var redditDocs []synthesis.ScrapedDoc
+	var socialDocs []synthesis.ScrapedDoc
 	var body []byte
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -206,7 +210,37 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		}()
 	}
 
-	// 3. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
+	// 3. Process Social URLs concurrently via Social microservice
+	if len(socialUrls) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Printf("[Pipeline] Intercepted %d Social/Feed URL(s) for microservice extraction", len(socialUrls))
+			res, err := utils.ScrapeWithSocial(ctx, socialUrls)
+			if err == nil {
+				mu.Lock()
+				for _, item := range res {
+					if item.Success && item.Markdown != "" {
+						cleanText := utils.CleanText(item.Markdown)
+						if cleanText != "" {
+							socialDocs = append(socialDocs, synthesis.ScrapedDoc{
+								Title:   item.Title,
+								URL:     item.URL,
+								Content: cleanText,
+							})
+						}
+					} else {
+						log.Printf("[Pipeline] Social scrape failed for %s: %s", item.URL, item.Error)
+					}
+				}
+				mu.Unlock()
+			} else {
+				log.Printf("[Pipeline] Social microservice call failed: %v", err)
+			}
+		}()
+	}
+
+	// 4. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
 	if len(webUrls) > 0 {
 		wg.Add(1)
 		go func() {
@@ -398,7 +432,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	// Wait for all youtube extractions and web scrapes to finish
 	wg.Wait()
 
-	// Append youtube, arxiv, and reddit results to docs
+	// Append youtube, arxiv, reddit, and social results to docs
 	if len(youtubeDocs) > 0 {
 		docs = append(docs, youtubeDocs...)
 	}
@@ -407,6 +441,9 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	}
 	if len(redditDocs) > 0 {
 		docs = append(docs, redditDocs...)
+	}
+	if len(socialDocs) > 0 {
+		docs = append(docs, socialDocs...)
 	}
 
 	log.Printf("[Pipeline] Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))

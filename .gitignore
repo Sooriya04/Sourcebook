@@ -7,3 +7,4 @@ sourcebook-server
 *.log
 /server
 /bin/
+agent-reach

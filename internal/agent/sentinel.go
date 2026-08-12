@@ -120,6 +120,7 @@ func (s *Sentinel) fetchEmptySources() ([]emptySource, error) {
 func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) error {
 	var webSources []emptySource
 	var redditSources []emptySource
+	var socialSources []emptySource
 	repaired := 0
 
 	for _, src := range sources {
@@ -135,6 +136,8 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 			}
 		} else if utils.IsRedditURL(src.URL) {
 			redditSources = append(redditSources, src)
+		} else if utils.IsSocialURL(src.URL) {
+			socialSources = append(socialSources, src)
 		} else {
 			webSources = append(webSources, src)
 		}
@@ -169,8 +172,37 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 		}
 	}
 
+	// 2. Repair Social sources (RSS, WeChat, Weibo, Bilibili, Facebook, LinkedIn)
+	if len(socialSources) > 0 {
+		var socialUrls []string
+		socialMap := make(map[string]emptySource, len(socialSources))
+		for _, src := range socialSources {
+			socialUrls = append(socialUrls, src.URL)
+			socialMap[src.URL] = src
+		}
+		log.Printf("[Sentinel] Repairing %d Social source(s) via Social Microservice...", len(socialUrls))
+		res, err := utils.ScrapeWithSocial(ctx, socialUrls)
+		if err == nil {
+			for _, item := range res {
+				if item.Success && item.Markdown != "" {
+					srcInfo := socialMap[item.URL]
+					cleaned := utils.CleanText(item.Markdown)
+					if cleaned != "" {
+						if err := s.updateSourceContent(srcInfo.ID, cleaned); err == nil {
+							repaired++
+						}
+					}
+				} else {
+					log.Printf("[Sentinel] Social scrape failed for %s: %s", item.URL, item.Error)
+				}
+			}
+		} else {
+			log.Printf("[Sentinel] Social microservice error: %v", err)
+		}
+	}
+
 	if len(webSources) == 0 {
-		log.Printf("[Sentinel] Repaired %d/%d source(s) (ArXiv/Reddit only).", repaired, len(sources))
+		log.Printf("[Sentinel] Repaired %d/%d source(s) (ArXiv/Reddit/Social only).", repaired, len(sources))
 		return nil
 	}
 

@@ -9,6 +9,7 @@ fuser -k 8020/tcp
 fuser -k 4002/tcp
 fuser -k 4003/tcp
 fuser -k 4004/tcp
+fuser -k 4005/tcp
 
 
 set -e
@@ -83,6 +84,14 @@ if [ -f "bin/reddit-service" ]; then
 else
   echo "⚠️ Reddit service binary not found, falling back to source..."
   (cd services/reddit && go run main.go) &
+fi
+
+if [ -f "bin/social-service" ]; then
+  echo "📡 Starting Go Social Ingestion Microservice on port 4005..."
+  ./bin/social-service &
+else
+  echo "⚠️ Social service binary not found, falling back to source..."
+  (cd services/social && go run main.go rss.go media.go) &
 fi
 
 

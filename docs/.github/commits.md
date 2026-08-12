@@ -228,5 +228,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Unified Binary Compilation & Cleanup**: Configured the build workflow to place all compiled binaries (`sourcebook-server`, `document-service`, `jina-service`, `reddit-service`) into a single `/bin` directory, cleaning up unwanted intermediate binaries from the source directories.
 - **Unified Runner Script Refactoring**: Updated `run.sh` to automatically clean up all service ports (including 4003 and 4004) on startup, and launch compiled microservice binaries directly from `/bin` with graceful fallback to dynamic `go run` compilation if the binaries are not found.
 
+## Commit 29: Integrate RSS/Atom Feeds and Social Media (WeChat, Weibo, Bilibili, Facebook, LinkedIn) Ingestion
+- **Dedicated Social Microservice (`services/social`)**: Built a modular Go service on port `4005` handling RSS/Atom XML feeds and public social media platforms (WeChat Articles, Weibo, Bilibili, Facebook, LinkedIn) without session/login dependencies.
+- **Native RSS/Atom Parsing**: Implemented pure-Go XML decoding for both RSS and Atom feeds, automatically transforming feed lists into structured, title-linked markdown summaries.
+- **Jina Reader Social Media Scraper**: Leveraged proxy-rendered Jina Reader fetching to parse public pages on WeChat, Weibo, Bilibili, Facebook, and LinkedIn without requiring cookie verification or logged-in accounts.
+- **Sentinel and Pipeline Concurrency**: Integrated social platform detection and concurrent batch scraping workers in both `internal/agent/sentinel.go` and `internal/api/pipeline_handler.go`.
+- **Integrated Binary Build and Runner Lifecycle**: Added `/bin/social-service` compilation support and added port `4005` setup inside `run.sh` with source fallback logic.
+
 
 
