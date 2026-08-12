@@ -46,7 +46,9 @@ func isFeedURL(url string) bool {
 		strings.HasSuffix(lower, ".rss") ||
 		strings.Contains(lower, "/feed") ||
 		strings.Contains(lower, "/rss") ||
-		strings.Contains(lower, "atom")
+		strings.Contains(lower, "/atom") ||
+		strings.Contains(lower, "?atom") ||
+		strings.Contains(lower, "format=atom")
 }
 
 func scrapeFeedURL(ctx context.Context, url string) (string, string, error) {
@@ -58,6 +60,7 @@ func scrapeFeedURL(ctx context.Context, url string) (string, string, error) {
 		return "", "", err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+	req.Header.Set("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
 
 	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Do(req)
@@ -98,9 +101,7 @@ func parseFeed(xmlData []byte) (string, string, error) {
 			}
 			desc := stripHTML(item.Description)
 			if desc != "" {
-				if len(desc) > 500 {
-					desc = desc[:500] + "..."
-				}
+				desc = truncateRunes(desc, 500)
 				sb.WriteString(desc + "\n\n")
 			}
 			sb.WriteString("---\n\n")
@@ -128,9 +129,7 @@ func parseFeed(xmlData []byte) (string, string, error) {
 			}
 			body = stripHTML(body)
 			if body != "" {
-				if len(body) > 500 {
-					body = body[:500] + "..."
-				}
+				body = truncateRunes(body, 500)
 				sb.WriteString(body + "\n\n")
 			}
 			sb.WriteString("---\n\n")
@@ -155,4 +154,13 @@ func stripHTML(s string) string {
 	}
 	res := html.UnescapeString(sb.String())
 	return strings.TrimSpace(res)
+}
+
+// truncateRunes safely truncates a string to maxRunes characters, appending "..." if truncated.
+func truncateRunes(s string, maxRunes int) string {
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
+		return s
+	}
+	return string(runes[:maxRunes]) + "..."
 }

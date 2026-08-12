@@ -44,9 +44,13 @@ func fetchJinaContent(ctx context.Context, targetURL string) (string, string, er
 		title = tHeader
 	} else {
 		parts := strings.Split(url, "/")
-		if len(parts) > 2 {
-			title = parts[2]
-		} else {
+		for i := len(parts) - 1; i >= 0; i-- {
+			if parts[i] != "" {
+				title = parts[i]
+				break
+			}
+		}
+		if title == "" {
 			title = url
 		}
 	}

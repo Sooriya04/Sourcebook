@@ -52,13 +52,33 @@ func scrapeReddit(ctx context.Context, targetURL string) (string, string, error)
 		url = "https://" + url
 	}
 
-	// Clean/normalize Reddit URL and use rxddit.com/safereddit mirror for zero-config public read.
+	// Resolve redd.it short links to full reddit.com URLs before mirroring
+	if strings.Contains(url, "redd.it") {
+		resolveCtx, resolveCancel := context.WithTimeout(ctx, 10*time.Second)
+		resolveClient := &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse // capture redirect, don't follow
+			},
+		}
+		resolveReq, err := http.NewRequestWithContext(resolveCtx, "GET", url, nil)
+		resolveCancel()
+		if err == nil {
+			resolveResp, err := resolveClient.Do(resolveReq)
+			if err == nil {
+				resolveResp.Body.Close()
+				if loc := resolveResp.Header.Get("Location"); loc != "" {
+					url = loc
+				}
+			}
+		}
+	}
+
+	// Clean/normalize Reddit URL and use rxddit.com mirror for zero-config public read.
 	// E.g., https://www.reddit.com/r/... -> https://rxddit.com/r/...
 	mirrorURL := url
 	if strings.Contains(url, "reddit.com") {
 		mirrorURL = strings.Replace(url, "reddit.com", "rxddit.com", 1)
-	} else if strings.Contains(url, "redd.it") {
-		mirrorURL = strings.Replace(url, "redd.it", "rxddit.com", 1)
 	}
 
 	jinaURL := fmt.Sprintf("https://r.jina.ai/%s", mirrorURL)
@@ -88,11 +108,15 @@ func scrapeReddit(ctx context.Context, targetURL string) (string, string, error)
 	if tHeader := resp.Header.Get("X-Title"); tHeader != "" {
 		title = tHeader
 	} else {
-		parts := strings.Split(url, "/")
-		if len(parts) > 2 {
-			title = parts[2]
-		} else {
-			title = url
+		parts := strings.Split(targetURL, "/")
+		for i := len(parts) - 1; i >= 0; i-- {
+			if parts[i] != "" {
+				title = parts[i]
+				break
+			}
+		}
+		if title == "" {
+			title = targetURL
 		}
 	}
 

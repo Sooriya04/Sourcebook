@@ -234,6 +234,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Jina Reader Social Media Scraper**: Leveraged proxy-rendered Jina Reader fetching to parse public pages on WeChat, Weibo, Bilibili, Facebook, and LinkedIn without requiring cookie verification or logged-in accounts.
 - **Sentinel and Pipeline Concurrency**: Integrated social platform detection and concurrent batch scraping workers in both `internal/agent/sentinel.go` and `internal/api/pipeline_handler.go`.
 - **Integrated Binary Build and Runner Lifecycle**: Added `/bin/social-service` compilation support and added port `4005` setup inside `run.sh` with source fallback logic.
-
-
-
+## Commit 30: Stabilization and Bug Fixes for Ingestion Microservices
+- **Social Service Context Safety**: Resolved a race condition in `services/social/main.go` where `http.Request` was captured in a goroutine closure, potentially leading to panics if the request context cancelled early. Extracted the `context.Context` beforehand.
+- **Robust RSS/Atom Parsing**: 
+  - Fixed false-positive URL detection in `isFeedURL` (which incorrectly flagged unrelated domains containing the word "atom").
+  - Implemented `truncateRunes()` to safely slice multi-byte UTF-8 descriptions without panicking.
+  - Added strict `Accept` HTTP headers to enforce XML responses from obstinate feed servers.
+- **Reddit Mirror Shortlink Resolution**: Fixed the handling of `redd.it` short URLs in `services/reddit/main.go` by introducing a pre-flight HTTP redirect resolver, guaranteeing valid URLs before transforming them for the `rxddit.com` mirror.
+- **Title Extraction Fallback Consistency**: Standardized the fallback URL slug extraction across `jina`, `reddit`, and `social` scrapers, scanning the path backwards to locate the true trailing slug instead of prematurely failing on the root domain segment.

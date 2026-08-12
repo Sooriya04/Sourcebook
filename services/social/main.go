@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -41,11 +42,11 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func scrapeURL(r *http.Request, targetURL string) (string, string, error) {
+func scrapeURL(ctx context.Context, targetURL string) (string, string, error) {
 	if isFeedURL(targetURL) {
-		return scrapeFeedURL(r.Context(), targetURL)
+		return scrapeFeedURL(ctx, targetURL)
 	}
-	return scrapeSocialMediaURL(r.Context(), targetURL)
+	return scrapeSocialMediaURL(ctx, targetURL)
 }
 
 func handleScrapeBatch(w http.ResponseWriter, r *http.Request) {
@@ -74,11 +75,14 @@ func handleScrapeBatch(w http.ResponseWriter, r *http.Request) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
+	// Extract context before goroutines — avoids capturing *http.Request in closures
+	ctx := r.Context()
+
 	for _, u := range urls {
 		wg.Add(1)
 		go func(targetURL string) {
 			defer wg.Done()
-			title, md, err := scrapeURL(r, targetURL)
+			title, md, err := scrapeURL(ctx, targetURL)
 
 			res := ScrapeResult{
 				URL: targetURL,
