@@ -6,3 +6,4 @@ sourcebook-server
 *.db-journal
 *.log
 /server
+/bin/

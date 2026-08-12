@@ -221,5 +221,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Contextual Source Scoping**: Added a scoping popover in the `PromptBar` allowing users to restrict RAG queries to selected sources, passing them as `ScopedSourceIDs` to `chat_handler.go` for targeted SQLite vector matching.
 - **Sentinel Robustness & Scroll Fixes**: Excluded YouTube URLs directly from the Sentinel SQLite empty sources query to prevent infinite loops, styled premium custom Webkit scrollbars, and resolved search icon/text overlap in the drawer toolbar.
 
+## Commit 28: Dedicated Ingestion Microservices for Jina Reader and Reddit
+- **High-Resilience Ingestion Layers**: Created standalone Go-based microservices for Jina Reader (`services/jina` on port 4003) and Reddit (`services/reddit` on port 4004) to decouple scraping logic and handle platform-specific rate limits and gates.
+- **Go Reddit Scraper with Mirror Fallback**: Implemented the Reddit microservice with automated translation/routing of `reddit.com` and `redd.it` URLs to a public mirror (`rxddit.com`) to bypass anti-bot gates without requiring browser login sessions.
+- **Sentinel and Pipeline Fallback Integrations**: Updated the background Sentinel (`internal/agent/sentinel.go`) and pipeline handler (`internal/api/pipeline_handler.go`) to check for Reddit URLs, process them concurrently using the dedicated Reddit client, and fall back to the Jina microservice if standard Searqon web scraping fails.
+- **Unified Binary Compilation & Cleanup**: Configured the build workflow to place all compiled binaries (`sourcebook-server`, `document-service`, `jina-service`, `reddit-service`) into a single `/bin` directory, cleaning up unwanted intermediate binaries from the source directories.
+- **Unified Runner Script Refactoring**: Updated `run.sh` to automatically clean up all service ports (including 4003 and 4004) on startup, and launch compiled microservice binaries directly from `/bin` with graceful fallback to dynamic `go run` compilation if the binaries are not found.
+
 
 

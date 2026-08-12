@@ -107,11 +107,14 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	var webUrls []string
 	var youtubeUrls []string
 	var arxivUrls []string
+	var redditUrls []string
 	for _, u := range urls {
 		if strings.Contains(u, "youtube.com") || strings.Contains(u, "youtu.be") {
 			youtubeUrls = append(youtubeUrls, u)
 		} else if arxiv.IsArxivURL(u) {
 			arxivUrls = append(arxivUrls, u)
+		} else if utils.IsRedditURL(u) {
+			redditUrls = append(redditUrls, u)
 		} else {
 			webUrls = append(webUrls, u)
 		}
@@ -119,6 +122,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 
 	var docs []synthesis.ScrapedDoc
 	var arxivDocs []synthesis.ScrapedDoc
+	var redditDocs []synthesis.ScrapedDoc
 	var body []byte
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -172,7 +176,37 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		}(au)
 	}
 
-	// 2. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
+	// 2. Process Reddit URLs concurrently via Reddit microservice
+	if len(redditUrls) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Printf("[Pipeline] Intercepted %d Reddit URL(s) for microservice extraction", len(redditUrls))
+			res, err := utils.ScrapeWithReddit(ctx, redditUrls)
+			if err == nil {
+				mu.Lock()
+				for _, item := range res {
+					if item.Success && item.Markdown != "" {
+						cleanText := utils.CleanText(item.Markdown)
+						if cleanText != "" {
+							redditDocs = append(redditDocs, synthesis.ScrapedDoc{
+								Title:   item.Title,
+								URL:     item.URL,
+								Content: cleanText,
+							})
+						}
+					} else {
+						log.Printf("[Pipeline] Reddit scrape failed for %s: %s", item.URL, item.Error)
+					}
+				}
+				mu.Unlock()
+			} else {
+				log.Printf("[Pipeline] Reddit microservice call failed: %v", err)
+			}
+		}()
+	}
+
+	// 3. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
 	if len(webUrls) > 0 {
 		wg.Add(1)
 		go func() {
@@ -258,84 +292,103 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 				return
 			}
 
-			// Standard Batch Scrape
+			// Standard Batch Scrape with Jina fallback
+			unresolved := make(map[string]bool, len(webUrls))
+			for _, u := range webUrls {
+				unresolved[u] = true
+			}
+
 			searqonURL := os.Getenv("SEARQON_SCRAPE_URL")
-			if searqonURL == "" {
-				log.Printf("[Pipeline] SEARQON_SCRAPE_URL is not configured")
-				return
-			}
+			var searqonSuccess bool
+			var respBody []byte
 
-			batchBody, _ := json.Marshal(map[string]interface{}{
-				"urls":   webUrls,
-				"format": "markdown",
-			})
-
-			searqonReq, err := http.NewRequestWithContext(ctx, "POST", searqonURL, bytes.NewBuffer(batchBody))
-			if err != nil {
-				log.Printf("[Pipeline] Failed to build Searqon request: %v", err)
-				return
-			}
-			searqonReq.Header.Set("Content-Type", "application/json")
-
-			log.Printf("[Pipeline] Dispatching batch scrape to Searqon (%s) for %d URLs...", searqonURL, len(webUrls))
-			scrapeStart := time.Now()
-
-			client := &http.Client{Timeout: 45 * time.Second}
-			searqonResp, err := client.Do(searqonReq)
-			if err != nil {
-				log.Printf("[Pipeline] Searqon request failed after %v: %v", time.Since(scrapeStart), err)
-				return
-			}
-			defer searqonResp.Body.Close()
-
-			scrapeDuration := time.Since(scrapeStart)
-			log.Printf("[Pipeline] Searqon responded with status %d in %v", searqonResp.StatusCode, scrapeDuration)
-
-			if searqonResp.StatusCode != http.StatusOK {
-				respBytes, _ := io.ReadAll(searqonResp.Body)
-				log.Printf("[Pipeline] Searqon error %d: %s", searqonResp.StatusCode, string(respBytes))
-				return
-			}
-
-			respBody, err := io.ReadAll(searqonResp.Body)
-			if err != nil {
-				log.Printf("[Pipeline] Failed to read Searqon response: %v", err)
-				return
-			}
-
-			mu.Lock()
-			body = respBody // Save raw body for indexing
-			mu.Unlock()
-
-			var searqonData struct {
-				Success bool `json:"success"`
-				Data    []struct {
-					Title    string `json:"title"`
-					URL      string `json:"url"`
-					Markdown string `json:"markdown"`
-					Content  string `json:"content"`
-				} `json:"data"`
-			}
-
-			if err := json.Unmarshal(respBody, &searqonData); err == nil && searqonData.Success {
-				mu.Lock()
-				for _, item := range searqonData.Data {
-					text := item.Markdown
-					if text == "" {
-						text = item.Content
-					}
-					text = utils.CleanText(text)
-					if text != "" {
-						docs = append(docs, synthesis.ScrapedDoc{
-							Title:   item.Title,
-							URL:     item.URL,
-							Content: text,
-						})
+			if searqonURL != "" {
+				batchBody, _ := json.Marshal(map[string]interface{}{
+					"urls":   webUrls,
+					"format": "markdown",
+				})
+				searqonReq, err := http.NewRequestWithContext(ctx, "POST", searqonURL, bytes.NewBuffer(batchBody))
+				if err == nil {
+					searqonReq.Header.Set("Content-Type", "application/json")
+					client := &http.Client{Timeout: 45 * time.Second}
+					searqonResp, err := client.Do(searqonReq)
+					if err == nil {
+						defer searqonResp.Body.Close()
+						if searqonResp.StatusCode == http.StatusOK {
+							respBody, err = io.ReadAll(searqonResp.Body)
+							if err == nil {
+								var searqonData struct {
+									Success bool `json:"success"`
+									Data    []struct {
+										Title    string `json:"title"`
+										URL      string `json:"url"`
+										Markdown string `json:"markdown"`
+										Content  string `json:"content"`
+									} `json:"data"`
+								}
+								if err := json.Unmarshal(respBody, &searqonData); err == nil && searqonData.Success {
+									searqonSuccess = true
+									mu.Lock()
+									for _, item := range searqonData.Data {
+										text := item.Markdown
+										if text == "" {
+											text = item.Content
+										}
+										text = utils.CleanText(text)
+										if text != "" {
+											docs = append(docs, synthesis.ScrapedDoc{
+												Title:   item.Title,
+												URL:     item.URL,
+												Content: text,
+											})
+											delete(unresolved, item.URL)
+										}
+									}
+									mu.Unlock()
+								}
+							}
+						}
 					}
 				}
+			}
+
+			// Jina AI fallback for remaining web URLs
+			if len(unresolved) > 0 {
+				var jinaUrls []string
+				for u := range unresolved {
+					jinaUrls = append(jinaUrls, u)
+				}
+				log.Printf("[Pipeline] Searqon did not resolve all web URLs (success=%t). Dispatching Jina AI fallback for %d URL(s)...", searqonSuccess, len(jinaUrls))
+				jinaResults, jinaErr := utils.ScrapeWithJina(ctx, jinaUrls)
+				if jinaErr == nil {
+					mu.Lock()
+					for _, item := range jinaResults {
+						if item.Success && item.Markdown != "" {
+							cleanText := utils.CleanText(item.Markdown)
+							if cleanText != "" {
+								docs = append(docs, synthesis.ScrapedDoc{
+									Title:   item.Title,
+									URL:     item.URL,
+									Content: cleanText,
+								})
+								delete(unresolved, item.URL)
+							}
+						}
+					}
+					mu.Unlock()
+				} else {
+					log.Printf("[Pipeline] Fallback Jina AI scrape failed: %v", jinaErr)
+				}
+			}
+
+			if respBody != nil {
+				mu.Lock()
+				body = respBody
 				mu.Unlock()
 			} else {
-				log.Printf("[Pipeline] Searqon returned success=false or invalid JSON")
+				mu.Lock()
+				body = []byte(`{"success":true,"data":[]}`)
+				mu.Unlock()
 			}
 		}()
 	} else {
@@ -345,12 +398,15 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	// Wait for all youtube extractions and web scrapes to finish
 	wg.Wait()
 
-	// Append youtube and arxiv results to docs
+	// Append youtube, arxiv, and reddit results to docs
 	if len(youtubeDocs) > 0 {
 		docs = append(docs, youtubeDocs...)
 	}
 	if len(arxivDocs) > 0 {
 		docs = append(docs, arxivDocs...)
+	}
+	if len(redditDocs) > 0 {
+		docs = append(docs, redditDocs...)
 	}
 
 	log.Printf("[Pipeline] Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))

@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"sourcebook/internal/arxiv"
+	"sourcebook/internal/utils"
 )
 
 // emptySource is a lightweight record for sources that need scraping.
@@ -119,6 +119,7 @@ func (s *Sentinel) fetchEmptySources() ([]emptySource, error) {
 // and writes returned content back to SQLite.
 func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) error {
 	var webSources []emptySource
+	var redditSources []emptySource
 	repaired := 0
 
 	for _, src := range sources {
@@ -132,13 +133,44 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 			} else {
 				log.Printf("[Sentinel] ArXiv repair error for %s: %v", src.URL, err)
 			}
+		} else if utils.IsRedditURL(src.URL) {
+			redditSources = append(redditSources, src)
 		} else {
 			webSources = append(webSources, src)
 		}
 	}
 
+	// 1. Repair Reddit sources
+	if len(redditSources) > 0 {
+		var redditUrls []string
+		redditMap := make(map[string]emptySource, len(redditSources))
+		for _, src := range redditSources {
+			redditUrls = append(redditUrls, src.URL)
+			redditMap[src.URL] = src
+		}
+		log.Printf("[Sentinel] Repairing %d Reddit source(s) via Reddit Microservice...", len(redditUrls))
+		res, err := utils.ScrapeWithReddit(ctx, redditUrls)
+		if err == nil {
+			for _, item := range res {
+				if item.Success && item.Markdown != "" {
+					srcInfo := redditMap[item.URL]
+					cleaned := utils.CleanText(item.Markdown)
+					if cleaned != "" {
+						if err := s.updateSourceContent(srcInfo.ID, cleaned); err == nil {
+							repaired++
+						}
+					}
+				} else {
+					log.Printf("[Sentinel] Reddit scrape failed for %s: %s", item.URL, item.Error)
+				}
+			}
+		} else {
+			log.Printf("[Sentinel] Reddit microservice error: %v", err)
+		}
+	}
+
 	if len(webSources) == 0 {
-		log.Printf("[Sentinel] Repaired %d/%d source(s) (ArXiv only).", repaired, len(sources))
+		log.Printf("[Sentinel] Repaired %d/%d source(s) (ArXiv/Reddit only).", repaired, len(sources))
 		return nil
 	}
 
@@ -147,12 +179,16 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 		scrapeURL = "http://127.0.0.1:4001/scrape/batch"
 	}
 
+	// Build unresolved map
+	unresolved := make(map[string]emptySource, len(webSources))
+	for _, src := range webSources {
+		unresolved[src.URL] = src
+	}
+
 	// Build URL list and URL→ID index
-	urlToID := make(map[string]string, len(webSources))
 	urls := make([]string, 0, len(webSources))
 	for _, src := range webSources {
 		urls = append(urls, src.URL)
-		urlToID[src.URL] = src.ID
 	}
 
 	body, err := json.Marshal(map[string]interface{}{
@@ -167,65 +203,77 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 	reqCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 
+	var searqonSuccess bool
 	req, err := http.NewRequestWithContext(reqCtx, "POST", scrapeURL, bytes.NewBuffer(body))
-	if err != nil {
-		return fmt.Errorf("failed to build Searqon request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 45 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("Searqon unreachable: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("Searqon returned status %d: %s", resp.StatusCode, string(raw))
-	}
-
-	var result struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			URL      string `json:"url"`
-			Markdown string `json:"markdown"`
-			Content  string `json:"content"`
-		} `json:"data"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return fmt.Errorf("failed to decode Searqon response: %w", err)
-	}
-
-	if !result.Success {
-		return fmt.Errorf("Searqon returned success=false")
-	}
-
-	for _, item := range result.Data {
-		text := item.Markdown
-		if text == "" {
-			text = item.Content
+	if err == nil {
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{Timeout: 45 * time.Second}
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var result struct {
+					Success bool `json:"success"`
+					Data    []struct {
+						URL      string `json:"url"`
+						Markdown string `json:"markdown"`
+						Content  string `json:"content"`
+					} `json:"data"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&result); err == nil && result.Success {
+					searqonSuccess = true
+					for _, item := range result.Data {
+						text := item.Markdown
+						if text == "" {
+							text = item.Content
+						}
+						text = strings.TrimSpace(text)
+						if text == "" {
+							continue
+						}
+						srcInfo, ok := unresolved[item.URL]
+						if !ok {
+							continue
+						}
+						if err := s.updateSourceContent(srcInfo.ID, text); err == nil {
+							repaired++
+							delete(unresolved, item.URL)
+						}
+					}
+				}
+			}
 		}
-		text = strings.TrimSpace(text)
-		if text == "" {
-			log.Printf("[Sentinel] Empty content returned for %s — skipping", item.URL)
-			continue
-		}
+	}
 
-		id, ok := urlToID[item.URL]
-		if !ok {
-			continue
+	// If there are still unresolved URLs, fall back to Jina Ingestion Microservice
+	if len(unresolved) > 0 {
+		var jinaUrls []string
+		for u := range unresolved {
+			jinaUrls = append(jinaUrls, u)
 		}
-
-		if err := s.updateSourceContent(id, text); err != nil {
-			log.Printf("[Sentinel] Failed to save content for %s: %v", item.URL, err)
+		log.Printf("[Sentinel] Searqon did not resolve all web sources (success=%t). Dispatching Jina AI fallback for %d URL(s)...", searqonSuccess, len(jinaUrls))
+		jinaResults, jinaErr := utils.ScrapeWithJina(ctx, jinaUrls)
+		if jinaErr == nil {
+			for _, item := range jinaResults {
+				if item.Success && item.Markdown != "" {
+					srcInfo, ok := unresolved[item.URL]
+					if ok {
+						cleaned := utils.CleanText(item.Markdown)
+						if cleaned != "" {
+							if err := s.updateSourceContent(srcInfo.ID, cleaned); err == nil {
+								repaired++
+								delete(unresolved, item.URL)
+							}
+						}
+					}
+				}
+			}
 		} else {
-			repaired++
+			log.Printf("[Sentinel] Fallback Jina AI scrape failed: %v", jinaErr)
 		}
 	}
 
-	log.Printf("[Sentinel] Repaired %d/%d source(s).", repaired, len(sources))
+	log.Printf("[Sentinel] Repaired %d/%d source(s) total.", repaired, len(sources))
 	return nil
 }
 

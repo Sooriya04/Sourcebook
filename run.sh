@@ -7,6 +7,8 @@ fuser -k 6001/tcp
 fuser -k 8010/tcp
 fuser -k 8020/tcp
 fuser -k 4002/tcp
+fuser -k 4003/tcp
+fuser -k 4004/tcp
 
 
 set -e
@@ -59,17 +61,39 @@ fi
 
 
 
-if [ -d "services/document" ]; then
+if [ -f "bin/document-service" ]; then
   echo "📄 Starting Go Document Ingestion Microservice on port 4002..."
-  (cd services/document && go run main.go) &
+  ./bin/document-service &
 else
-  echo "⚠️ Document service directory not found, skipping..."
+  echo "⚠️ Document service binary not found, falling back to source..."
+  (cd services/document && go run main.go) &
+fi
+
+if [ -f "bin/jina-service" ]; then
+  echo "🌐 Starting Go Jina Ingestion Microservice on port 4003..."
+  ./bin/jina-service &
+else
+  echo "⚠️ Jina service binary not found, falling back to source..."
+  (cd services/jina && go run main.go) &
+fi
+
+if [ -f "bin/reddit-service" ]; then
+  echo "🤖 Starting Go Reddit Ingestion Microservice on port 4004..."
+  ./bin/reddit-service &
+else
+  echo "⚠️ Reddit service binary not found, falling back to source..."
+  (cd services/reddit && go run main.go) &
 fi
 
 
 # 2. Build and Start Go SourceBook Backend Server
-echo "⚡ Starting Go SourceBook Backend Server on port ${PORT:-5000}..."
-go run ./cmd/server/main.go &
+if [ -f "bin/sourcebook-server" ]; then
+  echo "⚡ Starting Go SourceBook Backend Server on port ${PORT:-5000}..."
+  ./bin/sourcebook-server &
+else
+  echo "⚠️ SourceBook Server binary not found, falling back to source..."
+  go run ./cmd/server/main.go &
+fi
 
 # Wait for background jobs
 wait
