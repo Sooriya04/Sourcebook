@@ -189,13 +189,37 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 ## Commit 24: Grounded RAG Resilience & Discovery Query Deduplication
 - **Offline Embedding Fallback**: Refactored `chat_handler.go` to catch embedding service failures gracefully and fall back to raw notebook source context instead of returning an HTTP 500 error when Ollama is offline.
 - **Dynamic RAG Max-Sources**: Updated `useChat.js` to fetch and respect `max_sources` from user settings dynamically instead of using a hardcoded state of 5.
-- **Deduplicated Discovery Queries**: Added a query ref guard in `SourceDiscovery.jsx` to prevent duplicate `POST /discovery` API requests on component mount.
+- **Clean Discovery Query Lifecycle**: Streamlined `SourceDiscovery.jsx` `useEffect` with `isMounted` flag for clean data fetching and state updates.
 
 ## Commit 25: Opportunistic Background Scrape Sentinel
 - **New Package `internal/agent/sentinel.go`**: Introduced the `Sentinel` struct — a lightweight background repair agent that watches for sources with empty or NULL `content` in SQLite and silently re-scrapes them via Searqon.
 - **Mutex-Guarded Single Execution**: `Sentinel.Trigger()` uses a `sync.Mutex` + `running` flag to guarantee at most one repair cycle runs at a time, even under concurrent search traffic.
-- **Fire-and-Forget Design**: The Sentinel is triggered via `go a.sentinel.Trigger(r.Context())` inside `HandleSearch` and `HandleDiscovery` — it never blocks or delays the user-facing search response.
+- **Fire-and-Forget Design**: The Sentinel is triggered via `go a.sentinel.Trigger()` inside `HandleSearch` and `HandleDiscovery`. It creates a detached `context.Background()` with a 2-minute timeout so HTTP request completion/cancellation does not cancel the background scrape job (`context canceled` fix).
+- **Default Endpoint Fallback**: Added `http://127.0.0.1:4001/scrape/batch` fallback when `SEARQON_SCRAPE_URL` environment variable is omitted.
 - **YouTube URL Exclusion**: Empty YouTube source rows are automatically skipped (handled by the transcript service, not Searqon batch scrape).
 - **Repository Accessor**: Added `DB()` method to `database.Repository` so the Sentinel holds a clean `*sql.DB` reference without coupling to the full Repository API.
 - **Zero Frontend Impact**: No new routes, no new UI, no polling loop — purely a background Go maintenance mechanism triggered by existing search activity.
+
+## Commit 26: Full ArXiv Paper & PDF Extraction Engine
+- **New Package `internal/arxiv/arxiv.go`**: Built a dedicated arXiv extraction engine supporting paper ID normalization across `/abs/`, `/pdf/`, and `/html/` arXiv links.
+- **Hierarchical 3-Tier Extraction**:
+  1. **arXiv HTML Version (`https://arxiv.org/html/<id>`)**: Fetches and parses full HTML article text using `goquery`.
+  2. **Direct PDF Download & Parsing (`https://arxiv.org/pdf/<id>.pdf`)**: Downloads the paper PDF to a temp file and extracts text using `github.com/ledongthuc/pdf`.
+  3. **Abstract Metadata Fallback (`https://arxiv.org/abs/<id>`)**: Extracts title, author list, and abstract structured markdown from HTML `<meta>` tags.
+- **Pipeline Interception**: Updated `pipeline_handler.go` to intercept arXiv URLs and run concurrent `FetchSingleArxivDocument` workers alongside YouTube and web scrapers.
+- **Sentinel ArXiv Support**: Updated `sentinel.go` to repair empty arXiv source rows via direct arXiv extraction instead of Searqon batch web scraping.
+
+## Commit 27: Modernize SourceBook UX, Implement Sentinel status tracker, Citation Hover Popovers, Source Inspector Search, and Contextual Scoping
+- **Sentinel Status Observability**: Exposed Sentinel state `/api/sourcebook/v1/sentinel/status` and added a pulsing `SentinelStatus` indicator in the notebook header. Styled distinct states for "Scraping" (spinning loader), "Pending Scrapes" (idle count display), and "Synced".
+- **Grounded Citation Hover Cards**: Added glassmorphic popover previews to `CitationPill.jsx` displaying cited snippet text, source details, and domain links on hover.
+- **Source Inspector Drawer Upgrades**: Added search capabilities, regex-based highlighting, and copy to clipboard function inside `SourceInspectorDrawer.jsx` to mark cited excerpts (`.source-snippet-highlight`), matching search queries (`.source-query-highlight`), and copy raw content.
+- **Tabbed Study Studio Suite**: Transformed `StudyStudio.jsx` into a modular tabbed interface containing:
+  - *Briefing Document*: Concepts, key findings, and definitions list.
+  - *Audio Overview*: Bouncing CSS wave audio player simulating host conversation.
+  - *FAQ Guide*: Collapsible learning accordion cards.
+  - *Flashcards*: Standard flip card active recall suite.
+- **Contextual Source Scoping**: Added a scoping popover in the `PromptBar` allowing users to restrict RAG queries to selected sources, passing them as `ScopedSourceIDs` to `chat_handler.go` for targeted SQLite vector matching.
+- **Sentinel Robustness & Scroll Fixes**: Excluded YouTube URLs directly from the Sentinel SQLite empty sources query to prevent infinite loops, styled premium custom Webkit scrollbars, and resolved search icon/text overlap in the drawer toolbar.
+
+
 

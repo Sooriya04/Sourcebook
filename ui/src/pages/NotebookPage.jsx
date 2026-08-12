@@ -270,7 +270,7 @@ export default function NotebookPage({ getNotebook }) {
               onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
             />
           ) : (
-            <StudyStudio notebookId={id} />
+            <StudyStudio notebookId={id} sources={sources} />
           )}
         </div>
 

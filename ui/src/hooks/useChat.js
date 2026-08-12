@@ -27,7 +27,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     scrollToBottom();
   }, [messages, loading]);
 
-  const sendMessage = async (queryText) => {
+  const sendMessage = async (queryText, scopedSourceIds = []) => {
     if (!queryText?.trim() || loading) return;
 
     const userMessage = { role: 'user', content: queryText };
@@ -35,7 +35,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     setLoading(true);
 
     try {
-      const data = await chatQuery({ query: queryText, notebookId, maxSources });
+      const data = await chatQuery({ query: queryText, notebookId, maxSources, scopedSourceIds });
 
       const aiMessage = {
         role: 'assistant',

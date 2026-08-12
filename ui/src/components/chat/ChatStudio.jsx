@@ -106,6 +106,7 @@ export default function ChatStudio({
         loading={loading}
         maxSources={maxSources}
         setMaxSources={setMaxSources}
+        allSources={allSources}
         sourceCount={allSources ? allSources.length : 0}
       />
     </div>

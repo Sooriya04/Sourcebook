@@ -66,6 +66,7 @@ func main() {
 	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebooks)
 	mux.HandleFunc("/api/sourcebook/v1/settings", apiHandler.HandleSettings)
 	mux.HandleFunc("/api/sourcebook/v1/crawl", apiHandler.HandleCrawl)
+	mux.HandleFunc("/api/sourcebook/v1/sentinel/status", apiHandler.HandleSentinelStatus)
 
 	// Health endpoint.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

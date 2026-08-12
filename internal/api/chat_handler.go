@@ -27,9 +27,10 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Query      string `json:"query"`
-		NotebookID string `json:"notebook_id,omitempty"`
-		MaxSources int    `json:"max_sources,omitempty"`
+		Query           string   `json:"query"`
+		NotebookID      string   `json:"notebook_id,omitempty"`
+		MaxSources      int      `json:"max_sources,omitempty"`
+		ScopedSourceIDs []string `json:"scoped_source_ids,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -62,6 +63,20 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if len(req.ScopedSourceIDs) > 0 {
+			scopedMap := make(map[string]bool)
+			for _, sid := range req.ScopedSourceIDs {
+				scopedMap[sid] = true
+			}
+			var filtered []models.SourceRecord
+			for _, src := range sources {
+				if scopedMap[src.ID] {
+					filtered = append(filtered, src)
+				}
+			}
+			sources = filtered
+		}
+
 		sourceMap := make(map[string]models.SourceRecord)
 		for _, src := range sources {
 			sourceMap[src.ID] = src
@@ -92,6 +107,19 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 			// 2. Fetch all document chunks for this notebook
 			chunks, err := a.repo.GetChunksByNotebook(req.NotebookID)
 			if err == nil && len(chunks) > 0 {
+				if len(req.ScopedSourceIDs) > 0 {
+					scopedMap := make(map[string]bool)
+					for _, sid := range req.ScopedSourceIDs {
+						scopedMap[sid] = true
+					}
+					var filtered []models.DocumentChunk
+					for _, chunk := range chunks {
+						if scopedMap[chunk.SourceID] {
+							filtered = append(filtered, chunk)
+						}
+					}
+					chunks = filtered
+				}
 				var scores []chunkScore
 				for _, chunk := range chunks {
 					if len(chunk.Embedding) == 0 {

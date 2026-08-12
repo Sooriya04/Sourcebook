@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"sourcebook/internal/arxiv"
 )
 
 // emptySource is a lightweight record for sources that need scraping.
@@ -43,7 +45,7 @@ func NewSentinel(db *sql.DB) *Sentinel {
 
 // Trigger starts one background repair cycle if none is currently running.
 // Safe to call from multiple goroutines / concurrent search requests.
-func (s *Sentinel) Trigger(ctx context.Context) {
+func (s *Sentinel) Trigger() {
 	s.mu.Lock()
 	if s.running {
 		s.mu.Unlock()
@@ -58,6 +60,9 @@ func (s *Sentinel) Trigger(ctx context.Context) {
 			s.running = false
 			s.mu.Unlock()
 		}()
+		// Use background context so HTTP request cancellation does not abort Sentinel repair
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
 		s.runOnce(ctx)
 	}()
 }
@@ -88,6 +93,8 @@ func (s *Sentinel) fetchEmptySources() ([]emptySource, error) {
 		FROM sources
 		WHERE (content IS NULL OR content = '')
 		  AND url != ''
+		  AND url NOT LIKE '%youtube.com%'
+		  AND url NOT LIKE '%youtu.be%'
 		LIMIT ?`
 
 	rows, err := s.db.Query(query, s.batchSize)
@@ -102,27 +109,48 @@ func (s *Sentinel) fetchEmptySources() ([]emptySource, error) {
 		if err := rows.Scan(&src.ID, &src.NotebookID, &src.URL); err != nil {
 			continue
 		}
-		// Skip YouTube URLs — they're handled by the transcript service
-		if strings.Contains(src.URL, "youtube.com") || strings.Contains(src.URL, "youtu.be") {
-			continue
-		}
 		sources = append(sources, src)
 	}
 	return sources, rows.Err()
 }
 
-// repairSources sends the empty source URLs to Searqon /scrape/batch
+// repairSources sends empty web source URLs to Searqon /scrape/batch,
+// extracts arXiv papers directly via FetchSingleArxivDocument,
 // and writes returned content back to SQLite.
 func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) error {
+	var webSources []emptySource
+	repaired := 0
+
+	for _, src := range sources {
+		if arxiv.IsArxivURL(src.URL) {
+			log.Printf("[Sentinel] Repairing arXiv source directly: %s", src.URL)
+			_, content, err := arxiv.FetchSingleArxivDocument(ctx, src.URL)
+			if err == nil && content != "" {
+				if err := s.updateSourceContent(src.ID, content); err == nil {
+					repaired++
+				}
+			} else {
+				log.Printf("[Sentinel] ArXiv repair error for %s: %v", src.URL, err)
+			}
+		} else {
+			webSources = append(webSources, src)
+		}
+	}
+
+	if len(webSources) == 0 {
+		log.Printf("[Sentinel] Repaired %d/%d source(s) (ArXiv only).", repaired, len(sources))
+		return nil
+	}
+
 	scrapeURL := os.Getenv("SEARQON_SCRAPE_URL")
 	if scrapeURL == "" {
-		return fmt.Errorf("SEARQON_SCRAPE_URL not configured — cannot repair sources")
+		scrapeURL = "http://127.0.0.1:4001/scrape/batch"
 	}
 
 	// Build URL list and URL→ID index
-	urlToID := make(map[string]string, len(sources))
-	urls := make([]string, 0, len(sources))
-	for _, src := range sources {
+	urlToID := make(map[string]string, len(webSources))
+	urls := make([]string, 0, len(webSources))
+	for _, src := range webSources {
 		urls = append(urls, src.URL)
 		urlToID[src.URL] = src.ID
 	}
@@ -174,7 +202,6 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 		return fmt.Errorf("Searqon returned success=false")
 	}
 
-	repaired := 0
 	for _, item := range result.Data {
 		text := item.Markdown
 		if text == "" {
@@ -209,4 +236,28 @@ func (s *Sentinel) updateSourceContent(id, content string) error {
 		content, time.Now().UTC(), id,
 	)
 	return err
+}
+
+// Running returns if the sentinel is currently active.
+func (s *Sentinel) Running() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.running
+}
+
+// EmptyCount returns the number of sources with empty content.
+func (s *Sentinel) EmptyCount() int {
+	var count int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*)
+		FROM sources
+		WHERE (content IS NULL OR content = '')
+		  AND url != ''
+		  AND url NOT LIKE '%youtube.com%'
+		  AND url NOT LIKE '%youtu.be%'
+	`).Scan(&count)
+	if err != nil {
+		return 0
+	}
+	return count
 }

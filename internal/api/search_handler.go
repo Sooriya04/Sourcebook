@@ -66,7 +66,7 @@ func (a *API) HandleSearch(w http.ResponseWriter, r *http.Request) {
 
 	// Opportunistically trigger one background scrape repair cycle.
 	// Non-blocking — does not delay the search response.
-	go a.sentinel.Trigger(r.Context())
+	go a.sentinel.Trigger()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

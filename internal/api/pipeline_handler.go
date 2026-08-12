@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sourcebook/internal/arxiv"
 	"sourcebook/internal/models"
 	"sourcebook/internal/synthesis"
 	"sourcebook/internal/utils"
@@ -105,15 +106,19 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 
 	var webUrls []string
 	var youtubeUrls []string
+	var arxivUrls []string
 	for _, u := range urls {
 		if strings.Contains(u, "youtube.com") || strings.Contains(u, "youtu.be") {
 			youtubeUrls = append(youtubeUrls, u)
+		} else if arxiv.IsArxivURL(u) {
+			arxivUrls = append(arxivUrls, u)
 		} else {
 			webUrls = append(webUrls, u)
 		}
 	}
 
 	var docs []synthesis.ScrapedDoc
+	var arxivDocs []synthesis.ScrapedDoc
 	var body []byte
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -141,6 +146,30 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 				log.Printf("[Pipeline] Failed to extract YouTube transcript for %s: %v", url, ytErr)
 			}
 		}(yu)
+	}
+
+	// 2. Process ArXiv URLs concurrently
+	for _, au := range arxivUrls {
+		wg.Add(1)
+		go func(url string) {
+			defer wg.Done()
+			log.Printf("[Pipeline] Intercepted arXiv URL for paper extraction: %s", url)
+			title, content, axErr := arxiv.FetchSingleArxivDocument(ctx, url)
+			if axErr == nil && content != "" {
+				if title == "" {
+					title = "arXiv Paper"
+				}
+				mu.Lock()
+				arxivDocs = append(arxivDocs, synthesis.ScrapedDoc{
+					Title:   title,
+					URL:     url,
+					Content: content,
+				})
+				mu.Unlock()
+			} else {
+				log.Printf("[Pipeline] Failed to extract arXiv paper for %s: %v", url, axErr)
+			}
+		}(au)
 	}
 
 	// 2. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
@@ -316,9 +345,12 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	// Wait for all youtube extractions and web scrapes to finish
 	wg.Wait()
 
-	// Append youtube results to docs
+	// Append youtube and arxiv results to docs
 	if len(youtubeDocs) > 0 {
 		docs = append(docs, youtubeDocs...)
+	}
+	if len(arxivDocs) > 0 {
+		docs = append(docs, arxivDocs...)
 	}
 
 	log.Printf("[Pipeline] Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))

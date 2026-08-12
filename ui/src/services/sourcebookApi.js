@@ -1,11 +1,16 @@
 // API service for Go SourceBook Backend loaded dynamically from environment
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-export async function chatQuery({ query, notebookId, maxSources = 5 }) {
+export async function chatQuery({ query, notebookId, maxSources = 5, scopedSourceIds = [] }) {
   const response = await fetch(`${API_BASE}/api/sourcebook/v1/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, notebook_id: notebookId, max_sources: maxSources }),
+    body: JSON.stringify({ 
+      query, 
+      notebook_id: notebookId, 
+      max_sources: maxSources, 
+      scoped_source_ids: scopedSourceIds 
+    }),
   });
 
   if (!response.ok) {

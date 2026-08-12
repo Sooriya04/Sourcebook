@@ -194,3 +194,388 @@
   background-color: var(--hover-color);
   border-color: var(--text-muted);
 }
+
+/* Studio Tabs */
+.studio-tabs-row {
+  display: flex;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.studio-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.studio-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.studio-tab-btn.active {
+  background: var(--bg-primary);
+  color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Briefing View */
+.briefing-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.briefing-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.03) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.briefing-header-icon {
+  color: var(--accent-primary);
+}
+
+.briefing-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.briefing-header p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.briefing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.briefing-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.briefing-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-primary);
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.briefing-card p {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.briefing-list {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.briefing-list li {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* Audio Overview View */
+.audio-overview-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.podcast-player-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.podcast-player-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.podcast-player-header h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0 0 2px 0;
+}
+
+.podcast-player-header p {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.pulse-icon {
+  color: #38bdf8;
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.wave-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 0 20px;
+}
+
+.wave-bar {
+  width: 6px;
+  background: linear-gradient(to top, #38bdf8, #818cf8);
+  border-radius: 3px;
+  transition: height 0.15s ease;
+}
+
+.wave-bar.animating {
+  animation: soundWave 1.2s infinite ease-in-out alternate;
+}
+
+@keyframes soundWave {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.play-pause-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #38bdf8;
+  border: none;
+  color: #0f172a;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+  transition: all 0.2s ease;
+}
+
+.play-pause-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
+}
+
+.scrubber-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.scrubber-progress {
+  height: 100%;
+  background: #38bdf8;
+  border-radius: 3px;
+  width: 0;
+  transition: width 0.1s linear;
+}
+
+.volume-icon {
+  color: #94a3b8;
+}
+
+.transcript-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.transcript-section h5 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.transcript-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.transcript-bubble {
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transcript-bubble.speaker-a {
+  background: rgba(56, 189, 248, 0.05);
+  border-left: 3px solid #38bdf8;
+  align-self: flex-start;
+  max-width: 90%;
+}
+
+.transcript-bubble.speaker-b {
+  background: rgba(129, 140, 248, 0.05);
+  border-left: 3px solid #818cf8;
+  align-self: flex-end;
+  max-width: 90%;
+}
+
+.speaker-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.speaker-a .speaker-name { color: #38bdf8; }
+.speaker-b .speaker-name { color: #818cf8; }
+
+.transcript-bubble p {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* FAQ Accordion View */
+.faq-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.faq-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.faq-header-icon {
+  color: var(--accent-primary);
+}
+
+.faq-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.faq-header p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.faq-accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-accordion-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.faq-accordion-item.open {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.faq-accordion-question {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.faq-accordion-question:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.faq-accordion-answer {
+  padding: 0 16px 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.faq-accordion-answer p {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}

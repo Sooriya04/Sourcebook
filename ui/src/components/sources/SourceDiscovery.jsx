@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Check, FileSearch, PlayCircle } from 'lucide-react';
 import { searchSources } from '../../services/sourcebookApi';
 
@@ -6,11 +6,9 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState([]);
   const [selectedUrls, setSelectedUrls] = useState(new Set());
-  const searchedQueryRef = useRef(null);
 
   useEffect(() => {
-    if (!query || searchedQueryRef.current === query) return;
-    searchedQueryRef.current = query;
+    if (!query) return;
     let isMounted = true;
     setLoading(true);
 
