@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Bot, Clock, Copy, Check, Bookmark } from 'lucide-react';
 import { parseCitations } from '../../utils/citationParser';
 import { formatDuration } from '../../utils/formatters';
+import SourceDetailsPanel from './SourceDetailsPanel';
 
 export default function MessageBubble({ 
   message, 
@@ -60,6 +61,10 @@ export default function MessageBubble({
                 activeCitation
               )}
         </div>
+
+        {!isUser && (
+          <SourceDetailsPanel sources={message.sources} contextMode={message.context} />
+        )}
 
         {!isUser && message.content && (
           <div className="message-actions">

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SlidersHorizontal, MoreVertical, Sliders, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import ThinkingIndicator from './ThinkingIndicator';
 import PromptBar from './PromptBar';
+import ChatControls from './ChatControls';
+import { fetchLLMHealth } from '../../services/sourcebookApi';
 
 export default function ChatStudio({
   messages,
@@ -10,6 +12,10 @@ export default function ChatStudio({
   maxSources,
   setMaxSources,
   onSendMessage,
+  onStopStream,
+  onRegenerate,
+  onEditAndResend,
+  onClearChat,
   allSources,
   onCitationClick,
   activeCitation,
@@ -22,8 +28,24 @@ export default function ChatStudio({
   isStudioCollapsed,
   onToggleStudio
 }) {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [mode, setMode] = useState('web');
+  const [llmHealth, setLlmHealth] = useState({ status: 'offline', model: '', embeddings: '' });
+  
   const isLongDescription = notebookDescription && notebookDescription.length > 180;
+
+  useEffect(() => {
+    fetchLLMHealth()
+      .then(setLlmHealth)
+      .catch(err => {
+        console.warn("Failed to check LLM health:", err);
+        setLlmHealth({ status: 'offline', model: '', embeddings: '' });
+      });
+  }, []);
+
+  const handleSend = (query, scopedSourceIds) => {
+    onSendMessage(query, mode, scopedSourceIds);
+  };
 
   return (
     <div className="chat-studio-panel">
@@ -62,6 +84,63 @@ export default function ChatStudio({
           </button>
         </div>
       </div>
+
+      {/* Mode Selector & Status sub-header */}
+      <div className="chat-sub-header" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 16px',
+        borderBottom: '1px solid var(--border-color)',
+        background: 'rgba(255, 255, 255, 0.01)',
+        fontSize: '0.82rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Mode:</span>
+          <select 
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            style={{
+              background: 'var(--bg-app)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              outline: 'none',
+              fontSize: '0.8rem',
+              fontWeight: 500
+            }}
+          >
+            <option value="web">Web Search</option>
+            <option value="notebook">Notebook Sources</option>
+            <option value="hybrid">Notebook + Web (Hybrid)</option>
+          </select>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: llmHealth.status === 'online' ? '#10b981' : '#ef4444',
+            boxShadow: llmHealth.status === 'online' ? '0 0 8px #10b981' : '0 0 8px #ef4444',
+            display: 'inline-block'
+          }}></span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+            {llmHealth.status === 'online' ? `${llmHealth.model} (Online)` : 'LLM Offline'}
+          </span>
+        </div>
+      </div>
+
+      {/* Interactive Controls */}
+      <ChatControls 
+        onClear={onClearChat} 
+        onRegenerate={onRegenerate} 
+        onStop={onStopStream} 
+        loading={loading} 
+        hasMessages={messages.length > 0} 
+      />
 
       <div className="chat-scroll-area">
         {messages.length === 0 ? (
@@ -102,7 +181,7 @@ export default function ChatStudio({
       </div>
 
       <PromptBar
-        onSend={onSendMessage}
+        onSend={handleSend}
         loading={loading}
         maxSources={maxSources}
         setMaxSources={setMaxSources}

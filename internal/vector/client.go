@@ -36,13 +36,20 @@ type ollamaEmbedResponse struct {
 
 // NewClient initializes a new client for the embedding service.
 func NewClient() *Client {
-	url := os.Getenv("LLM_URL")
+	url := os.Getenv("EMBEDDING_URL")
+	if url == "" {
+		url = os.Getenv("LLM_URL")
+	}
 	if url == "" {
 		url = "http://localhost:11434"
 	}
+	model := os.Getenv("EMBEDDING_MODEL")
+	if model == "" {
+		model = "nomic-embed-text"
+	}
 	return &Client{
 		llmURL: url,
-		model:  "nomic-embed-text",
+		model:  model,
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},

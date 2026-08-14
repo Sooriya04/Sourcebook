@@ -63,6 +63,9 @@ export default function NotebookPage({ getNotebook }) {
     maxSources,
     setMaxSources,
     sendMessage,
+    stopStream,
+    regenerateMessage,
+    editAndResendMessage,
     clearChat,
     chatEndRef
   } = useChat(EMPTY_MESSAGES, handleNewSourcesFromAPI, id);
@@ -248,8 +251,7 @@ export default function NotebookPage({ getNotebook }) {
           onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
         />
 
-        {/* Slot 2: Center Workspace (Always anchored to grid column 2) */}
-        <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           {activeMode === 'chat' ? (
             <ChatStudio
               messages={messages}
@@ -257,6 +259,10 @@ export default function NotebookPage({ getNotebook }) {
               maxSources={maxSources}
               setMaxSources={setMaxSources}
               onSendMessage={sendMessage}
+              onStopStream={stopStream}
+              onRegenerate={regenerateMessage}
+              onEditAndResend={editAndResendMessage}
+              onClearChat={clearChat}
               allSources={sources}
               onCitationClick={handleCitationClick}
               activeCitation={activeCitation}

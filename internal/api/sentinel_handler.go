@@ -15,6 +15,11 @@ func (a *API) HandleSentinelStatus(w http.ResponseWriter, r *http.Request) {
 	running := a.sentinel.Running()
 	emptyCount := a.sentinel.EmptyCount()
 
+	if emptyCount > 0 && !running {
+		a.sentinel.Trigger()
+		running = true
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"running":     running,

@@ -242,3 +242,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
   - Added strict `Accept` HTTP headers to enforce XML responses from obstinate feed servers.
 - **Reddit Mirror Shortlink Resolution**: Fixed the handling of `redd.it` short URLs in `services/reddit/main.go` by introducing a pre-flight HTTP redirect resolver, guaranteeing valid URLs before transforming them for the `rxddit.com` mirror.
 - **Title Extraction Fallback Consistency**: Standardized the fallback URL slug extraction across `jina`, `reddit`, and `social` scrapers, scanning the path backwards to locate the true trailing slug instead of prematurely failing on the root domain segment.
+
+## Commit 31: Grounded RAG Chat Engine, Interactive Citations, and UI Layout Stabilization
+- **Microservice Port Isolation**: Fixed critical port collision where sub-services inherited `PORT=5000` from `.env`, preventing the main API from starting. Services in `run.sh` now enforce strict, distinct bindings (`4002` through `4005`).
+- **Grounded Streaming RAG Backend**: Implemented a Go-native chat controller (`internal/chat`) supporting multiple modes (Web, Notebook, Hybrid). It dynamically handles SSE JSON-line streaming via Ollama and ranks sources using hybrid vector similarity and keyword overlap.
+- **Premium Chat UI & Real-Time Sync**: 
+  - Added `ChatStudio.jsx` featuring dynamic mode selectors, model health indicators, and high-performance React stream decoding.
+  - Resolved `flex` and `overflow` CSS layout constraints causing the interface to stretch vertically and hide chat scrollbars.
+  - Stripped wide padding artifacts to maximize horizontal reading space in the chat view.
+- **Interactive Source Citations**: Redesigned `.citation-hover-card` tooltips enabling direct URL clicking (`pointer-events: auto`), and modified `CitationPill.jsx` to simultaneously open sources in a new tab upon click while selecting them in the left pane.
+- **Auto-Triggering Sentinel Agents**: Connected the Sentinel background scraper directly to the `/sentinel/status` API handler (`internal/api/sentinel_handler.go`). Opening the UI now instantly wakes idle agents to begin auto-repairing empty sources, showing real-time sync progress instead of stalling indefinitely.

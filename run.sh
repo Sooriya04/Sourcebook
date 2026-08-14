@@ -64,34 +64,34 @@ fi
 
 if [ -f "bin/document-service" ]; then
   echo "📄 Starting Go Document Ingestion Microservice on port 4002..."
-  ./bin/document-service &
+  PORT=4002 ./bin/document-service &
 else
   echo "⚠️ Document service binary not found, falling back to source..."
-  (cd services/document && go run main.go) &
+  (cd services/document && PORT=4002 go run main.go) &
 fi
 
 if [ -f "bin/jina-service" ]; then
   echo "🌐 Starting Go Jina Ingestion Microservice on port 4003..."
-  ./bin/jina-service &
+  PORT=4003 ./bin/jina-service &
 else
   echo "⚠️ Jina service binary not found, falling back to source..."
-  (cd services/jina && go run main.go) &
+  (cd services/jina && PORT=4003 go run main.go) &
 fi
 
 if [ -f "bin/reddit-service" ]; then
   echo "🤖 Starting Go Reddit Ingestion Microservice on port 4004..."
-  ./bin/reddit-service &
+  PORT=4004 ./bin/reddit-service &
 else
   echo "⚠️ Reddit service binary not found, falling back to source..."
-  (cd services/reddit && go run main.go) &
+  (cd services/reddit && PORT=4004 go run main.go) &
 fi
 
 if [ -f "bin/social-service" ]; then
   echo "📡 Starting Go Social Ingestion Microservice on port 4005..."
-  ./bin/social-service &
+  PORT=4005 ./bin/social-service &
 else
   echo "⚠️ Social service binary not found, falling back to source..."
-  (cd services/social && go run main.go rss.go media.go) &
+  (cd services/social && PORT=4005 go run main.go rss.go media.go) &
 fi
 
 

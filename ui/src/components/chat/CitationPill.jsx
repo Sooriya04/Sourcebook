@@ -4,6 +4,15 @@ import { ExternalLink, FileText } from 'lucide-react';
 export default function CitationPill({ index, source, isActive, onClick }) {
   const [hovered, setHovered] = useState(false);
 
+  const handleClick = (e) => {
+    if (onClick) {
+      onClick(e);
+    }
+    if (source && source.url) {
+      window.open(source.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <span 
       className="citation-pill-container"
@@ -13,7 +22,7 @@ export default function CitationPill({ index, source, isActive, onClick }) {
     >
       <button
         className={`citation-pill ${isActive ? 'active' : ''}`}
-        onClick={onClick}
+        onClick={handleClick}
         title={source ? source.title : `Source [${index}]`}
       >
         [{index}]
@@ -28,10 +37,24 @@ export default function CitationPill({ index, source, isActive, onClick }) {
           <span className="hover-card-body">
             {source.snippet || source.content?.slice(0, 160) || "No preview available."}...
           </span>
-          <span className="hover-card-footer">
-            <ExternalLink size={10} />
-            <span className="hover-card-url">{source.url}</span>
-          </span>
+          {source.url && (
+            <a 
+              href={source.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover-card-footer"
+              style={{ 
+                textDecoration: 'none', 
+                color: '#818cf8', 
+                transition: 'color 0.15s ease' 
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#a5b4fc'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#818cf8'}
+            >
+              <ExternalLink size={10} />
+              <span className="hover-card-url" style={{ textDecoration: 'underline' }}>{source.url}</span>
+            </a>
+          )}
         </span>
       )}
     </span>

@@ -126,3 +126,71 @@ export async function generateFlashcards(notebookId) {
   
   return await response.json();
 }
+
+export async function chatQueryStream({ query, notebookId, maxSources = 5, scopedSourceIds = [], mode = 'web', history = [], onChunk, onMetadata, onError, abortSignal }) {
+  try {
+    const response = await fetch(`${API_BASE}/api/sourcebook/v1/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        query, 
+        notebook_id: notebookId, 
+        max_sources: maxSources, 
+        scoped_source_ids: scopedSourceIds,
+        mode,
+        history
+      }),
+      signal: abortSignal
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Server returned status ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+        const jsonStr = trimmed.slice(6);
+        try {
+          const data = JSON.parse(jsonStr);
+          if (data.error) {
+            onError(data.error);
+          } else if (data.token !== undefined) {
+            onChunk(data.token);
+          } else if (data.sources !== undefined || data.context !== undefined) {
+            onMetadata(data);
+          }
+        } catch (e) {
+          console.error('Failed to parse SSE line:', jsonStr, e);
+        }
+      }
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      console.log('Chat stream aborted by client.');
+    } else {
+      onError(err.message);
+    }
+  }
+}
+
+export async function fetchLLMHealth() {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/health/llm`);
+  if (!response.ok) throw new Error(`Failed to fetch LLM health: ${response.status}`);
+  return await response.json();
+}
