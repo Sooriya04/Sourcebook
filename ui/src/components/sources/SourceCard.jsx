@@ -1,16 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Globe, FileText, Video, Trash2, Loader2 } from 'lucide-react';
 import { truncateUrl } from '../../utils/formatters';
 
 export default function SourceCard({ source, isActive, onClick, onDelete }) {
+  const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
 
-  const getIcon = () => {
+  const getDomain = (urlStr) => {
+    try {
+      if (!urlStr) return '';
+      return new URL(urlStr).hostname;
+    } catch {
+      return '';
+    }
+  };
+
+  const domain = getDomain(source.url);
+
+  const renderIcon = () => {
+    if (domain && !iconFailed) {
+      return (
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+          alt=""
+          style={{ width: 14, height: 14, borderRadius: 2, flexShrink: 0, objectFit: 'contain' }}
+          onError={() => setIconFailed(true)}
+        />
+      );
+    }
     if (source.type === 'pdf' || source.type === 'file') {
       return <FileText size={14} color="var(--text-main)" />;
     }
     if (source.type === 'youtube') {
-      return <Video size={14} color="var(--text-main)" />;
+      return <Video size={14} color="#ef4444" />;
     }
     return <Globe size={14} color="var(--text-main)" />;
   };
@@ -51,7 +73,7 @@ export default function SourceCard({ source, isActive, onClick, onDelete }) {
       </div>
 
       <div className="source-url">
-        {getIcon()}
+        {renderIcon()}
         <span style={{ marginLeft: '4px' }}>
           {source.url ? truncateUrl(source.url) : source.filename || 'Uploaded Document'}
         </span>

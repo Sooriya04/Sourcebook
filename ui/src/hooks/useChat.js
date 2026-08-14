@@ -4,6 +4,7 @@ import { chatQueryStream, fetchSettings } from '../services/sourcebookApi';
 export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId = null) {
   const [messages, setMessages] = useState(initialMessages);
   const [loading, setLoading] = useState(false);
+  const [streamPhase, setStreamPhase] = useState('retrieving');
   const [maxSources, setMaxSources] = useState(5);
   const abortControllerRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -35,7 +36,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }
   };
 
-  const sendMessage = async (queryText, mode = 'web', scopedSourceIds = [], overrideHistory = null) => {
+  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null) => {
     if (!queryText?.trim() || loading) return;
 
     // Abort any existing stream
@@ -56,6 +57,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
       { role: 'assistant', content: '', sources: [], context: '', loading: true }
     ]);
     setLoading(true);
+    setStreamPhase('retrieving');
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -65,11 +67,12 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
         query: queryText,
         notebookId,
         maxSources,
-        scopedSourceIds,
+        scopedSourceIds: [],
         mode,
         history,
         abortSignal: controller.signal,
         onChunk: (token) => {
+          setStreamPhase('synthesizing');
           setMessages(prev => {
             const next = [...prev];
             if (next[assistantIndex]) {
@@ -124,7 +127,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }
   };
 
-  const regenerateMessage = () => {
+  const regenerateMessage = (mode = 'notebook') => {
     // Find last user message
     const userMsgIdx = [...messages].reverse().findIndex(m => m.role === 'user');
     if (userMsgIdx === -1) return;
@@ -139,10 +142,10 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }));
 
     setMessages(prev => prev.slice(0, actualIdx));
-    sendMessage(lastQuery, 'web', [], historySlice);
+    sendMessage(lastQuery, mode, historySlice);
   };
 
-  const editAndResendMessage = (index, newText) => {
+  const editAndResendMessage = (index, newText, mode = 'notebook') => {
     if (index < 0 || index >= messages.length) return;
 
     // Slice up to edited index
@@ -152,7 +155,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }));
 
     setMessages(prev => prev.slice(0, index));
-    sendMessage(newText, 'web', [], historySlice);
+    sendMessage(newText, mode, historySlice);
   };
 
   const clearChat = () => {
@@ -164,6 +167,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     messages,
     setMessages,
     loading,
+    streamPhase,
     maxSources,
     setMaxSources,
     sendMessage,

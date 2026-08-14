@@ -1,18 +1,22 @@
 import React from 'react';
-import { Cpu } from 'lucide-react';
+import { Cpu, Search, Sparkles } from 'lucide-react';
 
-export default function ThinkingIndicator() {
+export default function ThinkingIndicator({ phase = 'retrieving' }) {
+  const isSynthesizing = phase === 'synthesizing';
+
   return (
     <div className="message-card thinking">
       <div className="avatar ai pulse">
-        <Cpu size={18} />
+        {isSynthesizing ? <Sparkles size={18} /> : <Search size={18} />}
       </div>
       <div className="message-content-box thinking-text">
         <div className="thinking-dots">
           <span></span><span></span><span></span>
         </div>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Searching SearXNG & synthesizing grounded answer...
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+          {isSynthesizing 
+            ? 'Synthesizing grounded answer...' 
+            : 'Searching & reranking workspace sources...'}
         </span>
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   Trash2,
   Bookmark
 } from 'lucide-react';
+import { parseCitations } from '../../utils/citationParser';
 
 export default function NotesPanel({ 
   notes = [], 
@@ -104,23 +105,36 @@ export default function NotesPanel({
             </div>
           ) : (
             <div className="notes-list">
-              {notes.map((note) => (
-                <div key={note.id} className="note-card">
-                  <div className="note-card-header">
-                    <span className="note-title">{note.title}</span>
-                    {onDeleteNote && (
-                      <button
-                        className="note-delete-btn"
-                        onClick={() => onDeleteNote(note.id)}
-                        title="Delete note"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
+              {notes.map((note) => {
+                const cleanedTitle = note.title
+                  ? note.title
+                      .replace(/\*\*(.*?)\*\*/g, '$1')
+                      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                      .replace(/\([^)]*https?:\/\/[^)]*\)/g, '')
+                      .replace(/^#+\s*/g, '')
+                      .trim()
+                  : 'Untitled Note';
+
+                return (
+                  <div key={note.id} className="note-card">
+                    <div className="note-card-header">
+                      <span className="note-title">{cleanedTitle}</span>
+                      {onDeleteNote && (
+                        <button
+                          className="note-delete-btn"
+                          onClick={() => onDeleteNote(note.id)}
+                          title="Delete note"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="note-content">
+                      {parseCitations(note.content)}
+                    </div>
                   </div>
-                  <div className="note-content">{note.content}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

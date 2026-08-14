@@ -130,7 +130,7 @@ export default function SourceDetailsPanel({ sources = [], contextMode = '' }) {
                 }}>
                   {getSourceIcon(src.source_type)}
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {src.source_type === 'Notebook' ? 'Local Note' : getDisplayDomain(src.url)}
+                    {src.source_type === 'Notebook' ? 'Saved Source' : getDisplayDomain(src.url)}
                   </span>
                 </div>
               </div>

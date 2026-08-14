@@ -60,6 +60,7 @@ export default function NotebookPage({ getNotebook }) {
     messages,
     setMessages,
     loading: chatLoading,
+    streamPhase,
     maxSources,
     setMaxSources,
     sendMessage,
@@ -256,6 +257,7 @@ export default function NotebookPage({ getNotebook }) {
             <ChatStudio
               messages={messages}
               loading={chatLoading}
+              streamPhase={streamPhase}
               maxSources={maxSources}
               setMaxSources={setMaxSources}
               onSendMessage={sendMessage}

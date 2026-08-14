@@ -38,19 +38,19 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest) ([]
 
 	switch req.Mode {
 	case "notebook":
-		contextMeta = "Notebook"
+		contextMeta = "Saved Sources"
 		if req.NotebookID == "" {
 			return nil, "", fmt.Errorf("notebook ID is required for notebook mode")
 		}
 		docs, err = c.retriever.RetrieveNotebook(ctx, req.NotebookID, req.ScopedSourceIDs)
 	case "hybrid":
-		contextMeta = "Notebook + Web"
+		contextMeta = "Saved Sources + Web"
 		if req.NotebookID == "" {
 			return nil, "", fmt.Errorf("notebook ID is required for hybrid mode")
 		}
 		docs, err = c.retriever.RetrieveHybrid(ctx, req.NotebookID, req.Query, maxSources, req.ScopedSourceIDs)
 	default: // "web"
-		contextMeta = "Web"
+		contextMeta = "Web Search"
 		docs, err = c.retriever.RetrieveWeb(ctx, req.Query, maxSources)
 	}
 

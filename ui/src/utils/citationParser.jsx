@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import CitationPill from '../components/chat/CitationPill';
 
 function stripBibliography(text) {
@@ -21,38 +22,55 @@ function stripBibliography(text) {
   return text;
 }
 
+function stripInlineLinks(text) {
+  if (!text) return '';
+  // 1. Replace markdown links [text](http...) with just text (ignoring numerical citations like [1])
+  let cleaned = text.replace(/\[([^\]]+)\]\((?:https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/g, (match, linkText) => {
+    if (/^\d+$/.test(linkText)) return `[${linkText}]`;
+    return linkText;
+  });
+  
+  // 2. Remove standalone URLs in parentheses like (https://...)
+  cleaned = cleaned.replace(/\s*\(\s*https?:\/\/[^\s)]+(?:\s+"[^"]*")?\s*\)/g, '');
+
+  return cleaned;
+}
+
 export function parseCitations(text, messageSources, allSources, onCitationClick, activeCitation) {
   if (!text) return null;
   
-  const cleanText = stripBibliography(text);
-  const citationRegex = /\[(\d+)\]/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match;
+  const cleanText = stripInlineLinks(stripBibliography(text));
+  // Convert [1], [2] to markdown link syntax [1](#cite-1) so ReactMarkdown passes it to custom link renderer
+  const markdownWithCites = cleanText.replace(/\[(\d+)\](?!\([^)]+\))/g, '[$1](#cite-$1)');
 
-  while ((match = citationRegex.exec(cleanText)) !== null) {
-    const citeNum = parseInt(match[1], 10);
-    const textChunk = cleanText.substring(lastIndex, match.index);
-    if (textChunk) parts.push(textChunk);
+  return (
+    <ReactMarkdown
+      components={{
+        a: ({ href, children }) => {
+          if (href && href.startsWith('#cite-')) {
+            const citeNum = parseInt(href.replace('#cite-', ''), 10);
+            const foundSource = (messageSources || []).find(s => s.index === citeNum) 
+              || (allSources || []).find(s => s.index === citeNum);
 
-    const foundSource = (messageSources || []).find(s => s.index === citeNum) 
-      || (allSources || []).find(s => s.index === citeNum);
-
-    parts.push(
-      <CitationPill
-        key={`cite-${match.index}`}
-        index={citeNum}
-        source={foundSource}
-        isActive={activeCitation === citeNum}
-        onClick={() => onCitationClick(citeNum, foundSource)}
-      />
-    );
-    lastIndex = citationRegex.lastIndex;
-  }
-
-  if (lastIndex < cleanText.length) {
-    parts.push(cleanText.substring(lastIndex));
-  }
-
-  return parts;
+            return (
+              <CitationPill
+                key={`cite-${citeNum}`}
+                index={citeNum}
+                source={foundSource}
+                isActive={activeCitation === citeNum}
+                onClick={() => onCitationClick(citeNum, foundSource)}
+              />
+            );
+          }
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          );
+        }
+      }}
+    >
+      {markdownWithCites}
+    </ReactMarkdown>
+  );
 }
