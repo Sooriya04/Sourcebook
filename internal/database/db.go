@@ -89,6 +89,16 @@ func createTables(db *sql.DB) error {
 			youtube_max_sources INTEGER DEFAULT 3,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);`,
+		`CREATE TABLE IF NOT EXISTS chat_memory (
+			id TEXT PRIMARY KEY,
+			notebook_id TEXT NOT NULL,
+			message_id TEXT NOT NULL,
+			role TEXT NOT NULL,
+			content TEXT NOT NULL,
+			embedding BLOB,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
+		);`,
 	}
 
 	for _, query := range queries {

@@ -13,8 +13,8 @@ func NewHistoryManager() *HistoryManager {
 	return &HistoryManager{}
 }
 
-// BuildConversationHistory assembles system prompt, context, bounded history, and query
-func (h *HistoryManager) BuildConversationHistory(query string, docs []Document, history []llm.Message) []llm.Message {
+// BuildConversationHistory assembles system prompt, source context, semantically retrieved memory, recency anchor, and query
+func (h *HistoryManager) BuildConversationHistory(query string, docs []Document, history []llm.Message, semanticHistory []llm.Message) []llm.Message {
 	// 1. Build System Instruction
 	systemPrompt := `You are SourceBook — a local-first AI research assistant that synthesizes knowledge from retrieved web sources and personal notebooks. You function like a sharper, faster Perplexity: grounded in sources, direct in answers, and structured for scanning.
 
@@ -48,27 +48,45 @@ func (h *HistoryManager) BuildConversationHistory(query string, docs []Document,
 			i+1, doc.Title, doc.URL, doc.SourceType, cleaned))
 	}
 
-	// 3. Assemble messages slice
+	// 3. Assemble base system messages
 	var messages []llm.Message
 	messages = append(messages, llm.Message{Role: "system", Content: systemPrompt})
 	messages = append(messages, llm.Message{Role: "system", Content: contextBuilder.String()})
 
-	// 4. Bound conversation history (keep last 6 messages/turns to avoid context overload)
-	maxHistoryMessages := 6
-	startIndex := 0
-	if len(history) > maxHistoryMessages {
-		startIndex = len(history) - maxHistoryMessages
-	}
+	// Track content strings already added to avoid duplication between semantic memory & recency anchor
+	seen := make(map[string]bool)
 
-	// Filter out any system messages in history to prevent LLM prompt injection
-	for i := startIndex; i < len(history); i++ {
-		msg := history[i]
+	// 4. Inject Semantically Retrieved Past Memory (if available)
+	for _, msg := range semanticHistory {
 		if msg.Role == "user" || msg.Role == "assistant" {
-			messages = append(messages, msg)
+			key := msg.Role + ":" + strings.TrimSpace(msg.Content)
+			if !seen[key] {
+				seen[key] = true
+				messages = append(messages, msg)
+			}
 		}
 	}
 
-	// 5. Append current user query
+	// 5. Inject Recency Anchor (last 2 raw messages from active conversation)
+	recentWindow := 2
+	if len(history) > 0 {
+		startIndex := 0
+		if len(history) > recentWindow {
+			startIndex = len(history) - recentWindow
+		}
+		for i := startIndex; i < len(history); i++ {
+			msg := history[i]
+			if msg.Role == "user" || msg.Role == "assistant" {
+				key := msg.Role + ":" + strings.TrimSpace(msg.Content)
+				if !seen[key] {
+					seen[key] = true
+					messages = append(messages, msg)
+				}
+			}
+		}
+	}
+
+	// 6. Append current user query
 	messages = append(messages, llm.Message{
 		Role:    "user",
 		Content: query,

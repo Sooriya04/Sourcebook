@@ -4,24 +4,36 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"sourcebook/internal/llm"
 )
 
 type Controller struct {
-	retriever  *Retriever
-	reranker   *Reranker
-	historyMgr *HistoryManager
-	llmClient  *llm.Client
+	retriever       *Retriever
+	reranker        *Reranker
+	historyMgr      *HistoryManager
+	memoryRetriever *MemoryRetriever
+	agentLoop       *AgentLoop
+	llmClient       *llm.Client
 }
 
-func NewController(retriever *Retriever, reranker *Reranker, historyMgr *HistoryManager, llmClient *llm.Client) *Controller {
+func NewController(
+	retriever *Retriever,
+	reranker *Reranker,
+	historyMgr *HistoryManager,
+	memoryRetriever *MemoryRetriever,
+	agentLoop *AgentLoop,
+	llmClient *llm.Client,
+) *Controller {
 	return &Controller{
-		retriever:  retriever,
-		reranker:   reranker,
-		historyMgr: historyMgr,
-		llmClient:  llmClient,
+		retriever:       retriever,
+		reranker:        reranker,
+		historyMgr:      historyMgr,
+		memoryRetriever: memoryRetriever,
+		agentLoop:       agentLoop,
+		llmClient:       llmClient,
 	}
 }
 
@@ -83,6 +95,14 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		return nil, fmt.Errorf("retrieval failed: %w", err)
 	}
 
+	// Run Agent Evaluation & Fallback Tool Augmentation if context is low quality
+	if c.agentLoop != nil {
+		augmentedDocs, err := c.agentLoop.RunExecuteOrAugment(ctx, req.Query, docs, req.Mode, nil)
+		if err == nil && len(augmentedDocs) > 0 {
+			docs = augmentedDocs
+		}
+	}
+
 	if len(docs) == 0 {
 		return &ChatResponse{
 			Query:      req.Query,
@@ -93,11 +113,26 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		}, nil
 	}
 
+	// Retrieve semantic conversation memory
+	var semanticHistory []llm.Message
+	if c.memoryRetriever != nil && req.NotebookID != "" {
+		semHist, err := c.memoryRetriever.RetrieveRelevantHistory(ctx, req.NotebookID, req.Query, 3)
+		if err == nil && len(semHist) > 0 {
+			semanticHistory = semHist
+		}
+	}
+
 	// Prepare history and LLM client prompt
-	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History)
+	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History, semanticHistory)
 	answer, err := c.llmClient.Generate(ctx, messages)
 	if err != nil {
 		return nil, fmt.Errorf("synthesis failed: %w", err)
+	}
+
+	// Save turn vector memory in background
+	if c.memoryRetriever != nil && req.NotebookID != "" {
+		c.memoryRetriever.SaveTurn(req.NotebookID, "", "user", req.Query)
+		c.memoryRetriever.SaveTurn(req.NotebookID, "", "assistant", answer)
 	}
 
 	citations := make([]SourceCitationDetail, len(docs))
@@ -126,6 +161,14 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 		return nil, "", fmt.Errorf("retrieval failed: %w", err)
 	}
 
+	// Run Agent Evaluation & Fallback Tool Augmentation if context is low quality
+	if c.agentLoop != nil {
+		augmentedDocs, err := c.agentLoop.RunExecuteOrAugment(ctx, req.Query, docs, req.Mode, nil)
+		if err == nil && len(augmentedDocs) > 0 {
+			docs = augmentedDocs
+		}
+	}
+
 	citations := make([]SourceCitationDetail, len(docs))
 	for i, doc := range docs {
 		citations[i] = SourceCitationDetail{
@@ -141,10 +184,32 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 		return citations, contextMeta, nil
 	}
 
-	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History)
-	err = c.llmClient.GenerateStream(ctx, messages, onToken)
+	// Retrieve semantic conversation memory
+	var semanticHistory []llm.Message
+	if c.memoryRetriever != nil && req.NotebookID != "" {
+		semHist, err := c.memoryRetriever.RetrieveRelevantHistory(ctx, req.NotebookID, req.Query, 3)
+		if err == nil && len(semHist) > 0 {
+			semanticHistory = semHist
+		}
+	}
+
+	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History, semanticHistory)
+
+	var fullAnswer strings.Builder
+	onTokenWrapper := func(token string) error {
+		fullAnswer.WriteString(token)
+		return onToken(token)
+	}
+
+	err = c.llmClient.GenerateStream(ctx, messages, onTokenWrapper)
 	if err != nil {
 		return nil, "", fmt.Errorf("synthesis stream failed: %w", err)
+	}
+
+	// Save turn vector memory in background
+	if c.memoryRetriever != nil && req.NotebookID != "" {
+		c.memoryRetriever.SaveTurn(req.NotebookID, "", "user", req.Query)
+		c.memoryRetriever.SaveTurn(req.NotebookID, "", "assistant", fullAnswer.String())
 	}
 
 	return citations, contextMeta, nil
