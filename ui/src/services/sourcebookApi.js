@@ -172,7 +172,7 @@ export async function chatQueryStream({ query, notebookId, maxSources = 5, scope
             onError(data.error);
           } else if (data.token !== undefined) {
             onChunk(data.token);
-          } else if (data.sources !== undefined || data.context !== undefined) {
+          } else if (data.sources !== undefined || data.context !== undefined || data.status !== undefined || data.new_sources !== undefined) {
             onMetadata(data);
           }
         } catch (e) {

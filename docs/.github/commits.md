@@ -267,3 +267,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Retrieval Self-Evaluation Engine**: Implemented `SelfEvaluator` (`internal/chat/evaluator.go`) that grades retrieved document chunks ($0.0 - 1.0$) using hybrid vector similarity and keyword metrics to filter noise and enforce a context sufficiency gate before answer synthesis.
 - **ReAct Tool-Calling Agentic Fallback Loop**: Created `AgentLoop` (`internal/chat/agent_loop.go`) and `ToolRegistry` (`internal/chat/tools.go`). If the Self-Evaluator detects low-relevance or missing context, the agent autonomously executes `ToolWebSearch` or `ToolArxivFetch` mid-chat to fetch live web sources and augment context before streaming the grounded response.
 - **UI Control Simplification**: Cleaned up `<ChatControls />` by removing redundant "Regenerate" and "Clear History" buttons, ensuring the top chat control bar stays cleanly hidden unless actively streaming a response (displaying only the "Stop Generation" button).
+
+## Commit 34: Production-Level Agentic RAG System, Query Decomposition, SSE Status Streaming, and Mid-Chat Source Persistence
+- **Query Decomposition**: Implemented `QueryPlanner` (`internal/chat/planner.go`) to split complex user queries into 2 to 4 simple, focused sub-queries for document search, retrieving and merging resources concurrently.
+- **Multi-Iteration ReAct Loop**: Upgraded `AgentLoop` (`internal/chat/agent_loop.go`) to support a bounded 3-iteration Reasoning + Tool execution cycle using JSON-structured ReAct prompt templates.
+- **SSE Agent Status Streaming**: Connected the `onStatus` callback from `GenerateStream` to the `/chat/stream` SSE endpoint (`internal/api/chat_stream_handler.go`), streaming agent thought and action updates to the client in real-time.
+- **Mid-Chat Source Persistence**: Configured the controller to automatically save newly discovered web/arxiv documents as permanent sources in the SQLite `sources` table, launching an asynchronous background chunk-embedding pipeline.
+- **Dynamic UI Thinking Status**: Updated the frontend `ThinkingIndicator.jsx` to render the custom, real-time agent status messages directly in the thinking bubble and pass the newly saved sources list through `useChat.js` to update the sources sidebar in real-time.
+- **ReAct Loop Unit Tests**: Created `react_prompt_test.go` to verify the JSON extraction, parsing, and markdown code block trimming.
+

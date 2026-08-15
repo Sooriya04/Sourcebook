@@ -4,44 +4,44 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sourcebook/internal/llm"
 	"sourcebook/internal/vector"
 )
 
 type AgentLoop struct {
 	evaluator *SelfEvaluator
 	tools     *ToolRegistry
+	llmClient *llm.Client
 }
 
-func NewAgentLoop(vc *vector.Client, retriever *Retriever) *AgentLoop {
+func NewAgentLoop(vc *vector.Client, retriever *Retriever, client *llm.Client) *AgentLoop {
 	return &AgentLoop{
 		evaluator: NewSelfEvaluator(vc),
 		tools:     NewToolRegistry(retriever),
+		llmClient: client,
 	}
 }
 
-// RunExecuteOrAugment evaluates initial docs and executes web fallback search if context is insufficient.
-func (al *AgentLoop) RunExecuteOrAugment(
+// Run executes the multi-iteration ReAct (Reasoning + Tool Calling) loop.
+func (al *AgentLoop) Run(
 	ctx context.Context,
 	query string,
+	notebookID string,
 	initialDocs []Document,
-	mode string,
 	onStatus func(string),
 ) ([]Document, error) {
 	if onStatus != nil {
-		onStatus("Evaluating source relevance and quality...")
+		onStatus("Evaluating source quality and relevance...")
 	}
 
-	// 1. Evaluate initial documents
+	// 1. Initial Evaluation
 	eval, err := al.evaluator.EvaluateContext(ctx, query, initialDocs)
 	if err != nil {
-		log.Printf("[AgentLoop] Context evaluation warning: %v", err)
-		eval = &EvaluationResult{
-			RelevantDocs: initialDocs,
-			Sufficient:   len(initialDocs) > 0,
-		}
+		log.Printf("[AgentLoop] Evaluation error: %v", err)
+		eval = &EvaluationResult{RelevantDocs: initialDocs, Sufficient: len(initialDocs) > 0}
 	}
 
-	// 2. If initial docs are sufficient, return relevant subset
+	// If initial docs are fully sufficient, return them immediately (zero extra steps)
 	if eval.Sufficient && len(eval.RelevantDocs) > 0 {
 		if onStatus != nil {
 			onStatus(fmt.Sprintf("Sufficient context verified (%d high-relevance sources)", len(eval.RelevantDocs)))
@@ -49,30 +49,96 @@ func (al *AgentLoop) RunExecuteOrAugment(
 		return eval.RelevantDocs, nil
 	}
 
-	// 3. Fallback: Context is insufficient or empty -> Auto-trigger agent tool
-	searchQuery := query
-	if eval.SuggestedSubQuery != "" {
-		searchQuery = eval.SuggestedSubQuery
+	// Prepare collected documents
+	collectedDocs := eval.RelevantDocs
+
+	// Start agentic chat history specifically for the ReAct loop
+	agentHistory := []llm.Message{
+		{Role: "system", Content: ReActSystemPrompt},
 	}
 
-	if onStatus != nil {
-		onStatus(fmt.Sprintf("Context gap detected (avg score %.2f) → Auto-triggering web discovery for %q", eval.AverageScore, searchQuery))
+	// Seed with initial query and initial documents as context
+	initialContextPrompt := fmt.Sprintf("User Query: %s\n\nInitial Docs:\n", query)
+	for i, d := range collectedDocs {
+		initialContextPrompt += fmt.Sprintf("[%d] Title: %s\nContent: %s\n\n", i+1, d.Title, d.Content)
+	}
+	agentHistory = append(agentHistory, llm.Message{Role: "user", Content: initialContextPrompt})
+
+	maxIter := 3
+	for i := 0; i < maxIter; i++ {
+		if onStatus != nil {
+			onStatus(fmt.Sprintf("Agent thinking (Step %d/%d)...", i+1, maxIter))
+		}
+
+		rawRes, err := al.llmClient.Generate(ctx, agentHistory)
+		if err != nil {
+			log.Printf("[AgentLoop] LLM turn generation failed: %v", err)
+			break
+		}
+
+		// Keep track of agent response in messages history
+		agentHistory = append(agentHistory, llm.Message{Role: "assistant", Content: rawRes})
+
+		reactRes, err := ParseReActJSON(rawRes)
+		if err != nil {
+			log.Printf("[AgentLoop] Failed to parse JSON response: %v. Raw: %q. Exiting loop.", err, rawRes)
+			if onStatus != nil {
+				onStatus("Error parsing agent decision JSON. Synthesizing with current docs...")
+			}
+			break
+		}
+
+		log.Printf("[AgentLoop] Step %d: Thought: %q, Action: %q, ActionInput: %q",
+			i+1, reactRes.Thought, reactRes.Action, reactRes.ActionInput)
+
+		if reactRes.Action == "finish" || reactRes.Action == "" {
+			if onStatus != nil {
+				onStatus("Agent finished gathering information. Ready to synthesize.")
+			}
+			break
+		}
+
+		// Stream action status to UI
+		if onStatus != nil {
+			onStatus(fmt.Sprintf("Agent action: %s(%q)...", reactRes.Action, reactRes.ActionInput))
+		}
+
+		// Execute tools
+		var docs []Document
+		switch reactRes.Action {
+		case "search_web":
+			docs, err = al.tools.ToolWebSearch(ctx, reactRes.ActionInput, 5)
+		case "search_notebook":
+			docs, err = al.tools.ToolNotebookSearch(ctx, notebookID, reactRes.ActionInput)
+		case "fetch_arxiv":
+			doc, err := al.tools.ToolArxivFetch(ctx, reactRes.ActionInput)
+			if err == nil && doc != nil {
+				docs = []Document{*doc}
+			}
+		default:
+			err = fmt.Errorf("unknown action: %s", reactRes.Action)
+		}
+
+		if err != nil {
+			log.Printf("[AgentLoop] Tool execution failed: %v", err)
+			agentHistory = append(agentHistory, llm.Message{
+				Role:    "user",
+				Content: fmt.Sprintf("Observation: Tool failed with error: %v", err),
+			})
+			continue
+		}
+
+		collectedDocs = append(collectedDocs, docs...)
+		collectedDocs = Deduplicate(collectedDocs)
+
+		// Create dynamic observation string
+		obsPrompt := fmt.Sprintf("Observation: Tool returned %d documents.\n", len(docs))
+		for idx, d := range docs {
+			obsPrompt += fmt.Sprintf("[%d] Title: %s\nContent: %s\n\n", idx+1, d.Title, d.Content)
+		}
+
+		agentHistory = append(agentHistory, llm.Message{Role: "user", Content: obsPrompt})
 	}
 
-	log.Printf("[AgentLoop] Triggering web search tool fallback for %q", searchQuery)
-	webDocs, err := al.tools.ToolWebSearch(ctx, searchQuery, 5)
-	if err != nil {
-		log.Printf("[AgentLoop] ToolWebSearch failed: %v", err)
-		return eval.RelevantDocs, nil
-	}
-
-	// 4. Merge initial docs + newly fetched web docs & deduplicate
-	combined := append(eval.RelevantDocs, webDocs...)
-	finalDocs := Deduplicate(combined)
-
-	if onStatus != nil {
-		onStatus(fmt.Sprintf("Augmented context with %d live web sources", len(webDocs)))
-	}
-
-	return finalDocs, nil
+	return collectedDocs, nil
 }

@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"strings"
 	"sourcebook/internal/chat"
+	"sourcebook/internal/models"
 )
 
 type chatStreamChunk struct {
-	Token   string                      `json:"token,omitempty"`
-	Sources []chat.SourceCitationDetail `json:"sources,omitempty"`
-	Context string                      `json:"context,omitempty"`
-	Error   string                      `json:"error,omitempty"`
+	Token      string                      `json:"token,omitempty"`
+	Sources    []chat.SourceCitationDetail `json:"sources,omitempty"`
+	Context    string                      `json:"context,omitempty"`
+	NewSources []models.SourceRecord       `json:"new_sources,omitempty"`
+	Status     string                      `json:"status,omitempty"`
+	Error      string                      `json:"error,omitempty"`
 }
 
 // HandleChatStream handles user questions and streams tokens via Server-Sent Events (SSE)
@@ -61,10 +64,15 @@ func (a *API) HandleChatStream(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[ChatStream] Mode: %s, Notebook: %s, Query: %q", req.Mode, req.NotebookID, req.Query)
 
+	// Callback for real-time status updates from the agent
+	onStatus := func(status string) {
+		_ = sendChunk(chatStreamChunk{Status: status})
+	}
+
 	// Call chat controller stream synthesis
-	citations, contextMeta, err := a.chatController.GenerateStream(r.Context(), req, func(token string) error {
+	citations, newSources, contextMeta, err := a.chatController.GenerateStream(r.Context(), req, func(token string) error {
 		return sendChunk(chatStreamChunk{Token: token})
-	})
+	}, onStatus)
 
 	if err != nil {
 		log.Printf("[ChatStream] Stream error: %v", err)
@@ -87,7 +95,8 @@ func (a *API) HandleChatStream(w http.ResponseWriter, r *http.Request) {
 
 	// Send final metadata (citations and retrieved source context info)
 	_ = sendChunk(chatStreamChunk{
-		Sources: citations,
-		Context: contextMeta,
+		Sources:    citations,
+		NewSources: newSources,
+		Context:    contextMeta,
 	})
 }

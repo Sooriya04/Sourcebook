@@ -59,14 +59,15 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		return docs, nil
 	}
 
+	llmClient := llm.NewClient()
 	retriever := chat.NewRetriever(repo, webRetrieve)
 	reranker := chat.NewReranker(api.vectorClient)
 	history := chat.NewHistoryManager()
 	memoryRetriever := chat.NewMemoryRetriever(repo, api.vectorClient)
-	agentLoop := chat.NewAgentLoop(api.vectorClient, retriever)
-	llmClient := llm.NewClient()
+	agentLoop := chat.NewAgentLoop(api.vectorClient, retriever, llmClient)
+	planner := chat.NewQueryPlanner(llmClient)
 
-	api.chatController = chat.NewController(retriever, reranker, history, memoryRetriever, agentLoop, llmClient)
+	api.chatController = chat.NewController(retriever, reranker, history, memoryRetriever, planner, agentLoop, llmClient, repo, api.vectorClient)
 
 	return api
 }

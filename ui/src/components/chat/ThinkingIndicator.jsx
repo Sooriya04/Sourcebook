@@ -3,6 +3,14 @@ import { Cpu, Search, Sparkles } from 'lucide-react';
 
 export default function ThinkingIndicator({ phase = 'retrieving' }) {
   const isSynthesizing = phase === 'synthesizing';
+  const isRetrieving = phase === 'retrieving';
+
+  let statusText = 'Searching & reranking workspace sources...';
+  if (isSynthesizing) {
+    statusText = 'Synthesizing grounded answer...';
+  } else if (!isRetrieving) {
+    statusText = phase;
+  }
 
   return (
     <div className="message-card thinking">
@@ -14,9 +22,7 @@ export default function ThinkingIndicator({ phase = 'retrieving' }) {
           <span></span><span></span><span></span>
         </div>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-          {isSynthesizing 
-            ? 'Synthesizing grounded answer...' 
-            : 'Searching & reranking workspace sources...'}
+          {statusText}
         </span>
       </div>
     </div>

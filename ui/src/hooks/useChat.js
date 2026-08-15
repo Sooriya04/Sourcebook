@@ -86,6 +86,10 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
           });
         },
         onMetadata: (meta) => {
+          if (meta.status !== undefined) {
+            setStreamPhase(meta.status);
+            return;
+          }
           setMessages(prev => {
             const next = [...prev];
             if (next[assistantIndex]) {
@@ -98,8 +102,8 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
             }
             return next;
           });
-          if (meta.sources && meta.sources.length > 0 && onNewSourcesRetrieved) {
-            onNewSourcesRetrieved(meta.sources);
+          if (meta.new_sources && meta.new_sources.length > 0 && onNewSourcesRetrieved) {
+            onNewSourcesRetrieved(meta.new_sources);
           }
         },
         onError: (errMsg) => {
