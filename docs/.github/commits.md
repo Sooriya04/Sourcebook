@@ -293,4 +293,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Explain-Source Grounding**: Added `HandleExplainQuery` in `internal/chat/controller.go` to intercept "Explain Source" requests. It matches the target source via title or citation index, force-includes it in the LLM context, and bypasses both the agent search loop and map-reduce pre-summarization to feed the raw content for high-fidelity explanation.
 - **Sidebar Note Editor & Style Polish**: Replaced the cramped absolute overlay and full-screen modal editor in `NotesPanel.jsx` with a clean, inline, in-sidebar editor that appears in-place. Removed JavaScript-based card hover animations and absolute floating buttons in favor of standard, minimalist CSS buttons and inline headers.
 
+## Commit 38: Left-Side Source Inspector Integration, Dedicated Card Eye Button, and Escape Key Dismiss Shortcut
+- **Left-Side Sidebar Inspector**: Integrated the Source Viewer directly into the left-side `Sidebar.jsx`, replacing the source list when inspecting a source. This keeps the right-side Notes Panel completely focused on note creation/editing.
+- **Dedicated Eye Button**: Added a dedicated Eye inspect button on each `SourceCard` in the header next to the delete button, allowing users to easily open the inspector.
+- **Escape Key Keyboard Shortcut**: Implemented a global keydown event listener in `Sidebar.jsx` that closes/dismisses the source inspection view when the `Escape` key is pressed.
+- **NotesPanel Reversion**: Restored `NotesPanel.jsx` to its clean, original design with full note editing functionality and restored styling classes.
+- **Legacy Drawer Removal**: Deprecated and deleted the unused `SourceInspectorDrawer.jsx` component.
+
+
 

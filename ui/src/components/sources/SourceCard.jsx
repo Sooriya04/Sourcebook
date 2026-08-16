@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, FileText, Video, Trash2, Loader2 } from 'lucide-react';
+import { Globe, FileText, Video, Trash2, Loader2, Eye } from 'lucide-react';
 import { truncateUrl } from '../../utils/formatters';
 import { pingSourceURL } from '../../services/sourcebookApi';
 
-export default function SourceCard({ source, isActive, onClick, onDelete }) {
+export default function SourceCard({ source, isActive, onClick, onInspect, onDelete }) {
   const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
   const [onlineStatus, setOnlineStatus] = useState('checking'); // 'checking', 'online', 'offline', 'local'
@@ -67,8 +67,8 @@ export default function SourceCard({ source, isActive, onClick, onDelete }) {
       <div className="source-card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span className="source-index">[{source.index || '1'}]</span>
         {onlineStatus !== 'local' && (
-          <span 
-            className={`health-dot ${onlineStatus}`} 
+          <span
+            className={`health-dot ${onlineStatus}`}
             style={{
               width: '6px',
               height: '6px',
@@ -87,18 +87,32 @@ export default function SourceCard({ source, isActive, onClick, onDelete }) {
             <span>Indexing...</span>
           </div>
         ) : (
-          onDelete && (
-            <button
-              className="source-delete-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(source.index);
-              }}
-              title="Remove source"
-            >
-              <Trash2 size={12} />
-            </button>
-          )
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {onInspect && (
+              <button
+                className="source-inspect-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onInspect(source);
+                }}
+                title="Inspect source content"
+              >
+                <Eye size={12} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                className="source-delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(source.index);
+                }}
+                title="Remove source"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 

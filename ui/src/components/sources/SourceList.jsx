@@ -6,6 +6,7 @@ export default function SourceList({
   sources,
   activeCitation,
   onSelectSource,
+  onDoubleClickSource,
   onDeleteSource
 }) {
   if (!sources || sources.length === 0) {
@@ -67,6 +68,8 @@ export default function SourceList({
                   source={enrichedSource}
                   isActive={activeCitation === enrichedSource.index}
                   onClick={() => onSelectSource(enrichedSource)}
+                  onDoubleClick={() => onDoubleClickSource(enrichedSource)}
+                  onInspect={onDoubleClickSource}
                   onDelete={onDeleteSource}
                 />
               ))}

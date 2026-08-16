@@ -8,7 +8,6 @@ import NotesPanel from '../components/layout/NotesPanel';
 import NotebookHeader from '../components/notebook/NotebookHeader';
 
 import AddSourceModal from '../components/sources/AddSourceModal';
-import SourceInspectorDrawer from '../components/sources/SourceInspectorDrawer';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
@@ -36,6 +35,7 @@ export default function NotebookPage({ getNotebook }) {
   const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
   const [isStudioCollapsed, setIsStudioCollapsed] = useState(false);
   const [studyTab, setStudyTab] = useState('briefing');
+  const [inspectingSource, setInspectingSource] = useState(null);
 
   const syncTimeoutRef = useRef(null);
   const hasLoadedRef = useRef(false);
@@ -152,13 +152,22 @@ export default function NotebookPage({ getNotebook }) {
   const handleUpdateSource = (updatedSource) => {
     setSources(prev => prev.map(s => (s.url === updatedSource.url || (s.id && s.id === updatedSource.id)) ? updatedSource : s));
     setSelectedSource(updatedSource);
+    if (inspectingSource && (inspectingSource.url === updatedSource.url || (inspectingSource.id && inspectingSource.id === updatedSource.id))) {
+      setInspectingSource(updatedSource);
+    }
   };
 
   const handleCitationClick = (index, foundSource) => {
     setActiveCitation(index);
     if (foundSource) {
-      setSelectedSource(foundSource);
+      setInspectingSource(foundSource);
+      setIsSourcesCollapsed(false);
     }
+  };
+
+  const handleDoubleClickSource = (source) => {
+    setInspectingSource(source);
+    setIsSourcesCollapsed(false);
   };
 
   const handleSaveNote = (newNote) => {
@@ -193,6 +202,7 @@ export default function NotebookPage({ getNotebook }) {
   const handleExplainSource = (src) => {
     setActiveMode('chat');
     setSelectedSource(null);
+    setInspectingSource(null);
     sendMessage(`Explain this source in detail: "${src.title}" [${src.index}]`);
   };
 
@@ -271,7 +281,8 @@ export default function NotebookPage({ getNotebook }) {
         <Sidebar
           sources={sources}
           activeCitation={activeCitation}
-          onSelectSource={setSelectedSource}
+          onSelectSource={(source) => setActiveCitation(source.index)}
+          onDoubleClickSource={handleDoubleClickSource}
           onDeleteSource={removeSource}
           onOpenAddModal={() => setIsAddModalOpen(true)}
           discoveryTopic={discoveryTopic}
@@ -279,6 +290,9 @@ export default function NotebookPage({ getNotebook }) {
           onImportDiscovery={handleImportDiscovery}
           isCollapsed={isSourcesCollapsed}
           onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+          inspectingSource={inspectingSource}
+          setInspectingSource={setInspectingSource}
+          onExplainSource={handleExplainSource}
         />
 
         <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -323,6 +337,9 @@ export default function NotebookPage({ getNotebook }) {
           onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
           studyTab={studyTab}
           setStudyTab={setStudyTab}
+          inspectingSource={inspectingSource}
+          setInspectingSource={setInspectingSource}
+          onExplainSource={handleExplainSource}
         />
       </div>
 
@@ -332,13 +349,6 @@ export default function NotebookPage({ getNotebook }) {
         onClose={() => setIsAddModalOpen(false)}
         onAddSource={handleAddSource}
         onSearchDiscovery={(topic) => setDiscoveryTopic(topic)}
-      />
-
-      {/* Source Inspector Drawer */}
-      <SourceInspectorDrawer
-        source={selectedSource}
-        onClose={() => setSelectedSource(null)}
-        onExplain={handleExplainSource}
       />
 
       {/* Scraping Toast */}

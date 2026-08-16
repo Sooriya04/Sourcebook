@@ -359,6 +359,7 @@ button {
 
 .nb-delete-btn,
 .source-delete-btn,
+.source-inspect-btn,
 .note-delete-btn,
 .modal-close-btn,
 .close-btn,
@@ -373,6 +374,7 @@ button {
 
 .nb-delete-btn:hover,
 .source-delete-btn:hover,
+.source-inspect-btn:hover,
 .note-delete-btn:hover,
 .modal-close-btn:hover,
 .close-btn:hover,
