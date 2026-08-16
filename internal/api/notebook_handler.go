@@ -138,9 +138,23 @@ func (a *API) handleNotebookDetail(w http.ResponseWriter, r *http.Request, id st
 			return
 		}
 
-		if err := a.repo.UpdateNotebook(id, req.Title, req.Description); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		title := req.Title
+		desc := req.Description
+		if title == "" {
+			existing, err := a.repo.GetNotebook(id)
+			if err == nil && existing != nil {
+				title = existing.Title
+				if desc == "" {
+					desc = existing.Description
+				}
+			}
+		}
+
+		if title != "" {
+			if err := a.repo.UpdateNotebook(id, title, desc); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		// Load existing sources to identify new ones

@@ -103,7 +103,7 @@ export default function NotebookPage({ getNotebook }) {
 
   // Auto-sync effect
   useEffect(() => {
-    if (!hasLoadedRef.current || !notebook) return;
+    if (!hasLoadedRef.current || !notebook || !notebook.title) return;
 
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);

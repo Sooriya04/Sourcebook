@@ -43,14 +43,28 @@ func FetchSingleArxivDocument(ctx context.Context, rawURL string) (string, strin
 
 	log.Printf("[ArXiv] Processing arXiv paper ID: %s (Original URL: %s)", id, rawURL)
 
-	// 1. Try HTML Version (https://arxiv.org/html/<id>)
+	// 1. Try Jina Reader Microservice first
+	log.Printf("[ArXiv] Trying Jina Reader microservice for arXiv paper: %s", rawURL)
+	jinaResults, err := utils.ScrapeWithJina(ctx, []string{rawURL})
+	if err == nil && len(jinaResults) > 0 && jinaResults[0].Success && jinaResults[0].Markdown != "" {
+		log.Printf("[ArXiv] Successfully extracted %d chars from Jina Reader for %s", len(jinaResults[0].Markdown), id)
+		title := jinaResults[0].Title
+		if title == "" {
+			title = fmt.Sprintf("arXiv Paper %s", id)
+		}
+		return title, jinaResults[0].Markdown, nil
+	} else {
+		log.Printf("[ArXiv] Jina Reader microservice fallback triggered (err=%v)", err)
+	}
+
+	// 2. Try HTML Version (https://arxiv.org/html/<id>)
 	title, content, err := tryFetchArxivHTML(ctx, id)
 	if err == nil && content != "" {
 		log.Printf("[ArXiv] Successfully extracted %d chars from arXiv HTML for %s", len(content), id)
 		return title, content, nil
 	}
 
-	// 2. Try PDF Version (https://arxiv.org/pdf/<id>.pdf)
+	// 3. Try PDF Version (https://arxiv.org/pdf/<id>.pdf)
 	pdfTitle, pdfContent, err := tryFetchArxivPDF(ctx, id)
 	if err == nil && pdfContent != "" {
 		if title == "" {
@@ -60,7 +74,7 @@ func FetchSingleArxivDocument(ctx context.Context, rawURL string) (string, strin
 		return title, pdfContent, nil
 	}
 
-	// 3. Fallback to Abstract Metadata (https://arxiv.org/abs/<id>)
+	// 4. Fallback to Abstract Metadata (https://arxiv.org/abs/<id>)
 	absTitle, absContent, err := tryFetchArxivAbstract(ctx, id)
 	if err == nil && absContent != "" {
 		log.Printf("[ArXiv] Extracted abstract fallback (%d chars) for %s", len(absContent), id)

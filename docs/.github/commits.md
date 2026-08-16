@@ -287,4 +287,10 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Redundancy Cleanup & Tab Integration**: Removed the double-row `.studio-tabs-row` header from `StudyStudio.jsx`, consolidating navigation under the right Studio Panel and adding a highlighted "Chat Studio" tile at the top of the Studio grid for a clean, unified middle panel layout.
 - **Header Cleanup**: Removed the duplicate and misaligned "Clear Timeline" button from the main header (`NotebookHeader.jsx`), relying on the options dropdown in the chat view for a cleaner top navigation bar.
 
+## Commit 37: Notebook Title Persistence, Jina arXiv Ingestion, Explain-Source Grounding, and Sidebar Editor
+- **Notebook Title Persistence**: Fixed a synchronization issue where notebook titles vanished on refresh by preventing the auto-sync effect in `NotebookPage.jsx` from executing when the title is empty, and robustly fallback-loading the existing title in the backend `/api/sourcebook/v1/notebooks/:id` PUT handler if the request title is empty.
+- **Jina arXiv Ingestion**: Integrated the `ScrapeWithJina` microservice client as the primary extraction pipeline inside `FetchSingleArxivDocument` in `internal/arxiv/arxiv.go`, enabling high-fidelity arXiv PDF/HTML text recovery with native abstract scraping as a fallback.
+- **Explain-Source Grounding**: Added `HandleExplainQuery` in `internal/chat/controller.go` to intercept "Explain Source" requests. It matches the target source via title or citation index, force-includes it in the LLM context, and bypasses both the agent search loop and map-reduce pre-summarization to feed the raw content for high-fidelity explanation.
+- **Sidebar Note Editor & Style Polish**: Replaced the cramped absolute overlay and full-screen modal editor in `NotesPanel.jsx` with a clean, inline, in-sidebar editor that appears in-place. Removed JavaScript-based card hover animations and absolute floating buttons in favor of standard, minimalist CSS buttons and inline headers.
+
 
