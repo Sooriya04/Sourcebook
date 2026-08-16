@@ -70,6 +70,9 @@ func (c *Client) generateOllamaStream(ctx context.Context, messages []Message, o
 		"model":    c.model,
 		"messages": messages,
 		"stream":   true,
+		"options": map[string]interface{}{
+			"num_ctx": 4096,
+		},
 	}
 
 	jsonBytes, err := json.Marshal(bodyData)
@@ -198,6 +201,9 @@ func (c *Client) generateOllama(ctx context.Context, messages []Message) (string
 		"model":    c.model,
 		"messages": messages,
 		"stream":   false,
+		"options": map[string]interface{}{
+			"num_ctx": 4096,
+		},
 	}
 
 	jsonBytes, err := json.Marshal(bodyData)
@@ -279,4 +285,12 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 	}
 
 	return res.Choices[0].Message.Content, nil
+}
+
+func (c *Client) SetModel(modelName string) {
+	c.model = modelName
+}
+
+func (c *Client) GetModel() string {
+	return c.model
 }

@@ -20,8 +20,11 @@ export default function AudioOverviewView() {
       <div className="podcast-player-card">
         <div className="podcast-player-header">
           <Radio size={20} className="pulse-icon" />
-          <div>
-            <h4>Deep Dive Overview</h4>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h4>Deep Dive Overview</h4>
+              <span style={{ fontSize: '0.62rem', background: '#374151', color: '#9ca3af', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)' }}>Mockup Preview</span>
+            </div>
             <p>Generated Discussion • 2 Hosts</p>
           </div>
         </div>

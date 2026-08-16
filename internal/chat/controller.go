@@ -11,6 +11,7 @@ import (
 	"sourcebook/internal/database"
 	"sourcebook/internal/llm"
 	"sourcebook/internal/models"
+	"sourcebook/internal/utils"
 	"sourcebook/internal/vector"
 
 	"github.com/google/uuid"
@@ -160,6 +161,9 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		}
 	}
 
+	// Batch and summarize sources one by one to stay under 4096 context and low RAM
+	docs = c.BatchAndSummarize(ctx, req.Query, docs, nil)
+
 	// Prepare history and LLM client prompt
 	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History, semanticHistory)
 	answer, err := c.llmClient.Generate(ctx, messages)
@@ -238,6 +242,9 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 		}
 	}
 
+	// Batch and summarize sources one by one to stay under 4096 context and low RAM
+	docs = c.BatchAndSummarize(ctx, req.Query, docs, onStatus)
+
 	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History, semanticHistory)
 
 	var fullAnswer strings.Builder
@@ -258,6 +265,56 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 	}
 
 	return citations, newSources, contextMeta, nil
+}
+
+// BatchAndSummarize processes documents one by one to extract query-relevant information, staying under 4096 context.
+func (c *Controller) BatchAndSummarize(ctx context.Context, query string, docs []Document, onStatus func(string)) []Document {
+	var summarizedDocs []Document
+
+	for i, doc := range docs {
+		// Clean the text
+		cleaned := utils.CleanText(doc.Content)
+		if len(cleaned) < 500 {
+			doc.Content = cleaned
+			summarizedDocs = append(summarizedDocs, doc)
+			continue
+		}
+
+		if onStatus != nil {
+			onStatus(fmt.Sprintf("Digesting source %d/%d: %s...", i+1, len(docs), doc.Title))
+		}
+
+		// Call LLM one by one to get a concise summary/extraction
+		prompt := fmt.Sprintf(`You are a precise facts extractor. Read the following source document and extract key factual points relevant to the query: %q.
+Keep the extraction extremely concise, returning only the direct facts as a bulleted list. Keep it under 200 words total. Do not add any conversational text.
+
+Document Title: %s
+Content:
+%s`, query, doc.Title, cleaned)
+
+		messages := []llm.Message{
+			{Role: "user", Content: prompt},
+		}
+
+		log.Printf("[BatchAndSummarize] Digesting source: %q (length: %d)...", doc.Title, len(cleaned))
+		summary, err := c.llmClient.Generate(ctx, messages)
+		if err != nil {
+			log.Printf("[BatchAndSummarize] Warning: failed to digest %q: %v", doc.Title, err)
+			runes := []rune(cleaned)
+			if len(runes) > 1000 {
+				doc.Content = string(runes[:1000]) + "... [Truncated]"
+			} else {
+				doc.Content = cleaned
+			}
+			summarizedDocs = append(summarizedDocs, doc)
+			continue
+		}
+
+		doc.Content = summary
+		summarizedDocs = append(summarizedDocs, doc)
+	}
+
+	return summarizedDocs
 }
 
 // PersistNewSources checks for newly discovered web/arxiv documents and adds them as permanent sources to the notebook database.

@@ -194,3 +194,35 @@ export async function fetchLLMHealth() {
   if (!response.ok) throw new Error(`Failed to fetch LLM health: ${response.status}`);
   return await response.json();
 }
+
+export async function fetchModels() {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/models`);
+  if (!response.ok) throw new Error(`Failed to fetch models: ${response.status}`);
+  return await response.json();
+}
+
+export async function switchModel(modelName) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/models`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelName }),
+  });
+  if (!response.ok) throw new Error(`Failed to switch model: ${response.status}`);
+  return await response.json();
+}
+
+export async function exportNotebook(id) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks/${id}/export`);
+  if (!response.ok) throw new Error(`Failed to export notebook: ${response.status}`);
+  return await response.text();
+}
+
+export async function pingSourceURL(url) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/sources/ping`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  if (!response.ok) throw new Error(`Ping failed: ${response.status}`);
+  return await response.json();
+}

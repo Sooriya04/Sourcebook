@@ -276,3 +276,15 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Dynamic UI Thinking Status**: Updated the frontend `ThinkingIndicator.jsx` to render the custom, real-time agent status messages directly in the thinking bubble and pass the newly saved sources list through `useChat.js` to update the sources sidebar in real-time.
 - **ReAct Loop Unit Tests**: Created `react_prompt_test.go` to verify the JSON extraction, parsing, and markdown code block trimming.
 
+## Commit 35: Explain Source Feature, Unified Studio Navigation, and UI/UX Polish
+- **Explain Source Integration**: Implemented "Explain Source" action inside the `SourceInspectorDrawer` component, passing a redirection handler `handleExplainSource` from `NotebookPage.jsx` that shifts the user into Chat Studio mode and pre-populates a query about the source.
+- **Header Badge Standards**: standardized mockup badge indicators across all Study Studio previews (`BriefingView`, `AudioOverviewView`, `FaqView`, `QuizView`, `MindMapView`, `ReportsView`, `StudyStudio`) to make preview screens clean and modern.
+- **Backend Note Export Fix**: Fixed a compilation error in `internal/api/notebook_handler.go` where markdown note exporting referenced a non-existent `Title` field on the `Note` struct.
+
+## Commit 36: Context Size Optimization, Low-RAM Map-Reduce Batching, and UI Redundancy Cleanup
+- **Low-RAM Map-Reduce Batching (`BatchAndSummarize`)**: Implemented sequential preprocessing/digesting of long sources inside `controller.go` and `synthesizer.go`. To stay strictly under the context limit and minimize local RAM usage, sources longer than 500 characters are sent to Ollama one by one to extract a concise bulleted list of query-relevant facts. These lightweight digested points are then combined for the final synthesis, preserving citation indexes perfectly.
+- **Ollama Context Configuration**: Set `num_ctx` to `4096` in `internal/llm/client.go` to enforce a low memory footprint and prevent RAM spikes on local environments.
+- **Redundancy Cleanup & Tab Integration**: Removed the double-row `.studio-tabs-row` header from `StudyStudio.jsx`, consolidating navigation under the right Studio Panel and adding a highlighted "Chat Studio" tile at the top of the Studio grid for a clean, unified middle panel layout.
+- **Header Cleanup**: Removed the duplicate and misaligned "Clear Timeline" button from the main header (`NotebookHeader.jsx`), relying on the options dropdown in the chat view for a cleaner top navigation bar.
+
+

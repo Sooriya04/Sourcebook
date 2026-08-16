@@ -23,9 +23,11 @@ type API struct {
 	vectorClient         *vector.Client
 	sentinel             *agent.Sentinel
 	chatController       *chat.Controller
+	llmClient            *llm.Client
 }
 
 func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource providers.SearchProvider, pipelineStore *pipeline.Store, repo *database.Repository) *API {
+	llmClient := llm.NewClient()
 	api := &API{
 		searchController:     c,
 		pipelineSearchSource: pipelineSearchSource,
@@ -33,6 +35,7 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		synthesizer:          synthesis.NewSynthesizer(),
 		repo:                 repo,
 		vectorClient:         vector.NewClient(),
+		llmClient:            llmClient,
 	}
 	api.sentinel = agent.NewSentinel(repo.DB())
 
@@ -59,7 +62,6 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		return docs, nil
 	}
 
-	llmClient := llm.NewClient()
 	retriever := chat.NewRetriever(repo, webRetrieve)
 	reranker := chat.NewReranker(api.vectorClient)
 	history := chat.NewHistoryManager()

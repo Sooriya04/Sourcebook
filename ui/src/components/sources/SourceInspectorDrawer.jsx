@@ -6,9 +6,7 @@ function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export default function SourceInspectorDrawer({ source, onClose }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState('highlighted'); // 'highlighted' or 'markdown'
+export default function SourceInspectorDrawer({ source, onClose, onExplain }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -51,65 +49,6 @@ export default function SourceInspectorDrawer({ source, onClose }) {
     }
   }
 
-  const highlightText = (text, search, snippet) => {
-    if (!text) return null;
-    let parts = [text];
-    
-    // 1. Highlight exact snippet if present
-    if (snippet && snippet.trim().length > 10) {
-      const escapedSnippet = escapeRegExp(snippet.trim());
-      const regex = new RegExp(`(${escapedSnippet})`, 'gi');
-      const newParts = [];
-      for (const part of parts) {
-        if (typeof part === 'string') {
-          const splitParts = part.split(regex);
-          splitParts.forEach((sp, idx) => {
-            if (regex.test(sp)) {
-              newParts.push(
-                <mark key={`snippet-${idx}`} className="source-snippet-highlight">
-                  {sp}
-                </mark>
-              );
-            } else {
-              newParts.push(sp);
-            }
-          });
-        } else {
-          newParts.push(part);
-        }
-      }
-      parts = newParts;
-    }
-
-    // 2. Highlight user search queries
-    if (search && search.trim()) {
-      const escapedSearch = escapeRegExp(search.trim());
-      const regex = new RegExp(`(${escapedSearch})`, 'gi');
-      const newParts = [];
-      for (const part of parts) {
-        if (typeof part === 'string') {
-          const splitParts = part.split(regex);
-          splitParts.forEach((sp, idx) => {
-            if (regex.test(sp)) {
-              newParts.push(
-                <mark key={`search-${idx}`} className="source-query-highlight">
-                  {sp}
-                </mark>
-              );
-            } else {
-              newParts.push(sp);
-            }
-          });
-        } else {
-          newParts.push(part);
-        }
-      }
-      parts = newParts;
-    }
-
-    return parts;
-  };
-
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer-content" onClick={(e) => e.stopPropagation()}>
@@ -137,45 +76,24 @@ export default function SourceInspectorDrawer({ source, onClose }) {
             </div>
           )}
 
-          {/* Search Box & View Mode Toggle */}
-          <div className="drawer-toolbar">
-            <div className="drawer-search-bar">
-              <Search size={14} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="clear-search" onClick={() => setSearchQuery('')}>
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-
-            <div className="drawer-mode-toggle">
+          {/* Copy and Explain Buttons */}
+          <div className="drawer-toolbar" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '8px', marginBottom: '14px' }}>
+            {onExplain ? (
               <button
-                className={viewMode === 'highlighted' ? 'active' : ''}
-                onClick={() => setViewMode('highlighted')}
-                title="Grounded view with citation highlights"
+                className="drawer-copy-btn active"
+                onClick={() => onExplain(source)}
+                title="Ask AI to explain this source in detail"
+                style={{ background: '#3b82f6', color: '#ffffff', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '600' }}
               >
                 <Sparkles size={12} />
-                <span>Grounded</span>
+                <span>Explain Source</span>
               </button>
-              <button
-                className={viewMode === 'markdown' ? 'active' : ''}
-                onClick={() => setViewMode('markdown')}
-                title="Raw formatted markdown document"
-              >
-                <span>Markdown</span>
-              </button>
-            </div>
-
+            ) : <div />}
             <button
               className={`drawer-copy-btn ${copied ? 'copied' : ''}`}
               onClick={handleCopy}
               title="Copy raw markdown text to clipboard"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '600' }}
             >
               {copied ? <Check size={12} className="check-icon" /> : <Copy size={12} />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -186,13 +104,7 @@ export default function SourceInspectorDrawer({ source, onClose }) {
             <div className="drawer-text-preview-card">
               {contentText ? (
                 <div className="markdown-content">
-                  {viewMode === 'markdown' ? (
-                    <ReactMarkdown>{contentText}</ReactMarkdown>
-                  ) : (
-                    <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.84rem', lineHeight: '1.7' }}>
-                      {highlightText(contentText, searchQuery, source.snippet)}
-                    </div>
-                  )}
+                  <ReactMarkdown>{contentText}</ReactMarkdown>
                 </div>
               ) : (
                 <div className="empty-content-container">

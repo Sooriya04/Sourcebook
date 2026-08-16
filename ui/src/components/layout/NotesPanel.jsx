@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Mic, 
   BrainCircuit, 
@@ -9,58 +9,150 @@ import {
   PanelRightClose, 
   Plus, 
   Trash2,
-  Bookmark
+  Bookmark,
+  X,
+  Edit2,
+  MessageSquare
 } from 'lucide-react';
 import { parseCitations } from '../../utils/citationParser';
 
 export default function NotesPanel({ 
   notes = [], 
+  onAddNote,
+  onUpdateNote,
   onDeleteNote, 
   activeMode, 
   setActiveMode,
   isCollapsed,
-  onToggleCollapse 
+  onToggleCollapse,
+  studyTab,
+  setStudyTab
 }) {
+  const [editorNote, setEditorNote] = useState(null); // null, 'new', or note object
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+
   const studioTools = [
+    {
+      id: 'chat',
+      title: 'Chat Studio',
+      icon: <MessageSquare size={14} className="tool-icon chat-icon" style={{ color: 'var(--accent-primary)' }} />,
+      action: () => {
+        setActiveMode('chat');
+        if (setStudyTab) setStudyTab('chat');
+      },
+      isActive: activeMode === 'chat'
+    },
+    {
+      id: 'briefing',
+      title: 'Briefing Doc',
+      icon: <FileText size={14} className="tool-icon briefing-icon" style={{ color: '#60a5fa' }} />,
+      action: () => {
+        setActiveMode('study');
+        if (setStudyTab) setStudyTab('briefing');
+      },
+      isActive: activeMode === 'study' && studyTab === 'briefing'
+    },
     {
       id: 'audio',
       title: 'Audio Overview',
-      icon: <Mic size={16} className="tool-icon audio-icon" />,
-      action: () => alert('Audio Overview synthesis coming in Phase 5!')
+      icon: <Mic size={14} className="tool-icon audio-icon" style={{ color: '#10b981' }} />,
+      action: () => {
+        setActiveMode('study');
+        if (setStudyTab) setStudyTab('audio');
+      },
+      isActive: activeMode === 'study' && studyTab === 'audio'
     },
     {
       id: 'flashcards',
       title: 'Flashcards',
-      icon: <BrainCircuit size={16} className="tool-icon flashcard-icon" />,
-      action: () => setActiveMode(activeMode === 'study' ? 'chat' : 'study'),
-      isActive: activeMode === 'study'
+      icon: <BrainCircuit size={14} className="tool-icon flashcard-icon" style={{ color: '#a78bfa' }} />,
+      action: () => {
+        setActiveMode('study');
+        if (setStudyTab) setStudyTab('flashcards');
+      },
+      isActive: activeMode === 'study' && studyTab === 'flashcards'
     },
     {
       id: 'quiz',
       title: 'Quiz',
-      icon: <HelpCircle size={16} className="tool-icon quiz-icon" />,
-      action: () => alert('Quiz generator coming soon!')
+      icon: <HelpCircle size={14} className="tool-icon quiz-icon" style={{ color: '#f59e0b' }} />,
+      action: () => {
+        setActiveMode('study');
+        if (setStudyTab) setStudyTab('quiz');
+      },
+      isActive: activeMode === 'study' && studyTab === 'quiz'
     },
     {
       id: 'mindmap',
       title: 'Mind Map',
-      icon: <Network size={16} className="tool-icon map-icon" />,
-      action: () => alert('Mind Map generator coming soon!')
+      icon: <Network size={14} className="tool-icon map-icon" style={{ color: '#ec4899' }} />,
+      action: () => {
+        setActiveMode('study');
+        if (setStudyTab) setStudyTab('mindmap');
+      },
+      isActive: activeMode === 'study' && studyTab === 'mindmap'
     },
     {
       id: 'reports',
       title: 'Reports',
-      icon: <FileText size={16} className="tool-icon report-icon" />,
-      action: () => alert('Report generator coming soon!')
+      icon: <FileText size={14} className="tool-icon report-icon" style={{ color: '#3b82f6' }} />,
+      action: () => {
+        setActiveMode('study');
+        if (setStudyTab) setStudyTab('reports');
+      },
+      isActive: activeMode === 'study' && studyTab === 'reports'
     }
   ];
+
+  const handleOpenNewNote = () => {
+    setEditorNote('new');
+    setEditTitle('');
+    setEditContent('');
+  };
+
+  const handleOpenEditNote = (note) => {
+    setEditorNote(note);
+    setEditTitle(note.title || '');
+    setEditContent(note.content || '');
+  };
+
+  const handleSave = () => {
+    if (!editContent.trim()) return;
+    const finalTitle = editTitle.trim() || 'Untitled Note';
+    if (editorNote === 'new') {
+      if (onAddNote) {
+        onAddNote({
+          id: Date.now().toString(),
+          title: finalTitle,
+          content: editContent
+        });
+      }
+    } else {
+      if (onUpdateNote) {
+        onUpdateNote({
+          id: editorNote.id,
+          title: finalTitle,
+          content: editContent
+        });
+      }
+    }
+    setEditorNote(null);
+  };
+
+  const handleDelete = () => {
+    if (editorNote && editorNote !== 'new' && onDeleteNote) {
+      onDeleteNote(editorNote.id);
+      setEditorNote(null);
+    }
+  };
 
   if (isCollapsed) {
     return <aside className="notes-panel studio-panel collapsed-hidden-panel" style={{ display: 'none' }} />;
   }
 
   return (
-    <aside className="notes-panel studio-panel">
+    <aside className="notes-panel studio-panel" style={{ position: 'relative' }}>
       {/* Header */}
       <div className="studio-panel-header">
         <h3 className="studio-panel-title">Studio</h3>
@@ -73,38 +165,58 @@ export default function NotesPanel({
         </button>
       </div>
 
-      <div className="studio-scroll-area">
-        {/* Studio Tool 2-Column Grid */}
-        <div className="studio-grid">
+      <div className="studio-scroll-area" style={{ paddingBottom: '80px' }}>
+        {/* Studio Tool Grid */}
+        <div className="studio-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
           {studioTools.map((tool) => (
             <div 
               key={tool.id} 
               className={`studio-tile ${tool.isActive ? 'active-tile' : ''}`}
               onClick={tool.action}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                padding: '12px',
+                minHeight: '70px',
+                borderRadius: '12px',
+                background: tool.isActive ? 'rgba(59, 130, 246, 0.15)' : '#1b1d22',
+                border: tool.isActive ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.04)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                gridColumn: tool.id === 'chat' ? 'span 2' : 'span 1'
+              }}
             >
-              <div className="tile-left">
+              <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
                 {tool.icon}
-                <span className="tile-title">{tool.title}</span>
+                <ChevronRight size={12} className="tile-chevron" style={{ opacity: 0.5 }} />
               </div>
-              <ChevronRight size={12} className="tile-chevron" />
+              <span className="tile-title" style={{ fontSize: '0.72rem', fontWeight: '600', marginTop: '8px', color: '#c4c6cd' }}>
+                {tool.title}
+              </span>
             </div>
           ))}
         </div>
 
         {/* Saved Notes Section */}
-        <div className="saved-notes-container">
-          <div className="saved-notes-header">
-            <Bookmark size={14} className="notes-bookmark-icon" />
-            <span className="saved-notes-title">Studio Notes ({notes.length})</span>
+        <div className="saved-notes-container" style={{ marginTop: '20px' }}>
+          <div className="saved-notes-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+            <Bookmark size={14} className="notes-bookmark-icon" style={{ color: '#8b8d97' }} />
+            <span className="saved-notes-title" style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#8b8d97' }}>
+              Studio Notes ({notes.length})
+            </span>
           </div>
 
           {notes.length === 0 ? (
-            <div className="notes-empty-state">
-              <p>Studio notes appear here.</p>
-              <p className="empty-sub">After adding sources, click "Save Note" on AI answers or add notes manually.</p>
+            <div className="notes-empty-state" style={{ background: '#1b1d22', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.03)' }}>
+              <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#c4c6cd', fontWeight: '600' }}>Studio notes appear here.</p>
+              <p className="empty-sub" style={{ margin: 0, fontSize: '0.7rem', color: '#8b8d97', lineHeight: '1.4' }}>
+                After adding sources, click "Save Note" on AI answers or add notes manually.
+              </p>
             </div>
           ) : (
-            <div className="notes-list">
+            <div className="notes-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {notes.map((note) => {
                 const cleanedTitle = note.title
                   ? note.title
@@ -116,20 +228,59 @@ export default function NotesPanel({
                   : 'Untitled Note';
 
                 return (
-                  <div key={note.id} className="note-card">
-                    <div className="note-card-header">
-                      <span className="note-title">{cleanedTitle}</span>
-                      {onDeleteNote && (
+                  <div 
+                    key={note.id} 
+                    className="note-card"
+                    onClick={() => handleOpenEditNote(note)}
+                    style={{
+                      background: '#1b1d22',
+                      border: '1px solid rgba(255, 255, 255, 0.04)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                      e.currentTarget.style.background = '#22242a';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)';
+                      e.currentTarget.style.background = '#1b1d22';
+                    }}
+                  >
+                    <div className="note-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                      <span className="note-title" style={{ fontSize: '0.78rem', fontWeight: '700', color: '#e3e4e8' }}>
+                        {cleanedTitle}
+                      </span>
+                      <div style={{ display: 'flex', gap: '4px' }}>
                         <button
                           className="note-delete-btn"
-                          onClick={() => onDeleteNote(note.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDeleteNote) onDeleteNote(note.id);
+                          }}
                           title="Delete note"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#8b8d97',
+                            cursor: 'pointer',
+                            padding: '2px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => e.target.style.color = '#ef4444'}
+                          onMouseLeave={(e) => e.target.style.color = '#8b8d97'}
                         >
                           <Trash2 size={12} />
                         </button>
-                      )}
+                      </div>
                     </div>
-                    <div className="note-content">
+                    <div className="note-content" style={{ fontSize: '0.74rem', color: '#8b8d97', lineHeight: '1.5', maxHeight: '60px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
                       {parseCitations(note.content)}
                     </div>
                   </div>
@@ -143,16 +294,131 @@ export default function NotesPanel({
       {/* Floating Add Note Action Button */}
       <button 
         className="floating-add-note-btn" 
-        onClick={() => {
-          const text = prompt("Enter your note:");
-          if (text) {
-            alert("Note saved!");
-          }
+        onClick={handleOpenNewNote}
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          right: '20px',
+          background: '#ffffff',
+          color: '#111317',
+          border: 'none',
+          borderRadius: '24px',
+          padding: '10px 18px',
+          fontSize: '0.8rem',
+          fontWeight: '700',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          cursor: 'pointer',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          transition: 'all 0.2s ease',
+          zIndex: 10
         }}
       >
         <Plus size={16} />
         <span>Add note</span>
       </button>
+
+      {/* Note Editor Overlay Modal */}
+      {editorNote && (
+        <div 
+          className="note-editor-overlay"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(17, 19, 23, 0.95)',
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h4 style={{ margin: 0, fontSize: '0.86rem', fontWeight: '700', color: '#e3e4e8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {editorNote === 'new' ? 'New Studio Note' : 'Edit Studio Note'}
+            </h4>
+            <button 
+              onClick={() => setEditorNote(null)}
+              style={{ background: 'transparent', border: 'none', color: '#8b8d97', cursor: 'pointer' }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+            <input
+              type="text"
+              placeholder="Note Title..."
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              style={{
+                background: '#1b1d22',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                color: '#ffffff',
+                fontSize: '0.82rem',
+                outline: 'none'
+              }}
+            />
+            <textarea
+              placeholder="Write your thoughts or paste research snippets here..."
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              style={{
+                background: '#1b1d22',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                color: '#ffffff',
+                fontSize: '0.78rem',
+                lineHeight: '1.6',
+                resize: 'none',
+                flex: 1,
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+            <button 
+              onClick={() => setEditorNote(null)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                color: '#c4c6cd',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '0.78rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSave}
+              style={{
+                background: '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '0.78rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+              }}
+            >
+              Save Note
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

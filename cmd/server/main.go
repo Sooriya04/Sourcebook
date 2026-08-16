@@ -67,6 +67,8 @@ func main() {
 	mux.HandleFunc("/api/sourcebook/v1/notebooks", apiHandler.HandleNotebooks)
 	mux.HandleFunc("/api/sourcebook/v1/notebooks/", apiHandler.HandleNotebooks)
 	mux.HandleFunc("/api/sourcebook/v1/settings", apiHandler.HandleSettings)
+	mux.HandleFunc("/api/sourcebook/v1/models", apiHandler.HandleModels)
+	mux.HandleFunc("/api/sourcebook/v1/sources/ping", apiHandler.HandleSourcePing)
 	mux.HandleFunc("/api/sourcebook/v1/crawl", apiHandler.HandleCrawl)
 	mux.HandleFunc("/api/sourcebook/v1/sentinel/status", apiHandler.HandleSentinelStatus)
 

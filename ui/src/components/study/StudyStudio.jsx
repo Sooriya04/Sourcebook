@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { generateFlashcards } from '../../services/sourcebookApi';
-import { RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Headphones, FileText, HelpCircle, Layers } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Headphones, FileText, HelpCircle, Layers, Network, MessageSquare } from 'lucide-react';
 import BriefingView from './BriefingView';
 import AudioOverviewView from './AudioOverviewView';
 import FaqView from './FaqView';
+import QuizView from './QuizView';
+import MindMapView from './MindMapView';
+import ReportsView from './ReportsView';
 import './StudyStudio.css';
 
-export default function StudyStudio({ notebookId, sources }) {
-  const [activeTab, setActiveTab] = useState('briefing');
+export default function StudyStudio({ notebookId, sources, activeTab, setActiveTab, setActiveMode }) {
   const [flashcards, setFlashcards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -53,38 +55,6 @@ export default function StudyStudio({ notebookId, sources }) {
 
   return (
     <div className="study-studio">
-      {/* Workspace Studio Mode Tabs */}
-      <div className="studio-tabs-row">
-        <button 
-          className={`studio-tab-btn ${activeTab === 'briefing' ? 'active' : ''}`}
-          onClick={() => setActiveTab('briefing')}
-        >
-          <FileText size={16} />
-          <span>Briefing Doc</span>
-        </button>
-        <button 
-          className={`studio-tab-btn ${activeTab === 'audio' ? 'active' : ''}`}
-          onClick={() => setActiveTab('audio')}
-        >
-          <Headphones size={16} />
-          <span>Audio Overview</span>
-        </button>
-        <button 
-          className={`studio-tab-btn ${activeTab === 'faq' ? 'active' : ''}`}
-          onClick={() => setActiveTab('faq')}
-        >
-          <HelpCircle size={16} />
-          <span>FAQ Guide</span>
-        </button>
-        <button 
-          className={`studio-tab-btn ${activeTab === 'flashcards' ? 'active' : ''}`}
-          onClick={() => setActiveTab('flashcards')}
-        >
-          <Layers size={16} />
-          <span>Flashcards</span>
-        </button>
-      </div>
-
       <div className="studio-tab-content">
         {activeTab === 'briefing' && <BriefingView sources={sources} />}
         
@@ -92,10 +62,20 @@ export default function StudyStudio({ notebookId, sources }) {
         
         {activeTab === 'faq' && <FaqView />}
 
+        {activeTab === 'quiz' && <QuizView />}
+
+        {activeTab === 'mindmap' && <MindMapView />}
+
+        {activeTab === 'reports' && <ReportsView sources={sources} />}
+
         {activeTab === 'flashcards' && (
           <div className="flashcards-section">
             <div className="study-header">
-              <h2><BrainCircuit size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/> Study Studio</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BrainCircuit size={20} /> 
+                <span>Study Studio</span>
+                <span style={{ fontSize: '0.62rem', background: '#374151', color: '#9ca3af', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)' }}>Mockup Preview</span>
+              </h2>
               <p>Auto-generate flashcards from your notebook sources to test your knowledge.</p>
               <button 
                 className="generate-cards-btn" 

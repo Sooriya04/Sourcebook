@@ -27,8 +27,11 @@ export default function FaqView() {
     <div className="faq-view">
       <div className="faq-header">
         <HelpCircle size={22} className="faq-header-icon" />
-        <div>
-          <h3>Grounded Workspace FAQ</h3>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3>Grounded Workspace FAQ</h3>
+            <span style={{ fontSize: '0.62rem', background: '#374151', color: '#9ca3af', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)' }}>Mockup Preview</span>
+          </div>
           <p>Key learning questions automatically generated from your sources.</p>
         </div>
       </div>

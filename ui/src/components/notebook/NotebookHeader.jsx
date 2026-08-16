@@ -1,9 +1,9 @@
 import React from 'react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SentinelStatus from '../layout/SentinelStatus';
 
-export default function NotebookHeader({ title, onClearChat, messageCount, activeMode, setActiveMode }) {
+export default function NotebookHeader({ title, onClearChat, messageCount, activeMode, setActiveMode, onExport }) {
   return (
     <div className="notebook-header">
       <div className="header-left">
@@ -14,14 +14,15 @@ export default function NotebookHeader({ title, onClearChat, messageCount, activ
         <SentinelStatus />
       </div>
 
-
-
       <div className="header-actions">
-        {messageCount > 0 && activeMode === 'chat' && (
-          <button className="clear-chat-btn" onClick={onClearChat}>
-            <Trash2 size={14} /> Clear Timeline
-          </button>
-        )}
+        <button 
+          className="clear-chat-btn" 
+          onClick={onExport} 
+          title="Export entire notebook as Markdown"
+          style={{ background: '#1b1d22', color: '#c4c6cd', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Download size={14} /> Export Markdown
+        </button>
       </div>
     </div>
   );

@@ -4,10 +4,13 @@ import { FileText, Award, BookOpen, Layers } from 'lucide-react';
 export default function BriefingView({ sources }) {
   return (
     <div className="briefing-view">
-      <div className="briefing-header">
+      <div className="briefing-header" style={{ position: 'relative' }}>
         <FileText size={24} className="briefing-header-icon" />
-        <div>
-          <h3>Study Briefing Document</h3>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3>Study Briefing Document</h3>
+            <span style={{ fontSize: '0.62rem', background: '#374151', color: '#9ca3af', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.08)' }}>Mockup Preview</span>
+          </div>
           <p>Structured study summary compiled from {sources?.length || 0} active workspace sources.</p>
         </div>
       </div>

@@ -54,7 +54,10 @@ func (s *Synthesizer) Synthesize(ctx context.Context, query string, docs []Scrap
 		}, nil
 	}
 
-	log.Printf("[Synthesizer] Building prompt for %d cleaned documents...", len(docContexts))
+	log.Printf("[Synthesizer] Batching and digesting %d documents...", len(docContexts))
+	docContexts = s.BatchAndSummarize(ctx, query, docContexts)
+
+	log.Printf("[Synthesizer] Building prompt for %d digested documents...", len(docContexts))
 	messages, citations := llm.BuildPrompt(query, docContexts)
 
 	log.Printf("[Synthesizer] Calling LLM engine...")
@@ -91,6 +94,9 @@ func (s *Synthesizer) GenerateFlashcards(ctx context.Context, docs []ScrapedDoc)
 		return "[]", nil
 	}
 
+	log.Printf("[Synthesizer] Batching and digesting %d documents for flashcards...", len(docContexts))
+	docContexts = s.BatchAndSummarize(ctx, "Key facts, concepts, definitions, and core ideas for flashcard study study review guide", docContexts)
+
 	messages := llm.BuildFlashcardPrompt(docContexts)
 	
 	log.Printf("[Synthesizer] Calling LLM engine for Flashcards...")
@@ -111,4 +117,44 @@ func (s *Synthesizer) GenerateFlashcards(ctx context.Context, docs []ScrapedDoc)
 	}
 
 	return answer, nil
+}
+
+// BatchAndSummarize processes documents one by one to extract query-relevant information, staying under 4096 context.
+func (s *Synthesizer) BatchAndSummarize(ctx context.Context, query string, docs []llm.DocumentContext) []llm.DocumentContext {
+	var summarizedDocs []llm.DocumentContext
+
+	for _, doc := range docs {
+		if len(doc.Content) < 500 {
+			summarizedDocs = append(summarizedDocs, doc)
+			continue
+		}
+
+		prompt := fmt.Sprintf(`You are a precise facts extractor. Read the following source document and extract key factual points relevant to the query: %q.
+Keep the extraction extremely concise, returning only the direct facts as a bulleted list. Keep it under 200 words total. Do not add any conversational text.
+
+Document Title: %s
+Content:
+%s`, query, doc.Title, doc.Content)
+
+		messages := []llm.Message{
+			{Role: "user", Content: prompt},
+		}
+
+		log.Printf("[Synthesizer Batch] Digesting source: %q (length: %d)...", doc.Title, len(doc.Content))
+		summary, err := s.llmClient.Generate(ctx, messages)
+		if err != nil {
+			log.Printf("[Synthesizer Batch] Warning: failed to digest %q: %v", doc.Title, err)
+			runes := []rune(doc.Content)
+			if len(runes) > 1000 {
+				doc.Content = string(runes[:1000]) + "... [Truncated]"
+			}
+			summarizedDocs = append(summarizedDocs, doc)
+			continue
+		}
+
+		doc.Content = summary
+		summarizedDocs = append(summarizedDocs, doc)
+	}
+
+	return summarizedDocs
 }

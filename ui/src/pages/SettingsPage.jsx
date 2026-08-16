@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Search, Server, Cpu, Database, Settings, PlayCircle, Globe } from 'lucide-react';
-import { fetchSettings, updateSettings } from '../services/sourcebookApi';
+import { fetchSettings, updateSettings, fetchModels, switchModel } from '../services/sourcebookApi';
 import { useNavigate } from 'react-router-dom';
 
 export default function SettingsPage() {
@@ -16,6 +16,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  
+  const [models, setModels] = useState([]);
+  const [activeModel, setActiveModel] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -24,10 +27,13 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     try {
       const data = await fetchSettings();
-      // Load all settings directly from backend
       setSettings(data);
+      
+      const modelsData = await fetchModels();
+      setModels(modelsData.models || []);
+      setActiveModel(modelsData.active || '');
     } catch (err) {
-      console.error("Failed to load settings:", err);
+      console.error("Failed to load settings or models:", err);
     } finally {
       setLoading(false);
     }
@@ -41,8 +47,10 @@ export default function SettingsPage() {
     setSaving(true);
     setSaveMessage('');
     try {
-      // Save backend settings (now includes youtube config)
       await updateSettings(settings);
+      if (activeModel) {
+        await switchModel(activeModel);
+      }
       setSaveMessage('Settings saved successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
@@ -247,6 +255,35 @@ export default function SettingsPage() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="settings-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <Cpu size={20} color="var(--accent-primary)" />
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Language Model Configuration</h2>
+        </div>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
+          Select and switch the active local LLM model dynamically. Available models are queried from Ollama.
+        </p>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Select Active LLM Model</label>
+          <select 
+            value={activeModel} 
+            onChange={(e) => setActiveModel(e.target.value)}
+            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+          >
+            {models.length === 0 ? (
+              <option value="">No models available</option>
+            ) : (
+              models.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {m.display_name || m.name}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -1,10 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Globe, FileText, Video, Trash2, Loader2 } from 'lucide-react';
 import { truncateUrl } from '../../utils/formatters';
+import { pingSourceURL } from '../../services/sourcebookApi';
 
 export default function SourceCard({ source, isActive, onClick, onDelete }) {
   const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
+  const [onlineStatus, setOnlineStatus] = useState('checking'); // 'checking', 'online', 'offline', 'local'
+
+  useEffect(() => {
+    if (!source.url || !source.url.startsWith('http')) {
+      setOnlineStatus('local');
+      return;
+    }
+    pingSourceURL(source.url)
+      .then(res => {
+        setOnlineStatus(res.online ? 'online' : 'offline');
+      })
+      .catch(() => {
+        setOnlineStatus('offline');
+      });
+  }, [source.url]);
 
   const getDomain = (urlStr) => {
     try {
@@ -48,9 +64,23 @@ export default function SourceCard({ source, isActive, onClick, onDelete }) {
       onClick={handleCardClick}
       style={{ cursor: isIndexing ? 'wait' : 'pointer', opacity: isIndexing ? 0.7 : 1 }}
     >
-      <div className="source-card-header">
+      <div className="source-card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span className="source-index">[{source.index || '1'}]</span>
-        <span className="source-title">{source.title || 'Untitled Source'}</span>
+        {onlineStatus !== 'local' && (
+          <span 
+            className={`health-dot ${onlineStatus}`} 
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: onlineStatus === 'online' ? '#10b981' : onlineStatus === 'offline' ? '#f43f5e' : '#f59e0b',
+              display: 'inline-block',
+              flexShrink: 0
+            }}
+            title={onlineStatus === 'online' ? 'Source Online' : onlineStatus === 'offline' ? 'Source Offline' : 'Checking Health...'}
+          />
+        )}
+        <span className="source-title" style={{ flex: 1 }}>{source.title || 'Untitled Source'}</span>
         {isIndexing ? (
           <div className="source-status-badge">
             <Loader2 size={12} className="spin" color="var(--amber)" />

@@ -12,7 +12,7 @@ import SourceInspectorDrawer from '../components/sources/SourceInspectorDrawer';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
-import { runPipeline, fetchNotebookDetail, updateNotebookOnServer } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook } from '../services/sourcebookApi';
 
 const EMPTY_SOURCES = [];
 const EMPTY_NOTES = [];
@@ -35,6 +35,7 @@ export default function NotebookPage({ getNotebook }) {
   // Panel Collapsing State
   const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
   const [isStudioCollapsed, setIsStudioCollapsed] = useState(false);
+  const [studyTab, setStudyTab] = useState('briefing');
 
   const syncTimeoutRef = useRef(null);
   const hasLoadedRef = useRef(false);
@@ -164,8 +165,35 @@ export default function NotebookPage({ getNotebook }) {
     setNotes(prev => [newNote, ...prev]);
   };
 
+  const handleUpdateNote = (updatedNote) => {
+    setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n));
+  };
+
   const handleDeleteNote = (noteId) => {
     setNotes(prev => prev.filter(n => n.id !== noteId));
+  };
+
+  const handleExportNotebook = async () => {
+    try {
+      const markdown = await exportNotebook(id);
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${notebook.title.replace(/\s+/g, '_')}_export.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
+  };
+
+  const handleExplainSource = (src) => {
+    setActiveMode('chat');
+    setSelectedSource(null);
+    sendMessage(`Explain this source in detail: "${src.title}" [${src.index}]`);
   };
 
   const handleImportDiscovery = async (imported) => {
@@ -235,6 +263,7 @@ export default function NotebookPage({ getNotebook }) {
         messageCount={messages.length}
         activeMode={activeMode}
         setActiveMode={setActiveMode}
+        onExport={handleExportNotebook}
       />
 
       <div className="three-panel-body" style={gridColumnsStyle}>
@@ -278,18 +307,22 @@ export default function NotebookPage({ getNotebook }) {
               onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
             />
           ) : (
-            <StudyStudio notebookId={id} sources={sources} />
+            <StudyStudio notebookId={id} sources={sources} activeTab={studyTab} setActiveTab={setStudyTab} setActiveMode={setActiveMode} />
           )}
         </div>
 
         {/* Slot 3: Right Panel (Notes & Audio Overview) */}
         <NotesPanel
           notes={notes}
+          onAddNote={handleSaveNote}
+          onUpdateNote={handleUpdateNote}
           onDeleteNote={handleDeleteNote}
           activeMode={activeMode}
           setActiveMode={setActiveMode}
           isCollapsed={isStudioCollapsed}
           onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
+          studyTab={studyTab}
+          setStudyTab={setStudyTab}
         />
       </div>
 
@@ -305,7 +338,7 @@ export default function NotebookPage({ getNotebook }) {
       <SourceInspectorDrawer
         source={selectedSource}
         onClose={() => setSelectedSource(null)}
-        onUpdateSource={handleUpdateSource}
+        onExplain={handleExplainSource}
       />
 
       {/* Scraping Toast */}
