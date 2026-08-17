@@ -317,6 +317,11 @@ func (a *API) handleNotebookDetail(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (a *API) handleNotebookExport(w http.ResponseWriter, r *http.Request, id string) {
+	if strings.TrimSpace(id) == "" {
+		http.Error(w, "Notebook ID required", http.StatusBadRequest)
+		return
+	}
+
 	nb, err := a.repo.GetNotebook(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

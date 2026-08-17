@@ -41,15 +41,12 @@ Rules:
 func ParseReActJSON(raw string) (*ReActResponse, error) {
 	trimmed := strings.TrimSpace(raw)
 	
-	// Remove markdown code block wraps if present
-	if strings.HasPrefix(trimmed, "```json") {
-		trimmed = strings.TrimPrefix(trimmed, "```json")
-		trimmed = strings.TrimSuffix(trimmed, "```")
-	} else if strings.HasPrefix(trimmed, "```") {
-		trimmed = strings.TrimPrefix(trimmed, "```")
-		trimmed = strings.TrimSuffix(trimmed, "```")
+	// Extract content between the first open brace '{' and last close brace '}'
+	firstOpen := strings.Index(trimmed, "{")
+	lastClose := strings.LastIndex(trimmed, "}")
+	if firstOpen != -1 && lastClose > firstOpen {
+		trimmed = trimmed[firstOpen : lastClose+1]
 	}
-	trimmed = strings.TrimSpace(trimmed)
 
 	var res ReActResponse
 	if err := json.Unmarshal([]byte(trimmed), &res); err != nil {

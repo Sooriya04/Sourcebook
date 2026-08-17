@@ -107,6 +107,7 @@ func (s *Sentinel) fetchEmptySources() ([]emptySource, error) {
 	for rows.Next() {
 		var src emptySource
 		if err := rows.Scan(&src.ID, &src.NotebookID, &src.URL); err != nil {
+			log.Printf("[Sentinel] Row scan error: %v", err)
 			continue
 		}
 		sources = append(sources, src)

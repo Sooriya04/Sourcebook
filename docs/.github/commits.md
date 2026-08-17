@@ -310,6 +310,18 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Flexible Notes Editor**: Converted fixed 300px textarea height in `NotesPanel.jsx` to a responsive, vertically resizable container (`min-height: 180px`, `max-height: 450px`).
 - **Dead Code Cleanup**: Removed unused `inspectingSource` props passed to `NotesPanel` in `NotebookPage.jsx`.
 
+## Commit 40: Go Backend Concurrency Fixes, SQLite WAL Migration, and ReAct Robustness
+- **SQLite Concurrency & WAL mode**: Configured WAL (`_journal_mode=WAL`), Busy Timeout (`_busy_timeout=5000`), and synchronous settings on SQLite database initialization in `db.go` to prevent `database is locked` errors during concurrent writes/reads.
+- **SyncNotebookSources Optimization**: Refactored database logic in `notebook_repo.go` to selectively delete only non-retained sources and use `INSERT ... ON CONFLICT DO UPDATE` instead of a full truncate. This preserves existing vector chunk embeddings and handles partial source list synchronization.
+- **Pipeline Data Race Corrections**: Mitigated thread data race on `results` and `youtubeDocs` slices in `pipeline_handler.go` by introducing a `sync.Mutex` lock block during concurrent search/YouTube scraping routines.
+- **Robust YouTube Document Handling**: Fixed a critical edge-case in `pipeline_handler.go` where YouTube video transcripts were dropped/ignored if standard web search returned 0 URLs.
+- **Export Request ID Check**: Added validation for empty notebook IDs in `handleNotebookExport` within `notebook_handler.go` to return a `400 Bad Request` instead of triggering a DB fallback 404 error.
+- **RetrieveAndRerank Context Race Fix**: Fixed a data race in `controller.go` where the loop goroutines concurrently wrote to the `contextMeta` variable by hoisting the evaluation out of the concurrent blocks.
+- **Explain Query Fallback Isolation**: Corrected `HandleExplainQuery` in `controller.go` to only return `true` for `isExplain` when a valid source match was found, avoiding LLM token limit issues on explain failures.
+- **ReAct JSON Parsing Safeguards**: Hardened `ParseReActJSON` in `react_prompt.go` to isolate JSON structures between the first `{` and last `}` braces, preventing parser failure due to Ollama returning conversational leading/trailing text or backticks.
+- **Sentinel Observability**: Fixed silent row scan errors in `sentinel.go` by adding explicit logging for rows scan issues.
+
+
 
 
 

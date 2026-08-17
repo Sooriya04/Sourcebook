@@ -75,7 +75,14 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	contextMeta := "Web"
+	contextMeta := "Web Search"
+	switch req.Mode {
+	case "notebook":
+		contextMeta = "Saved Sources"
+	case "hybrid":
+		contextMeta = "Saved Sources + Web"
+	}
+
 	maxSources := req.MaxSources
 	if maxSources <= 0 || maxSources > 15 {
 		maxSources = 5
@@ -88,17 +95,14 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 			var docs []Document
 			switch req.Mode {
 			case "notebook":
-				contextMeta = "Saved Sources"
 				if req.NotebookID != "" {
 					docs, _ = c.retriever.RetrieveNotebook(ctx, req.NotebookID, req.ScopedSourceIDs)
 				}
 			case "hybrid":
-				contextMeta = "Saved Sources + Web"
 				if req.NotebookID != "" {
 					docs, _ = c.retriever.RetrieveHybrid(ctx, req.NotebookID, q, maxSources, req.ScopedSourceIDs)
 				}
 			default: // "web"
-				contextMeta = "Web Search"
 				docs, _ = c.retriever.RetrieveWeb(ctx, q, maxSources)
 			}
 			mu.Lock()
@@ -339,7 +343,7 @@ func (c *Controller) HandleExplainQuery(ctx context.Context, query string, noteb
 		return []Document{*matched}, true
 	}
 
-	return docs, true
+	return docs, false
 }
 
 // BatchAndSummarize processes documents one by one to extract query-relevant information, staying under 4096 context.

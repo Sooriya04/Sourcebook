@@ -38,6 +38,7 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		}
 		
 		var results []models.SearchResult
+		var mu sync.Mutex
 		
 		errChan := make(chan error, 2)
 		
@@ -48,21 +49,27 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		go func() {
 			res, err := a.searchController.Search(ctx, query, options)
 			if err == nil {
+				mu.Lock()
 				results = res
+				mu.Unlock()
 			}
 			errChan <- err
 		}()
 		
 		// Run YouTube Search concurrently if enabled
 		go func() {
+			var docs []synthesis.ScrapedDoc
+			var err error
 			if settings.YoutubeEnabled && settings.YoutubeMaxSources > 0 {
 				log.Printf("[Pipeline] Querying YouTube for query: %q", query)
-				docs, err := FetchYouTubeTranscripts(ctx, query, settings.YoutubeMaxSources)
-				if err == nil {
-					youtubeDocs = docs
-				} else {
-					log.Printf("[Pipeline] YouTube search failed: %v", err)
-				}
+				docs, err = FetchYouTubeTranscripts(ctx, query, settings.YoutubeMaxSources)
+			}
+			if err == nil && len(docs) > 0 {
+				mu.Lock()
+				youtubeDocs = docs
+				mu.Unlock()
+			} else if err != nil {
+				log.Printf("[Pipeline] YouTube search failed: %v", err)
 			}
 			errChan <- nil // Non-fatal if youtube fails
 		}()
@@ -76,10 +83,17 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 		// Wait for YouTube Search
 		<-errChan
 
-		log.Printf("[Pipeline] Search completed in %v. Found %d raw results and %d youtube results.", time.Since(searchStart), len(results), len(youtubeDocs))
+		mu.Lock()
+		resultsCopy := make([]models.SearchResult, len(results))
+		copy(resultsCopy, results)
+		youtubeDocsCopy := make([]synthesis.ScrapedDoc, len(youtubeDocs))
+		copy(youtubeDocsCopy, youtubeDocs)
+		mu.Unlock()
+
+		log.Printf("[Pipeline] Search completed in %v. Found %d raw results and %d youtube results.", time.Since(searchStart), len(resultsCopy), len(youtubeDocsCopy))
 
 		seen := map[string]bool{}
-		for _, res := range results {
+		for _, res := range resultsCopy {
 			if len(urls) >= maxSources {
 				break
 			}
@@ -98,6 +112,10 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	}
 
 	if len(urls) == 0 {
+		if len(youtubeDocs) > 0 {
+			log.Printf("[Pipeline] No web URLs to scrape, but found %d YouTube transcripts. Returning them directly.", len(youtubeDocs))
+			return youtubeDocs, []byte(`{"success":true,"data":[]}`), nil
+		}
 		log.Printf("[Pipeline] No valid URLs found to scrape.")
 		return []synthesis.ScrapedDoc{}, []byte(`{"success":true,"data":[]}`), nil
 	}

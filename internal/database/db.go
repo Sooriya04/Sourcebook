@@ -4,13 +4,21 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 // InitDB initializes the SQLite database and creates the necessary tables.
 func InitDB(dataSourceName string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dataSourceName)
+	dsn := dataSourceName
+	if !strings.Contains(dsn, "?") {
+		dsn += "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
+	} else {
+		dsn += "&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
+	}
+
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

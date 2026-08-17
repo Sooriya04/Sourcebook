@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sourcebook/internal/models"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -90,14 +91,43 @@ func (r *Repository) SyncNotebookSources(notebookID string, sources []models.Sou
 	}
 	defer tx.Rollback()
 
-	// 1. Delete existing
-	if _, err := tx.Exec(`DELETE FROM sources WHERE notebook_id = ?`, notebookID); err != nil {
-		return err
+	// Ensure all sources have IDs
+	for i := range sources {
+		if sources[i].ID == "" {
+			sources[i].ID = uuid.NewString()
+		}
 	}
 
-	// 2. Insert new
+	// 1. Delete sources that are no longer present
+	if len(sources) > 0 {
+		placeholders := make([]string, len(sources))
+		args := make([]interface{}, len(sources)+1)
+		args[0] = notebookID
+		for i, src := range sources {
+			placeholders[i] = "?"
+			args[i+1] = src.ID
+		}
+		// Safe to concatenate placeholders here as they are generated from slice length
+		delQuery := fmt.Sprintf("DELETE FROM sources WHERE notebook_id = ? AND id NOT IN (%s)", strings.Join(placeholders, ","))
+		if _, err := tx.Exec(delQuery, args...); err != nil {
+			return err
+		}
+	} else {
+		if _, err := tx.Exec(`DELETE FROM sources WHERE notebook_id = ?`, notebookID); err != nil {
+			return err
+		}
+	}
+
+	// 2. Upsert sources
 	query := `INSERT INTO sources (id, notebook_id, job_id, query, provider, title, url, canonical_url, snippet, content, image_url, created_at, updated_at) 
-	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	          ON CONFLICT(id) DO UPDATE SET 
+	              title = excluded.title, 
+	              url = excluded.url, 
+	              canonical_url = excluded.canonical_url, 
+	              snippet = excluded.snippet, 
+	              content = CASE WHEN excluded.content != '' THEN excluded.content ELSE sources.content END,
+	              updated_at = excluded.updated_at`
 	stmt, err := tx.Prepare(query)
 	if err != nil {
 		return err
@@ -106,15 +136,11 @@ func (r *Repository) SyncNotebookSources(notebookID string, sources []models.Sou
 
 	now := time.Now().UTC()
 	for _, src := range sources {
-		id := src.ID
-		if id == "" {
-			id = uuid.NewString()
-		}
 		prov := src.Provider
 		if prov == "" && src.Type != "" {
 			prov = src.Type
 		}
-		_, err := stmt.Exec(id, notebookID, src.JobID, src.Query, prov, src.Title, src.URL, src.CanonicalURL, src.Snippet, src.Content, src.ImageURL, now, now)
+		_, err := stmt.Exec(src.ID, notebookID, src.JobID, src.Query, prov, src.Title, src.URL, src.CanonicalURL, src.Snippet, src.Content, src.ImageURL, now, now)
 		if err != nil {
 			return err
 		}
