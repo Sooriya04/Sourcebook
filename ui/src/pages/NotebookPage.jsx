@@ -337,9 +337,6 @@ export default function NotebookPage({ getNotebook }) {
           onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
           studyTab={studyTab}
           setStudyTab={setStudyTab}
-          inspectingSource={inspectingSource}
-          setInspectingSource={setInspectingSource}
-          onExplainSource={handleExplainSource}
         />
       </div>
 

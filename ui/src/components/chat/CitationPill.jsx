@@ -8,9 +8,6 @@ export default function CitationPill({ index, source, isActive, onClick }) {
     if (onClick) {
       onClick(e);
     }
-    if (source && source.url) {
-      window.open(source.url, '_blank', 'noopener,noreferrer');
-    }
   };
 
   return (

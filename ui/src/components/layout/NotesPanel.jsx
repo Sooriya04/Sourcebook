@@ -202,8 +202,9 @@ export default function NotesPanel({
               color: '#ffffff',
               fontSize: '0.78rem',
               lineHeight: '1.6',
-              resize: 'none',
-              height: '300px',
+              resize: 'vertical',
+              minHeight: '180px',
+              maxHeight: '450px',
               outline: 'none',
               width: '100%',
               boxSizing: 'border-box'

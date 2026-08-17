@@ -300,5 +300,16 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **NotesPanel Reversion**: Restored `NotesPanel.jsx` to its clean, original design with full note editing functionality and restored styling classes.
 - **Legacy Drawer Removal**: Deprecated and deleted the unused `SourceInspectorDrawer.jsx` component.
 
+## Commit 39: Bug Audit Resolution, UI Polish, and Double-Click Event Plumb
+- **SourceCard Double-Click Repair**: Wired `onDoubleClick` prop to `handleCardDoubleClick` event on source cards, fixing broken double-click source inspection.
+- **Citation Click Streamlining**: Removed `window.open` trigger from `CitationPill.jsx` so clicking a citation index pill opens the left-side inspector panel without opening redundant browser tabs.
+- **Modal Error Handling (Anti-Alert)**: Replaced native `alert()` browser popups in `AddSourceModal.jsx` with an inline error banner conforming to the corporate design system.
+- **Markdown Title Sanitization**: Stripped raw markdown formatting (`**`, `#`, `[1]`, links) before generating note titles when saving AI responses to notes in `MessageBubble.jsx`.
+- **Quiz Hover CSS & Style Fix**: Replaced invalid inline JS `:hover` object styling in `QuizView.jsx` with `.quiz-option-btn.interactive-opt:hover` CSS rules in `index.css`.
+- **Sidebar Header Navigation**: Added `← Back to Sources` button and `[Index] Inspector` header in `Sidebar.jsx`, and conditionalized the Escape key listener to attach only when inspecting a source.
+- **Flexible Notes Editor**: Converted fixed 300px textarea height in `NotesPanel.jsx` to a responsive, vertically resizable container (`min-height: 180px`, `max-height: 450px`).
+- **Dead Code Cleanup**: Removed unused `inspectingSource` props passed to `NotesPanel` in `NotebookPage.jsx`.
+
+
 
 

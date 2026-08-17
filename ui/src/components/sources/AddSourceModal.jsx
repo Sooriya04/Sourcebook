@@ -32,7 +32,8 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
       onAddSource(parsedData);
       onClose();
     } catch (err) {
-      alert(`Error reading file: ${err.message}`);
+      setErrorMessage(`Error reading file: ${err.message}`);
+      setTimeout(() => setErrorMessage(null), 3000);
     } finally {
       setLoading(false);
       e.target.value = null; // Reset
@@ -102,7 +103,8 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
       setActiveInputType(name);
       setInputValue('');
     } else {
-      alert(`${name} ingestion coming soon!`);
+      setErrorMessage(`${name} ingestion coming soon!`);
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 
@@ -117,6 +119,11 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Add sources">
       <div className="add-source-modal-content">
+        {errorMessage && !activeInputType && (
+          <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px', padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            {errorMessage}
+          </div>
+        )}
         
         {activeInputType ? (
           <form onSubmit={handleInputSubmit} className="inline-input-form">

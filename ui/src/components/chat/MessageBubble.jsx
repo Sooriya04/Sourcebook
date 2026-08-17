@@ -23,9 +23,16 @@ export default function MessageBubble({
 
   const handleSave = () => {
     if (onSaveNote) {
+      const cleanTitle = message.content
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/\([^)]*https?:\/\/[^)]*\)/g, '')
+        .replace(/^#+\s*/g, '')
+        .replace(/\[\d+\]/g, '')
+        .trim();
       onSaveNote({
         id: `note-${Date.now()}`,
-        title: message.content.slice(0, 40) + '...',
+        title: (cleanTitle.slice(0, 45) || 'Saved AI Response') + (cleanTitle.length > 45 ? '...' : ''),
         content: message.content
       });
       setSaved(true);

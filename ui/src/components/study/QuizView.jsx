@@ -82,35 +82,22 @@ export default function QuizView() {
               </h4>
               <div className="quiz-options" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {q.options.map((opt, idx) => {
-                  let optStyle = {
-                    background: '#1b1d22',
-                    border: '1px solid rgba(255, 255, 255, 0.04)',
-                    color: '#c4c6cd',
-                    padding: '12px 16px',
-                    borderRadius: '10px',
-                    cursor: isAnswered ? 'default' : 'pointer',
-                    fontSize: '0.8rem',
-                    textAlign: 'left',
-                    transition: 'all 120ms ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  };
+                  const isCorrect = idx === q.answerIndex;
+                  const isUserSelected = idx === selected;
+                  
+                  let bg = '#1b1d22';
+                  let border = '1px solid rgba(255, 255, 255, 0.04)';
+                  let color = '#c4c6cd';
 
-                  if (!isAnswered) {
-                    optStyle[':hover'] = {
-                      background: '#2c2f37',
-                      borderColor: 'rgba(255,255,255,0.15)'
-                    };
-                  } else {
-                    if (idx === q.answerIndex) {
-                      optStyle.background = 'rgba(16, 185, 129, 0.15)';
-                      optStyle.borderColor = '#10b981';
-                      optStyle.color = '#10b981';
-                    } else if (idx === selected) {
-                      optStyle.background = 'rgba(239, 68, 68, 0.15)';
-                      optStyle.borderColor = '#ef4444';
-                      optStyle.color = '#ef4444';
+                  if (isAnswered) {
+                    if (isCorrect) {
+                      bg = 'rgba(16, 185, 129, 0.15)';
+                      border = '1px solid #10b981';
+                      color = '#10b981';
+                    } else if (isUserSelected) {
+                      bg = 'rgba(239, 68, 68, 0.15)';
+                      border = '1px solid #ef4444';
+                      color = '#ef4444';
                     }
                   }
 
@@ -118,12 +105,26 @@ export default function QuizView() {
                     <button
                       key={idx}
                       onClick={() => handleSelect(q.id, idx, q.answerIndex)}
-                      style={optStyle}
+                      className={`quiz-option-btn ${!isAnswered ? 'interactive-opt' : ''}`}
+                      style={{
+                        background: bg,
+                        border: border,
+                        color: color,
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        cursor: isAnswered ? 'default' : 'pointer',
+                        fontSize: '0.8rem',
+                        textAlign: 'left',
+                        transition: 'all 120ms ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
                       disabled={isAnswered}
                     >
                       <span>{opt}</span>
-                      {isAnswered && idx === q.answerIndex && <CheckCircle size={14} />}
-                      {isAnswered && idx === selected && idx !== q.answerIndex && <XCircle size={14} />}
+                      {isAnswered && isCorrect && <CheckCircle size={14} />}
+                      {isAnswered && isUserSelected && !isCorrect && <XCircle size={14} />}
                     </button>
                   );
                 })}

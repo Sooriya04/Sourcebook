@@ -32,8 +32,9 @@ export default function Sidebar({
   };
 
   useEffect(() => {
+    if (!inspectingSource) return;
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && inspectingSource) {
+      if (e.key === 'Escape') {
         setInspectingSource(null);
       }
     };
@@ -60,19 +61,16 @@ export default function Sidebar({
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Header */}
           <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '12px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              <span className="source-index">[{inspectingSource.index || 1}]</span>
-              <h3 className="sidebar-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.88rem' }}>
-                Source View
-              </h3>
-            </div>
             <button 
               onClick={() => setInspectingSource(null)} 
-              title="Close Source View"
-              style={{ background: 'transparent', border: 'none', color: 'var(--dim)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Return to Sources list (Esc)"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#c4c6cd', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
-              <X size={16} />
+              <span>← Back to Sources</span>
             </button>
+            <span style={{ fontSize: '0.7rem', color: '#8b8d97', fontWeight: '600' }}>
+              [{inspectingSource.index || 1}] Inspector
+            </span>
           </div>
 
           {/* Body */}

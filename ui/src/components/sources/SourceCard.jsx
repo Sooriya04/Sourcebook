@@ -3,7 +3,7 @@ import { Globe, FileText, Video, Trash2, Loader2, Eye } from 'lucide-react';
 import { truncateUrl } from '../../utils/formatters';
 import { pingSourceURL } from '../../services/sourcebookApi';
 
-export default function SourceCard({ source, isActive, onClick, onInspect, onDelete }) {
+export default function SourceCard({ source, isActive, onClick, onDoubleClick, onInspect, onDelete }) {
   const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
   const [onlineStatus, setOnlineStatus] = useState('checking'); // 'checking', 'online', 'offline', 'local'
@@ -58,14 +58,20 @@ export default function SourceCard({ source, isActive, onClick, onInspect, onDel
     if (onClick) onClick(e);
   };
 
+  const handleCardDoubleClick = (e) => {
+    if (isIndexing) return;
+    if (onDoubleClick) onDoubleClick(e);
+  };
+
   return (
     <div
       className={`source-card ${isActive ? 'active' : ''} ${isIndexing ? 'indexing' : ''}`}
       onClick={handleCardClick}
+      onDoubleClick={handleCardDoubleClick}
       style={{ cursor: isIndexing ? 'wait' : 'pointer', opacity: isIndexing ? 0.7 : 1 }}
     >
       <div className="source-card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span className="source-index">[{source.index || '1'}]</span>
+        {source.index && <span className="source-index">[{source.index}]</span>}
         {onlineStatus !== 'local' && (
           <span
             className={`health-dot ${onlineStatus}`}

@@ -2951,3 +2951,12 @@ button {
   font-size: 0.75rem;
   color: var(--paper);
 }
+
+.quiz-option-btn.interactive-opt:hover {
+  background: #2c2f37 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.source-delete-btn:hover {
+  color: #f43f5e !important;
+}
