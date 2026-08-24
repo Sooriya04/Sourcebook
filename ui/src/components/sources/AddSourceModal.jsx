@@ -10,10 +10,78 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
   const [activeInputType, setActiveInputType] = useState(null);
   const [inputValue, setInputValue] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Hidden inputs for file uploads
   const fileInputRef = React.useRef(null);
   const imageInputRef = React.useRef(null);
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const simulateProgress = async (file, parserFunc) => {
+    setLoading(true);
+    setUploadProgress(0);
+    const interval = setInterval(() => {
+      setUploadProgress(p => {
+        if (p >= 95) {
+          clearInterval(interval);
+          return 95;
+        }
+        return p + 15;
+      });
+    }, 120);
+
+    try {
+      const parsedData = await parserFunc(file);
+      clearInterval(interval);
+      setUploadProgress(100);
+      setTimeout(() => {
+        onAddSource(parsedData);
+        setLoading(false);
+        setUploadProgress(0);
+        onClose();
+      }, 300);
+    } catch (err) {
+      clearInterval(interval);
+      setLoading(false);
+      setUploadProgress(0);
+      setErrorMessage(`Error reading file: ${err.message}`);
+      setTimeout(() => setErrorMessage(null), 3000);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0];
+      const ext = droppedFile.name.split('.').pop().toLowerCase();
+      if (['pdf', 'txt', 'md', 'json', 'csv'].includes(ext)) {
+        await simulateProgress(droppedFile, parseFileClientSide);
+      } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+        await simulateProgress(droppedFile, (file) => Promise.resolve({
+          title: file.name,
+          content: "[Image content placeholder]",
+          type: 'image',
+          url: URL.createObjectURL(file)
+        }));
+      } else {
+        setErrorMessage("Unsupported file type dropped.");
+        setTimeout(() => setErrorMessage(null), 3000);
+      }
+    }
+  };
 
   const handleTopicSubmit = (e) => {
     e.preventDefault();
@@ -26,31 +94,20 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
   const handleFileSubmit = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
-    setLoading(true);
-    try {
-      const parsedData = await parseFileClientSide(selectedFile);
-      onAddSource(parsedData);
-      onClose();
-    } catch (err) {
-      setErrorMessage(`Error reading file: ${err.message}`);
-      setTimeout(() => setErrorMessage(null), 3000);
-    } finally {
-      setLoading(false);
-      e.target.value = null; // Reset
-    }
+    await simulateProgress(selectedFile, parseFileClientSide);
+    e.target.value = null; // Reset
   };
 
-  const handleImageSubmit = (e) => {
+  const handleImageSubmit = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
-    onAddSource({
-      title: selectedFile.name,
+    await simulateProgress(selectedFile, (file) => Promise.resolve({
+      title: file.name,
       content: "[Image content placeholder]",
       type: 'image',
-      url: URL.createObjectURL(selectedFile)
-    });
+      url: URL.createObjectURL(file)
+    }));
     e.target.value = null;
-    onClose();
   };
 
   const handleInputSubmit = async (e) => {
@@ -113,6 +170,8 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
     setActiveInputType(null);
     setInputValue('');
     setTopic('');
+    setDragActive(false);
+    setUploadProgress(0);
     onClose();
   };
 
@@ -141,7 +200,7 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
               <input 
                 type="text" 
                 className="inline-input"
-                placeholder={`Enter ${activeInputType} URL...`}
+                placeholder={`Enter {activeInputType} URL...`}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 autoFocus
@@ -179,6 +238,62 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
             </form>
 
             <div className="or-divider">Or upload your files</div>
+
+            {/* Drag and Drop Container */}
+            <div 
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: dragActive ? '2px dashed var(--accent-primary)' : '2px dashed var(--border-color)',
+                backgroundColor: dragActive ? 'var(--bg-hover)' : 'var(--canvas-2)',
+                borderRadius: '12px',
+                padding: '30px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                marginBottom: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                color: 'var(--text-muted)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (!dragActive) {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.backgroundColor = 'var(--canvas-2)';
+                }
+              }}
+            >
+              {loading ? (
+                <div style={{ width: '100%', padding: '10px' }}>
+                  <div style={{ fontSize: '0.86rem', color: 'var(--text-main)', marginBottom: '8px', fontWeight: 600 }}>
+                    Ingesting file... {uploadProgress}%
+                  </div>
+                  <div style={{ height: '4px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${uploadProgress}%`, backgroundColor: 'var(--accent-primary)', transition: 'width 0.1s ease-out' }}></div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <FileText size={32} style={{ color: 'var(--text-dim)', marginBottom: '4px' }} />
+                  <span style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                    Drag & drop files here
+                  </span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
+                    Supports PDF, TXT, MD, JSON, CSV or Image
+                  </span>
+                </>
+              )}
+            </div>
 
             {/* Stacked Source Options */}
             <div className="stacked-source-options">

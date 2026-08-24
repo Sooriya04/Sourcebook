@@ -179,11 +179,11 @@ export default function NotesPanel({
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             style={{
-              background: '#1b1d22',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              background: 'var(--canvas-2)',
+              border: '1px solid var(--border-color)',
               borderRadius: '8px',
               padding: '10px 14px',
-              color: '#ffffff',
+              color: 'var(--text-main)',
               fontSize: '0.82rem',
               outline: 'none',
               width: '100%',
@@ -195,11 +195,11 @@ export default function NotesPanel({
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
             style={{
-              background: '#1b1d22',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              background: 'var(--canvas-2)',
+              border: '1px solid var(--border-color)',
               borderRadius: '8px',
               padding: '12px 14px',
-              color: '#ffffff',
+              color: 'var(--text-main)',
               fontSize: '0.78rem',
               lineHeight: '1.6',
               resize: 'vertical',
@@ -215,9 +215,9 @@ export default function NotesPanel({
               onClick={() => setEditorNote(null)}
               className="cancel-btn"
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                color: '#c4c6cd',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--canvas-2)',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border-color)',
                 borderRadius: '8px',
                 padding: '8px 16px',
                 fontSize: '0.78rem',
@@ -231,8 +231,8 @@ export default function NotesPanel({
               onClick={handleSave}
               className="submit-btn"
               style={{
-                background: '#3b82f6',
-                color: '#ffffff',
+                background: 'var(--accent-primary)',
+                color: 'var(--canvas)',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '8px 16px',
@@ -262,8 +262,8 @@ export default function NotesPanel({
                   padding: '12px',
                   minHeight: '70px',
                   borderRadius: '12px',
-                  background: tool.isActive ? 'rgba(59, 130, 246, 0.15)' : '#1b1d22',
-                  border: tool.isActive ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.04)',
+                  background: tool.isActive ? 'var(--accent-bg)' : 'var(--canvas-2)',
+                  border: tool.isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   gridColumn: tool.id === 'chat' ? 'span 2' : 'span 1'
@@ -273,7 +273,7 @@ export default function NotesPanel({
                   {tool.icon}
                   <ChevronRight size={12} className="tile-chevron" style={{ opacity: 0.5 }} />
                 </div>
-                <span className="tile-title" style={{ fontSize: '0.72rem', fontWeight: '600', marginTop: '8px', color: '#c4c6cd' }}>
+                <span className="tile-title" style={{ fontSize: '0.72rem', fontWeight: '600', marginTop: '8px', color: 'var(--text-main)' }}>
                   {tool.title}
                 </span>
               </div>
@@ -284,17 +284,17 @@ export default function NotesPanel({
           <div className="saved-notes-container" style={{ marginTop: '20px' }}>
             <div className="saved-notes-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Bookmark size={14} className="notes-bookmark-icon" style={{ color: '#8b8d97' }} />
-                <span className="saved-notes-title" style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#8b8d97' }}>
+                <Bookmark size={14} className="notes-bookmark-icon" style={{ color: 'var(--accent-primary)' }} />
+                <span className="saved-notes-title" style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                   Studio Notes ({notes.length})
                 </span>
               </div>
               <button 
                 onClick={handleOpenNewNote}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  color: '#ffffff',
-                  border: 'none',
+                  background: 'var(--canvas-2)',
+                  color: 'var(--text-main)',
+                  border: '1px solid var(--border-color)',
                   borderRadius: '6px',
                   padding: '4px 10px',
                   fontSize: '0.72rem',
@@ -311,9 +311,9 @@ export default function NotesPanel({
             </div>
 
             {notes.length === 0 ? (
-              <div className="notes-empty-state" style={{ background: '#1b1d22', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.03)' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#c4c6cd', fontWeight: '600' }}>Studio notes appear here.</p>
-                <p className="empty-sub" style={{ margin: 0, fontSize: '0.7rem', color: '#8b8d97', lineHeight: '1.4' }}>
+              <div className="notes-empty-state" style={{ background: 'var(--canvas-2)', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: 'var(--text-main)', fontWeight: '600' }}>Studio notes appear here.</p>
+                <p className="empty-sub" style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
                   After adding sources, click "Save Note" on AI answers or add notes manually.
                 </p>
               </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Search, Eye, Moon, Check, Terminal } from 'lucide-react';
 
 import Sidebar from '../components/layout/Sidebar';
 import ChatStudio from '../components/chat/ChatStudio';
@@ -39,6 +40,44 @@ export default function NotebookPage({ getNotebook }) {
 
   const syncTimeoutRef = useRef(null);
   const hasLoadedRef = useRef(false);
+
+  // Command Palette States
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const paletteInputRef = useRef(null);
+
+  // Keyboard shortcut listener for Cmd/Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+      if (e.key === 'Escape') {
+        setIsCommandPaletteOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (isCommandPaletteOpen) {
+      setTimeout(() => {
+        paletteInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isCommandPaletteOpen]);
+
+  const changeTheme = (themeName) => {
+    document.documentElement.setAttribute('data-theme', themeName);
+    localStorage.setItem('sourcebook-theme', themeName);
+  };
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('sourcebook-theme') || 'obsidian';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }, []);
 
   const {
     sources,
@@ -260,6 +299,90 @@ export default function NotebookPage({ getNotebook }) {
     }
   };
 
+  const commandsList = [
+    {
+      label: 'Switch to Midnight Obsidian theme',
+      type: 'Theme',
+      icon: <Moon size={14} />,
+      action: () => changeTheme('obsidian')
+    },
+    {
+      label: 'Switch to Cyberpunk Glass theme',
+      type: 'Theme',
+      icon: <Terminal size={14} />,
+      action: () => changeTheme('cyberpunk')
+    },
+    {
+      label: 'Switch to Clean Corporate theme',
+      type: 'Theme',
+      icon: <Check size={14} />,
+      action: () => changeTheme('corporate')
+    },
+    {
+      label: 'Open Chat Studio',
+      type: 'Navigation',
+      icon: <Eye size={14} />,
+      action: () => setActiveMode('chat')
+    },
+    {
+      label: 'Open Study Studio - Briefing Document',
+      type: 'Study',
+      icon: <Eye size={14} />,
+      action: () => {
+        setActiveMode('study');
+        setStudyTab('briefing');
+      }
+    },
+    {
+      label: 'Open Study Studio - Audio Overview',
+      type: 'Study',
+      icon: <Eye size={14} />,
+      action: () => {
+        setActiveMode('study');
+        setStudyTab('audio');
+      }
+    },
+    {
+      label: 'Open Study Studio - Quizzes',
+      type: 'Study',
+      icon: <Eye size={14} />,
+      action: () => {
+        setActiveMode('study');
+        setStudyTab('quiz');
+      }
+    },
+    {
+      label: 'Open Study Studio - Mind Map',
+      type: 'Study',
+      icon: <Eye size={14} />,
+      action: () => {
+        setActiveMode('study');
+        setStudyTab('mindmap');
+      }
+    },
+    {
+      label: 'Open Study Studio - Reports',
+      type: 'Study',
+      icon: <Eye size={14} />,
+      action: () => {
+        setActiveMode('study');
+        setStudyTab('reports');
+      }
+    }
+  ];
+
+  const sourceCommands = sources.map(src => ({
+    label: `Open Source: ${src.title}`,
+    type: 'Source',
+    icon: <Eye size={14} />,
+    action: () => handleCitationClick(src.index, src)
+  }));
+
+  const filteredCommands = [...commandsList, ...sourceCommands].filter(cmd => 
+    cmd.label.toLowerCase().includes(commandQuery.toLowerCase()) ||
+    cmd.type.toLowerCase().includes(commandQuery.toLowerCase())
+  );
+
   const gridColumnsStyle = {
     gridTemplateColumns: `${isSourcesCollapsed ? '0px' : '310px'} minmax(0, 1fr) ${isStudioCollapsed ? '0px' : '320px'}`,
     gap: (isSourcesCollapsed && isStudioCollapsed) ? '0px' : '12px'
@@ -354,6 +477,124 @@ export default function NotebookPage({ getNotebook }) {
           <div className="scraping-modal">
             <div className="spinner"></div>
             <h3>Scraping sources...</h3>
+          </div>
+        </div>
+      )}
+      {/* Command Palette Modal */}
+      {isCommandPaletteOpen && (
+        <div 
+          className="command-palette-overlay"
+          onClick={() => setIsCommandPaletteOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            justifyContent: 'center',
+            paddingTop: '15vh',
+            zIndex: 1000,
+          }}
+        >
+          <div 
+            className="command-palette glass-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '400px',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--panel)',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow)',
+            }}
+          >
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--border-color)',
+                gap: '12px'
+              }}
+            >
+              <Search size={18} style={{ color: 'var(--text-muted)' }} />
+              <input
+                ref={paletteInputRef}
+                type="text"
+                placeholder="Type a command or search sources..."
+                value={commandQuery}
+                onChange={(e) => setCommandQuery(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'var(--text-main)',
+                  fontSize: '0.94rem',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              />
+              <span 
+                style={{
+                  fontSize: '0.68rem',
+                  background: 'var(--canvas-2)',
+                  color: 'var(--text-muted)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              >
+                ESC
+              </span>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+              {filteredCommands.length > 0 ? (
+                filteredCommands.map((cmd, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      cmd.action();
+                      setIsCommandPaletteOpen(false);
+                      setCommandQuery('');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.86rem',
+                      fontFamily: 'var(--font-sans)',
+                      color: 'var(--text-main)',
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {cmd.icon}
+                      <span>{cmd.label}</span>
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                      {cmd.type}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  No commands or sources found.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

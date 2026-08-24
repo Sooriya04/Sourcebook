@@ -321,7 +321,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **ReAct JSON Parsing Safeguards**: Hardened `ParseReActJSON` in `react_prompt.go` to isolate JSON structures between the first `{` and last `}` braces, preventing parser failure due to Ollama returning conversational leading/trailing text or backticks.
 - **Sentinel Observability**: Fixed silent row scan errors in `sentinel.go` by adding explicit logging for rows scan issues.
 
-
-
-
-
+## Commit 41: Premium Study Studio Suite Redesign and Interactive UI Polish
+- **Themed CSS Variable Layers & Typography (`index.css`)**: Implemented root themes (`Midnight Obsidian`, `Cyberpunk Glass`, `Clean Corporate Slate`) bound to `data-theme` attribute selectors. Configured typographic hierarchy (`Sora` for UI controls, `Newsreader` for editorial reading, and `IBM Plex Mono` for code/citations) and a custom `.glass-card` styling class.
+- **Tactile Citation Pill Popovers (`CitationPill.jsx`)**: Connected Google S2 domain favicon resolution for inline citations, and designed micro-spring hover card overlays with physical press transitions (`scale(0.95)`).
+- **Typography Readability & Springs (`MessageBubble.jsx`)**: Polished bubbles using layout spacings and theme variables, applying tactile click-scaling feedback on bubbled actions.
+- **Thinking Loader Tracker (`ThinkingIndicator.jsx`)**: Created a high-fidelity phase loader moving from search queries to sparkles, utilizing dot pulsing delays.
+- **Global Command Palette (`NotebookPage.jsx`)**: Created a command palette (`Cmd+K`/`Ctrl+K`) that searches workspace sources, switches themes, and navigates tabs. Fixed a lexical initialization issue (`ReferenceError`) by placing hook initializations (`useSources`) above the palette command definitions.
+- **Drag-and-Drop Ingestion Zone (`AddSourceModal.jsx`)**: Designed a dashed hover-reactive zone featuring simulated upload progress bars.
+- **Podcast Player & Canvas Waveforms (`AudioOverviewView.jsx`)**: Added co-host audio speed multipliers (1x to 2x), voice configurations, and a canvas-rendered live audio waveform animation.
+- **Concept Mind Map (`MindMapView.jsx`)**: Built an interactive concept node hierarchy featuring expand/collapse child toggles, node detail inspectors, and a CSS-based canvas zoom scaler.
+- **Export Hub, Tab Polish & Source Inspector (`StudyStudio.jsx`, `NotesPanel.jsx`, & `Sidebar.jsx`)**: Added a global header dropdown overlay for exporting Briefs, Transcripts, and Mindmap JSON. Refactored Sidebar notes, tiles, editors, and the source detail inspector to use theme variables and spring-tactile animations.

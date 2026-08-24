@@ -59,29 +59,45 @@ export default function Sidebar({
     <aside className="sidebar sources-panel">
       {inspectingSource ? (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          {/* Header */}
-          <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '12px', marginBottom: '8px' }}>
+          <div className="sidebar-header" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <button 
               onClick={() => setInspectingSource(null)} 
               title="Return to Sources list (Esc)"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#c4c6cd', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{
+                background: 'var(--canvas-2)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'transform 0.1s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--canvas-2)'; }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <span>← Back to Sources</span>
             </button>
-            <span style={{ fontSize: '0.7rem', color: '#8b8d97', fontWeight: '600' }}>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '600' }}>
               [{inspectingSource.index || 1}] Inspector
             </span>
           </div>
 
           {/* Body */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#e3e4e8', lineHeight: '1.4', wordBreak: 'break-word' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-main)', lineHeight: '1.4', wordBreak: 'break-word' }}>
               {inspectingSource.title || 'Untitled Source'}
             </div>
 
             {inspectingSource.url && (
-              <div className="drawer-url-card" style={{ padding: '8px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                <div className="drawer-url-info" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: '#8b8d97', minWidth: 0 }}>
+              <div className="drawer-url-card" style={{ padding: '8px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--canvas-2)', border: '1px solid var(--border-color)' }}>
+                <div className="drawer-url-info" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-muted)', minWidth: 0 }}>
                   <Globe size={12} className="globe-icon" style={{ flexShrink: 0 }} />
                   <span className="drawer-url-domain" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {(() => {
@@ -93,7 +109,7 @@ export default function Sidebar({
                     })()}
                   </span>
                 </div>
-                <a href={inspectingSource.url} target="_blank" rel="noreferrer" className="drawer-external-link" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: '600' }}>
+                <a href={inspectingSource.url} target="_blank" rel="noreferrer" className="drawer-external-link" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: '600' }}>
                   <span>Visit</span>
                   <ChevronRight size={12} />
                 </a>
@@ -105,7 +121,24 @@ export default function Sidebar({
                 <button
                   onClick={() => onExplainSource(inspectingSource)}
                   title="Ask AI to explain this source in detail"
-                  style={{ background: '#3b82f6', color: '#ffffff', border: 'none', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '6px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: '600', flex: 1, justifyContent: 'center' }}
+                  style={{
+                    background: 'var(--accent-primary)',
+                    color: 'var(--canvas)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.7rem',
+                    fontWeight: '600',
+                    flex: 1,
+                    justifyContent: 'center',
+                    transition: 'transform 0.1s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                  onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+                  onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                 >
                   <Sparkles size={11} />
                   <span>Explain Source</span>
@@ -115,14 +148,33 @@ export default function Sidebar({
                 className={`drawer-copy-btn ${copied ? 'copied' : ''}`}
                 onClick={handleCopy}
                 title="Copy raw text to clipboard"
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '6px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: '600', flex: onExplainSource ? 1 : 'none', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#c4c6cd' }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.7rem',
+                  fontWeight: '600',
+                  flex: onExplainSource ? 1 : 'none',
+                  justifyContent: 'center',
+                  background: 'var(--canvas-2)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  transition: 'transform 0.1s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--canvas-2)'; }}
+                onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+                onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 {copied ? <Check size={11} /> : <Copy size={11} />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
 
-            <div className="drawer-text-preview-card" style={{ flex: 1, background: '#1b1d22', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '12px', padding: '12px', overflowY: 'auto', fontSize: '0.74rem', color: '#c4c6cd', lineHeight: '1.5', minHeight: '150px' }}>
+            <div className="drawer-text-preview-card" style={{ flex: 1, background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px', overflowY: 'auto', fontSize: '0.74rem', color: 'var(--text-main)', lineHeight: '1.5', minHeight: '150px' }}>
               {inspectingSource.content || inspectingSource.Content || inspectingSource.text || inspectingSource.Text || inspectingSource.snippet || inspectingSource.Snippet || inspectingSource.description || inspectingSource.Description ? (
                 <div className="markdown-content">
                   <ReactMarkdown>
