@@ -4,6 +4,8 @@ sourcebook-server
 .venv
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.log
 /server
 /bin/
