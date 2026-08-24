@@ -331,3 +331,10 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Podcast Player & Canvas Waveforms (`AudioOverviewView.jsx`)**: Added co-host audio speed multipliers (1x to 2x), voice configurations, and a canvas-rendered live audio waveform animation.
 - **Concept Mind Map (`MindMapView.jsx`)**: Built an interactive concept node hierarchy featuring expand/collapse child toggles, node detail inspectors, and a CSS-based canvas zoom scaler.
 - **Export Hub, Tab Polish & Source Inspector (`StudyStudio.jsx`, `NotesPanel.jsx`, & `Sidebar.jsx`)**: Added a global header dropdown overlay for exporting Briefs, Transcripts, and Mindmap JSON. Refactored Sidebar notes, tiles, editors, and the source detail inspector to use theme variables and spring-tactile animations.
+
+## Commit 42: Explain-Source Context Recovery, Index Alignment, and Link Leak Suppression
+- **Explain-Source Full Content Recovery (`controller.go`)**: Refactored `HandleExplainQuery` to retrieve complete source markdown contents directly from the SQLite database via `repo.GetSourcesByNotebook()`, replacing the snippet-only chunk fragment extraction.
+- **Citation Index Alignment Safeguard (`controller.go`)**: Resolved grounding and citation index mismatch issues. The LLM is now provided with the matched source using its exact sidebar index (e.g., `[11]`), bypassing Microsoft/OpenAI grounding guardrails that reject queries referencing external or mismatched index parameters.
+- **Raw URL LLM Context Removal (`history.go`)**: Omitted raw URL strings (`URL: ...`) from the LLM prompt context in `history.go` while keeping them in the JSON API payload. This physically prevents local/grounded models from appending raw link text or bibliographies to responses while preserving fully functional, clickable citation pills in the React interface.
+- **Inspector Layout Centering (`Sidebar.jsx`)**: Corrected vertical layout alignment issues in the Sidebar header by removing hardcoded margin/padding overrides to rely on standard CSS centering rules.
+

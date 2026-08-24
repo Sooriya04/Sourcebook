@@ -15,6 +15,7 @@ type Document struct {
 	URL        string
 	Content    string
 	SourceType string // "Notebook", "Web", "YouTube", "Arxiv"
+	Index      int    // Optional custom citation index
 }
 
 type Retriever struct {

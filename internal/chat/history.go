@@ -43,9 +43,13 @@ func (h *HistoryManager) BuildConversationHistory(query string, docs []Document,
 	var contextBuilder strings.Builder
 	contextBuilder.WriteString("## Retrieved Sources\n\n")
 	for i, doc := range docs {
+		idx := i + 1
+		if doc.Index > 0 {
+			idx = doc.Index
+		}
 		cleaned := utils.CleanText(doc.Content)
-		contextBuilder.WriteString(fmt.Sprintf("[%d] **%s**\nURL: %s\nType: %s\n\n%s\n\n---\n\n",
-			i+1, doc.Title, doc.URL, doc.SourceType, cleaned))
+		contextBuilder.WriteString(fmt.Sprintf("[%d] **%s**\nType: %s\n\n%s\n\n---\n\n",
+			idx, doc.Title, doc.SourceType, cleaned))
 	}
 
 	// 3. Assemble base system messages

@@ -188,8 +188,12 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 
 	citations := make([]SourceCitationDetail, len(docs))
 	for i, doc := range docs {
+		idx := i + 1
+		if doc.Index > 0 {
+			idx = doc.Index
+		}
 		citations[i] = SourceCitationDetail{
-			Index:      i + 1,
+			Index:      idx,
 			Title:      doc.Title,
 			URL:        doc.URL,
 			SourceType: doc.SourceType,
@@ -227,8 +231,12 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 
 	citations := make([]SourceCitationDetail, len(docs))
 	for i, doc := range docs {
+		idx := i + 1
+		if doc.Index > 0 {
+			idx = doc.Index
+		}
 		citations[i] = SourceCitationDetail{
-			Index:      i + 1,
+			Index:      idx,
 			Title:      doc.Title,
 			URL:        doc.URL,
 			SourceType: doc.SourceType,
@@ -306,20 +314,50 @@ func (c *Controller) HandleExplainQuery(ctx context.Context, query string, noteb
 		}
 	}
 
-	// Retrieve all notebook sources to find a match
 	var matched *Document
-	if notebookID != "" && c.retriever != nil {
-		allNbDocs, _ := c.retriever.RetrieveNotebook(ctx, notebookID, nil)
-		if targetTitle != "" {
-			for _, doc := range allNbDocs {
-				if strings.Contains(strings.ToLower(doc.Title), strings.ToLower(targetTitle)) || strings.Contains(strings.ToLower(targetTitle), strings.ToLower(doc.Title)) {
-					matched = &doc
-					break
+	var matchedIndex int = -1
+
+	// Retrieve raw notebook sources directly from database to get full content instead of chunk snippets
+	if notebookID != "" && c.repo != nil {
+		allSources, err := c.repo.GetSourcesByNotebook(notebookID)
+		if err == nil && len(allSources) > 0 {
+			// 1. Try matching by index first
+			if targetIndex != -1 && targetIndex-1 < len(allSources) && targetIndex-1 >= 0 {
+				src := allSources[targetIndex-1]
+				matched = &Document{
+					Title:      src.Title,
+					URL:        src.URL,
+					Content:    src.Content,
+					SourceType: src.Type,
+				}
+				matchedIndex = targetIndex
+			}
+
+			// 2. Try matching by title if index match didn't succeed
+			if matched == nil && targetTitle != "" {
+				for i, src := range allSources {
+					if strings.Contains(strings.ToLower(src.Title), strings.ToLower(targetTitle)) || strings.Contains(strings.ToLower(targetTitle), strings.ToLower(src.Title)) {
+						matched = &Document{
+							Title:      src.Title,
+							URL:        src.URL,
+							Content:    src.Content,
+							SourceType: src.Type,
+						}
+						matchedIndex = i + 1
+						break
+					}
 				}
 			}
-		}
-		if matched == nil && targetIndex != -1 && targetIndex-1 < len(allNbDocs) && targetIndex-1 >= 0 {
-			matched = &allNbDocs[targetIndex-1]
+
+			if matched != nil && matchedIndex != -1 {
+				contentRunes := []rune(matched.Content)
+				if len(contentRunes) > 12000 {
+					matched.Content = string(contentRunes[:12000]) + "... [Truncated]"
+				}
+				matched.Index = matchedIndex
+				log.Printf("[ChatController] HandleExplainQuery: Successfully matched source %q at index %d", matched.Title, matchedIndex)
+				return []Document{*matched}, true
+			}
 		}
 	}
 
@@ -334,12 +372,11 @@ func (c *Controller) HandleExplainQuery(ctx context.Context, query string, noteb
 	}
 
 	if matched != nil {
-		// Override docs with the matched doc, keeping content full (up to 3500 words / 12000 runes)
 		contentRunes := []rune(matched.Content)
 		if len(contentRunes) > 12000 {
 			matched.Content = string(contentRunes[:12000]) + "... [Truncated]"
 		}
-		log.Printf("[ChatController] HandleExplainQuery: Successfully matched source %q", matched.Title)
+		log.Printf("[ChatController] HandleExplainQuery: Successfully matched source %q via fallback", matched.Title)
 		return []Document{*matched}, true
 	}
 
