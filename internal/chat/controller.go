@@ -2,9 +2,7 @@ package chat
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +10,6 @@ import (
 	"sourcebook/internal/database"
 	"sourcebook/internal/llm"
 	"sourcebook/internal/models"
-	"sourcebook/internal/utils"
 	"sourcebook/internal/vector"
 
 	"github.com/google/uuid"
@@ -31,15 +28,9 @@ type Controller struct {
 }
 
 func NewController(
-	retriever *Retriever,
-	reranker *Reranker,
-	historyMgr *HistoryManager,
-	memoryRetriever *MemoryRetriever,
-	planner *QueryPlanner,
-	agentLoop *AgentLoop,
-	llmClient *llm.Client,
-	repo *database.Repository,
-	vectorClient *vector.Client,
+	retriever *Retriever, reranker *Reranker, historyMgr *HistoryManager,
+	memoryRetriever *MemoryRetriever, planner *QueryPlanner, agentLoop *AgentLoop,
+	llmClient *llm.Client, repo *database.Repository, vectorClient *vector.Client,
 ) *Controller {
 	return &Controller{
 		retriever:       retriever,
@@ -102,7 +93,7 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 				if req.NotebookID != "" {
 					docs, _ = c.retriever.RetrieveHybrid(ctx, req.NotebookID, q, maxSources, req.ScopedSourceIDs)
 				}
-			default: // "web"
+			default:
 				docs, _ = c.retriever.RetrieveWeb(ctx, q, maxSources)
 			}
 			mu.Lock()
@@ -112,10 +103,7 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 	}
 	wg.Wait()
 
-	// Deduplicate before reranking
 	deduped := Deduplicate(allDocs)
-
-	// Rerank using vector + keyword scores
 	reranked, err := c.reranker.Rerank(ctx, req.Query, deduped, maxSources)
 	if err != nil {
 		log.Printf("[ChatController] Reranking failed: %v. Using un-reranked docs.", err)
@@ -128,312 +116,7 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 	return reranked, contextMeta, nil
 }
 
-// Generate synthesizes a full non-streaming grounded response
-func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
-	startTime := time.Now()
-
-	docs, contextMeta, err := c.RetrieveAndRerank(ctx, req, nil)
-	if err != nil {
-		return nil, fmt.Errorf("retrieval failed: %w", err)
-	}
-
-	docs, isExplain := c.HandleExplainQuery(ctx, req.Query, req.NotebookID, docs)
-
-	// Run ReAct Agent Loop
-	if c.agentLoop != nil && !isExplain {
-		augmentedDocs, err := c.agentLoop.Run(ctx, req.Query, req.NotebookID, docs, nil)
-		if err == nil && len(augmentedDocs) > 0 {
-			docs = augmentedDocs
-			// Persist newly discovered web/arxiv documents to the notebook
-			c.PersistNewSources(ctx, req.NotebookID, docs)
-		}
-	}
-
-	if len(docs) == 0 {
-		return &ChatResponse{
-			Query:      req.Query,
-			Answer:     "No relevant search context could be retrieved to formulate an answer.",
-			Sources:    []SourceCitationDetail{},
-			DurationMs: time.Since(startTime).Milliseconds(),
-			Context:    contextMeta,
-		}, nil
-	}
-
-	// Retrieve semantic conversation memory
-	var semanticHistory []llm.Message
-	if c.memoryRetriever != nil && req.NotebookID != "" {
-		semHist, err := c.memoryRetriever.RetrieveRelevantHistory(ctx, req.NotebookID, req.Query, 3)
-		if err == nil && len(semHist) > 0 {
-			semanticHistory = semHist
-		}
-	}
-
-	// Batch and summarize sources one by one to stay under 4096 context and low RAM
-	if !isExplain {
-		docs = c.BatchAndSummarize(ctx, req.Query, docs, nil)
-	}
-
-	// Prepare history and LLM client prompt
-	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History, semanticHistory)
-	answer, err := c.llmClient.Generate(ctx, messages)
-	if err != nil {
-		return nil, fmt.Errorf("synthesis failed: %w", err)
-	}
-
-	// Save turn vector memory in background
-	if c.memoryRetriever != nil && req.NotebookID != "" {
-		c.memoryRetriever.SaveTurn(req.NotebookID, "", "user", req.Query)
-		c.memoryRetriever.SaveTurn(req.NotebookID, "", "assistant", answer)
-	}
-
-	citations := make([]SourceCitationDetail, len(docs))
-	for i, doc := range docs {
-		idx := i + 1
-		if doc.Index > 0 {
-			idx = doc.Index
-		}
-		citations[i] = SourceCitationDetail{
-			Index:      idx,
-			Title:      doc.Title,
-			URL:        doc.URL,
-			SourceType: doc.SourceType,
-		}
-	}
-
-	return &ChatResponse{
-		Query:      req.Query,
-		Answer:     answer,
-		Sources:    citations,
-		DurationMs: time.Since(startTime).Milliseconds(),
-		Context:    contextMeta,
-	}, nil
-}
-
-// GenerateStream synthesizes a streaming grounded response calling onToken for each chunk
-func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToken func(string) error, onStatus func(string)) ([]SourceCitationDetail, []models.SourceRecord, string, error) {
-	docs, contextMeta, err := c.RetrieveAndRerank(ctx, req, onStatus)
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("retrieval failed: %w", err)
-	}
-
-	docs, isExplain := c.HandleExplainQuery(ctx, req.Query, req.NotebookID, docs)
-
-	var newSources []models.SourceRecord
-	// Run ReAct Agent Loop
-	if c.agentLoop != nil && !isExplain {
-		augmentedDocs, err := c.agentLoop.Run(ctx, req.Query, req.NotebookID, docs, onStatus)
-		if err == nil && len(augmentedDocs) > 0 {
-			docs = augmentedDocs
-			// Persist newly discovered web/arxiv documents to the notebook
-			newSources = c.PersistNewSources(ctx, req.NotebookID, docs)
-		}
-	}
-
-	citations := make([]SourceCitationDetail, len(docs))
-	for i, doc := range docs {
-		idx := i + 1
-		if doc.Index > 0 {
-			idx = doc.Index
-		}
-		citations[i] = SourceCitationDetail{
-			Index:      idx,
-			Title:      doc.Title,
-			URL:        doc.URL,
-			SourceType: doc.SourceType,
-		}
-	}
-
-	if len(docs) == 0 {
-		_ = onToken("No relevant search context could be retrieved to formulate an answer.")
-		return citations, nil, contextMeta, nil
-	}
-
-	if onStatus != nil {
-		onStatus("Synthesizing final grounded response...")
-	}
-
-	// Retrieve semantic conversation memory
-	var semanticHistory []llm.Message
-	if c.memoryRetriever != nil && req.NotebookID != "" {
-		semHist, err := c.memoryRetriever.RetrieveRelevantHistory(ctx, req.NotebookID, req.Query, 3)
-		if err == nil && len(semHist) > 0 {
-			semanticHistory = semHist
-		}
-	}
-
-	// Batch and summarize sources one by one to stay under 4096 context and low RAM
-	if !isExplain {
-		docs = c.BatchAndSummarize(ctx, req.Query, docs, onStatus)
-	}
-
-	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, req.History, semanticHistory)
-
-	var fullAnswer strings.Builder
-	onTokenWrapper := func(token string) error {
-		fullAnswer.WriteString(token)
-		return onToken(token)
-	}
-
-	err = c.llmClient.GenerateStream(ctx, messages, onTokenWrapper)
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("synthesis stream failed: %w", err)
-	}
-
-	// Save turn vector memory in background
-	if c.memoryRetriever != nil && req.NotebookID != "" {
-		c.memoryRetriever.SaveTurn(req.NotebookID, "", "user", req.Query)
-		c.memoryRetriever.SaveTurn(req.NotebookID, "", "assistant", fullAnswer.String())
-	}
-
-	return citations, newSources, contextMeta, nil
-}
-
-// HandleExplainQuery detects if the query is an "Explain Source" query, finds the matched source, and returns it.
-// If it's not an explain query, or the matched source isn't found, it returns the original docs.
-func (c *Controller) HandleExplainQuery(ctx context.Context, query string, notebookID string, docs []Document) ([]Document, bool) {
-	isExplainQuery := strings.Contains(strings.ToLower(query), "explain this source in detail:")
-	if !isExplainQuery {
-		return docs, false
-	}
-
-	// Try to extract target title or index
-	startQuote := strings.Index(query, "\"")
-	endQuote := strings.LastIndex(query, "\"")
-	var targetTitle string
-	if startQuote != -1 && endQuote > startQuote {
-		targetTitle = query[startQuote+1 : endQuote]
-	}
-
-	var targetIndex int = -1
-	startBracket := strings.LastIndex(query, "[")
-	endBracket := strings.LastIndex(query, "]")
-	if startBracket != -1 && endBracket > startBracket {
-		idxStr := query[startBracket+1 : endBracket]
-		if idx, err := strconv.Atoi(idxStr); err == nil {
-			targetIndex = idx
-		}
-	}
-
-	var matched *Document
-	var matchedIndex int = -1
-
-	// Retrieve raw notebook sources directly from database to get full content instead of chunk snippets
-	if notebookID != "" && c.repo != nil {
-		allSources, err := c.repo.GetSourcesByNotebook(notebookID)
-		if err == nil && len(allSources) > 0 {
-			// 1. Try matching by index first
-			if targetIndex != -1 && targetIndex-1 < len(allSources) && targetIndex-1 >= 0 {
-				src := allSources[targetIndex-1]
-				matched = &Document{
-					Title:      src.Title,
-					URL:        src.URL,
-					Content:    src.Content,
-					SourceType: src.Type,
-				}
-				matchedIndex = targetIndex
-			}
-
-			// 2. Try matching by title if index match didn't succeed
-			if matched == nil && targetTitle != "" {
-				for i, src := range allSources {
-					if strings.Contains(strings.ToLower(src.Title), strings.ToLower(targetTitle)) || strings.Contains(strings.ToLower(targetTitle), strings.ToLower(src.Title)) {
-						matched = &Document{
-							Title:      src.Title,
-							URL:        src.URL,
-							Content:    src.Content,
-							SourceType: src.Type,
-						}
-						matchedIndex = i + 1
-						break
-					}
-				}
-			}
-
-			if matched != nil && matchedIndex != -1 {
-				contentRunes := []rune(matched.Content)
-				if len(contentRunes) > 12000 {
-					matched.Content = string(contentRunes[:12000]) + "... [Truncated]"
-				}
-				matched.Index = matchedIndex
-				log.Printf("[ChatController] HandleExplainQuery: Successfully matched source %q at index %d", matched.Title, matchedIndex)
-				return []Document{*matched}, true
-			}
-		}
-	}
-
-	// Fallback to searching inside retrieved docs
-	if matched == nil {
-		for _, doc := range docs {
-			if targetTitle != "" && (strings.Contains(strings.ToLower(doc.Title), strings.ToLower(targetTitle)) || strings.Contains(strings.ToLower(targetTitle), strings.ToLower(doc.Title))) {
-				matched = &doc
-				break
-			}
-		}
-	}
-
-	if matched != nil {
-		contentRunes := []rune(matched.Content)
-		if len(contentRunes) > 12000 {
-			matched.Content = string(contentRunes[:12000]) + "... [Truncated]"
-		}
-		log.Printf("[ChatController] HandleExplainQuery: Successfully matched source %q via fallback", matched.Title)
-		return []Document{*matched}, true
-	}
-
-	return docs, false
-}
-
-// BatchAndSummarize processes documents one by one to extract query-relevant information, staying under 4096 context.
-func (c *Controller) BatchAndSummarize(ctx context.Context, query string, docs []Document, onStatus func(string)) []Document {
-	var summarizedDocs []Document
-
-	for i, doc := range docs {
-		// Clean the text
-		cleaned := utils.CleanText(doc.Content)
-		if len(cleaned) < 500 {
-			doc.Content = cleaned
-			summarizedDocs = append(summarizedDocs, doc)
-			continue
-		}
-
-		if onStatus != nil {
-			onStatus(fmt.Sprintf("Digesting source %d/%d: %s...", i+1, len(docs), doc.Title))
-		}
-
-		// Call LLM one by one to get a concise summary/extraction
-		prompt := fmt.Sprintf(`You are a precise facts extractor. Read the following source document and extract key factual points relevant to the query: %q.
-Keep the extraction extremely concise, returning only the direct facts as a bulleted list. Keep it under 200 words total. Do not add any conversational text.
-
-Document Title: %s
-Content:
-%s`, query, doc.Title, cleaned)
-
-		messages := []llm.Message{
-			{Role: "user", Content: prompt},
-		}
-
-		log.Printf("[BatchAndSummarize] Digesting source: %q (length: %d)...", doc.Title, len(cleaned))
-		summary, err := c.llmClient.Generate(ctx, messages)
-		if err != nil {
-			log.Printf("[BatchAndSummarize] Warning: failed to digest %q: %v", doc.Title, err)
-			runes := []rune(cleaned)
-			if len(runes) > 1000 {
-				doc.Content = string(runes[:1000]) + "... [Truncated]"
-			} else {
-				doc.Content = cleaned
-			}
-			summarizedDocs = append(summarizedDocs, doc)
-			continue
-		}
-
-		doc.Content = summary
-		summarizedDocs = append(summarizedDocs, doc)
-	}
-
-	return summarizedDocs
-}
-
-// PersistNewSources checks for newly discovered web/arxiv documents and adds them as permanent sources to the notebook database.
+// PersistNewSources checks for newly discovered web/arxiv documents and adds them to the notebook database.
 func (c *Controller) PersistNewSources(ctx context.Context, notebookID string, docs []Document) []models.SourceRecord {
 	if notebookID == "" || c.repo == nil || c.vectorClient == nil {
 		return nil
@@ -441,7 +124,6 @@ func (c *Controller) PersistNewSources(ctx context.Context, notebookID string, d
 
 	existingSources, err := c.repo.GetSourcesByNotebook(notebookID)
 	if err != nil {
-		log.Printf("[PersistNewSources] Failed to fetch existing sources: %v", err)
 		return nil
 	}
 
@@ -453,7 +135,6 @@ func (c *Controller) PersistNewSources(ctx context.Context, notebookID string, d
 
 	var newSources []models.SourceRecord
 	for _, d := range docs {
-		// Only save non-notebook sources (web, arxiv)
 		if d.SourceType == "Notebook" {
 			continue
 		}
@@ -474,26 +155,21 @@ func (c *Controller) PersistNewSources(ctx context.Context, notebookID string, d
 		}
 
 		if err := c.repo.AddSource(&src); err != nil {
-			log.Printf("[PersistNewSources] Failed to save source %s: %v", src.Title, err)
 			continue
 		}
 		newSources = append(newSources, src)
 		existingURLs[urlKey] = true
-		log.Printf("[PersistNewSources] Successfully saved newly fetched source: %s (%s)", src.Title, src.URL)
 	}
 
 	if len(newSources) > 0 {
-		// Asynchronously chunk and embed the new sources
 		go func(sources []models.SourceRecord) {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 			defer cancel()
 
 			var allChunks []models.DocumentChunk
 			for _, src := range sources {
-				log.Printf("[PersistNewSources] Async embedding new source: %s", src.Title)
 				pythonChunks, err := c.vectorClient.GenerateEmbeddings(bgCtx, src.Content)
 				if err != nil {
-					log.Printf("[PersistNewSources] Failed to generate embeddings for %s: %v", src.ID, err)
 					continue
 				}
 
@@ -510,11 +186,7 @@ func (c *Controller) PersistNewSources(ctx context.Context, notebookID string, d
 			}
 
 			if len(allChunks) > 0 {
-				if err := c.repo.SaveChunks(notebookID, allChunks); err != nil {
-					log.Printf("[PersistNewSources] Failed to save chunks for persistent sources: %v", err)
-				} else {
-					log.Printf("[PersistNewSources] Successfully embedded and saved %d chunks", len(allChunks))
-				}
+				_ = c.repo.SaveChunks(notebookID, allChunks)
 			}
 		}(newSources)
 	}

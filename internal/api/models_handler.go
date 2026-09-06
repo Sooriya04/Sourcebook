@@ -2,8 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -23,34 +25,28 @@ type modelsRequest struct {
 
 func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		// Default fallback models list
-		modelsList := []modelInfo{
-			{Name: "gemma2", DisplayName: "Gemma 2 (Default)"},
-			{Name: "llama3", DisplayName: "Llama 3"},
-			{Name: "mistral", DisplayName: "Mistral"},
-			{Name: "phi3", DisplayName: "Phi 3"},
+		llmURL := "http://localhost:11434"
+		if envURL := os.Getenv("LLM_URL"); envURL != "" {
+			llmURL = envURL
 		}
 
-		// Try fetching from Ollama if provider is ollama
-		if a.llmClient != nil {
-			client := &http.Client{Timeout: 3 * time.Second}
-			resp, err := client.Get("http://localhost:11434/api/tags")
-			if err == nil && resp.StatusCode == http.StatusOK {
-				defer resp.Body.Close()
-				var ollamaResp struct {
-					Models []struct {
-						Name string `json:"name"`
-					} `json:"models"`
-				}
-				if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err == nil && len(ollamaResp.Models) > 0 {
-					var fetchedModels []modelInfo
-					for _, m := range ollamaResp.Models {
-						fetchedModels = append(fetchedModels, modelInfo{
-							Name:        m.Name,
-							DisplayName: m.Name,
-						})
-					}
-					modelsList = fetchedModels
+		var modelsList []modelInfo
+
+		client := &http.Client{Timeout: 3 * time.Second}
+		resp, err := client.Get(fmt.Sprintf("%s/api/tags", llmURL))
+		if err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			var ollamaResp struct {
+				Models []struct {
+					Name string `json:"name"`
+				} `json:"models"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err == nil && len(ollamaResp.Models) > 0 {
+				for _, m := range ollamaResp.Models {
+					modelsList = append(modelsList, modelInfo{
+						Name:        m.Name,
+						DisplayName: m.Name,
+					})
 				}
 			}
 		}
@@ -58,6 +54,13 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 		activeModel := ""
 		if a.llmClient != nil {
 			activeModel = a.llmClient.GetModel()
+		}
+
+		if activeModel == "" && len(modelsList) > 0 {
+			activeModel = modelsList[0].Name
+			if a.llmClient != nil {
+				a.llmClient.SetModel(activeModel)
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")

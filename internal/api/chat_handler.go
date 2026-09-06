@@ -34,10 +34,15 @@ func (a *API) HandleChat(w http.ResponseWriter, r *http.Request) {
 		errStr := err.Error()
 		errMsg := "An unexpected error occurred during synthesis."
 
+		activeModel := "the configured LLM"
+		if a.llmClient != nil && a.llmClient.GetModel() != "" {
+			activeModel = a.llmClient.GetModel()
+		}
+
 		if strings.Contains(strings.ToLower(errStr), "connection refused") || strings.Contains(strings.ToLower(errStr), "reach ollama") {
 			errMsg = "SourceBook cannot connect to the LLM right now."
-		} else if strings.Contains(strings.ToLower(errStr), "model") || strings.Contains(strings.ToLower(errStr), "phi4-mini") {
-			errMsg = "phi4-mini is not available on the configured Ollama server."
+		} else if strings.Contains(strings.ToLower(errStr), "model") || strings.Contains(strings.ToLower(errStr), "not found") {
+			errMsg = activeModel + " is not available on the configured Ollama server."
 		}
 
 		http.Error(w, errMsg, http.StatusInternalServerError)

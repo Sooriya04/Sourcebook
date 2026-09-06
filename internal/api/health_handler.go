@@ -24,9 +24,12 @@ func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 		llmURL = "http://localhost:11434"
 	}
 
-	model := os.Getenv("LLM_MODEL")
+	model := ""
+	if a.llmClient != nil {
+		model = a.llmClient.GetModel()
+	}
 	if model == "" {
-		model = "phi4-mini"
+		model = os.Getenv("LLM_MODEL")
 	}
 
 	embeddings := os.Getenv("EMBEDDING_MODEL")
@@ -34,14 +37,37 @@ func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 		embeddings = "nomic-embed-text"
 	}
 
-	// Ping Ollama tags endpoint to check if online
+	// Ping Ollama tags endpoint to check status and installed models
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(fmt.Sprintf("%s/api/tags", llmURL))
 
 	status := "offline"
 	if err == nil && resp.StatusCode == http.StatusOK {
 		status = "online"
-		resp.Body.Close()
+		defer resp.Body.Close()
+
+		var ollamaResp struct {
+			Models []struct {
+				Name string `json:"name"`
+			} `json:"models"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err == nil && len(ollamaResp.Models) > 0 {
+			found := false
+			for _, m := range ollamaResp.Models {
+				if m.Name == model {
+					found = true
+					break
+				}
+			}
+			// Auto-fallback to the first installed Ollama model if configured model is missing
+			if !found {
+				model = ollamaResp.Models[0].Name
+				if a.llmClient != nil {
+					a.llmClient.SetModel(model)
+				}
+			}
+		}
 	}
 
 	json.NewEncoder(w).Encode(llmHealthResponse{

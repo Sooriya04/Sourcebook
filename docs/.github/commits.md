@@ -338,3 +338,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Raw URL LLM Context Removal (`history.go`)**: Omitted raw URL strings (`URL: ...`) from the LLM prompt context in `history.go` while keeping them in the JSON API payload. This physically prevents local/grounded models from appending raw link text or bibliographies to responses while preserving fully functional, clickable citation pills in the React interface.
 - **Inspector Layout Centering (`Sidebar.jsx`)**: Corrected vertical layout alignment issues in the Sidebar header by removing hardcoded margin/padding overrides to rely on standard CSS centering rules.
 
+## Commit 43: Hybrid Search BM25 Re-Ranker, Persistent Multi-Turn Chat Memory, and Dynamic Ollama Model Resolution
+- **Okapi BM25 Keyword Scoring (`bm25.go`, `bm25_test.go`)**: Implemented the Okapi BM25 algorithm ($k_1=1.5, b=0.75$) featuring lowercase alphanumeric tokenization, term frequency (TF), smoothed inverse document frequency (IDF), and document length normalization ($\text{avgdl}$).
+- **Hybrid Reranking Engine (`rerank.go`)**: Combined dense vector cosine similarity scores with normalized BM25 keyword scores using a $65\% \text{ Vector} + 35\% \text{ BM25}$ weighted hybrid formula, with graceful fallback to BM25-only ranking.
+- **Backend-Owned Persistent Chat History (`synthesis.go`, `controller.go`)**: Established SQLite (`chat_messages` table) as the primary source of truth for notebook conversations, automatically saving user queries and assistant responses while asynchronously generating vector turn embeddings (`SaveTurn`).
+- **3-Layer Context Assembly & Limits (`history.go`)**: Built a 3-layer context builder combining System Instructions, Grounded Sources, Top-K Semantic Memories, and Recent Conversation Windows (up to 8 messages), enforcing turn deduplication and character limit safeguards to prevent prompt bloat.
+- **Dynamic Ollama Model Resolution & Health Auto-Fallback (`models_handler.go`, `health_handler.go`, `chat_handler.go`, `chat_stream_handler.go`)**: Replaced hardcoded model fallbacks (`gemma2`, `phi4-mini`) with dynamic querying of local Ollama tags (`/api/tags` via `LLM_URL`). Configured health handlers to auto-detect installed Ollama models (e.g. `phi4-mini:latest`) and dynamically update the active LLM client.
+
+

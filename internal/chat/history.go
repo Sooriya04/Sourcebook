@@ -13,9 +13,9 @@ func NewHistoryManager() *HistoryManager {
 	return &HistoryManager{}
 }
 
-// BuildConversationHistory assembles system prompt, source context, semantically retrieved memory, recency anchor, and query
+// BuildConversationHistory assembles 3-layer context: system instruction, grounded sources, top-k semantic memories, recent conversation window, and current query.
 func (h *HistoryManager) BuildConversationHistory(query string, docs []Document, history []llm.Message, semanticHistory []llm.Message) []llm.Message {
-	// 1. Build System Instruction
+	// 1. System Instruction
 	systemPrompt := `You are SourceBook — a local-first AI research assistant that synthesizes knowledge from retrieved web sources and personal notebooks. You function like a sharper, faster Perplexity: grounded in sources, direct in answers, and structured for scanning.
 
 ## Identity & Behaviour
@@ -52,27 +52,26 @@ func (h *HistoryManager) BuildConversationHistory(query string, docs []Document,
 			idx, doc.Title, doc.SourceType, cleaned))
 	}
 
-	// 3. Assemble base system messages
 	var messages []llm.Message
 	messages = append(messages, llm.Message{Role: "system", Content: systemPrompt})
 	messages = append(messages, llm.Message{Role: "system", Content: contextBuilder.String()})
 
-	// Track content strings already added to avoid duplication between semantic memory & recency anchor
+	// Track deduplication keys across memory layers
 	seen := make(map[string]bool)
 
-	// 4. Inject Semantically Retrieved Past Memory (if available)
+	// 3. Inject Semantically Retrieved Past Memory (Top-K)
 	for _, msg := range semanticHistory {
 		if msg.Role == "user" || msg.Role == "assistant" {
 			key := msg.Role + ":" + strings.TrimSpace(msg.Content)
 			if !seen[key] {
 				seen[key] = true
-				messages = append(messages, msg)
+				messages = append(messages, truncateMessage(msg, 1000))
 			}
 		}
 	}
 
-	// 5. Inject Recency Anchor (last 2 raw messages from active conversation)
-	recentWindow := 2
+	// 4. Inject Recent Conversation Window (up to last 8 messages / 4 Q&A turns)
+	recentWindow := 8
 	if len(history) > 0 {
 		startIndex := 0
 		if len(history) > recentWindow {
@@ -84,17 +83,25 @@ func (h *HistoryManager) BuildConversationHistory(query string, docs []Document,
 				key := msg.Role + ":" + strings.TrimSpace(msg.Content)
 				if !seen[key] {
 					seen[key] = true
-					messages = append(messages, msg)
+					messages = append(messages, truncateMessage(msg, 1500))
 				}
 			}
 		}
 	}
 
-	// 6. Append current user query
+	// 5. Append current user query
 	messages = append(messages, llm.Message{
 		Role:    "user",
 		Content: query,
 	})
 
 	return messages
+}
+
+func truncateMessage(msg llm.Message, maxChars int) llm.Message {
+	if len(msg.Content) <= maxChars {
+		return msg
+	}
+	msg.Content = msg.Content[:maxChars] + "..."
+	return msg
 }
