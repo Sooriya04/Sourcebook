@@ -21,12 +21,14 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 
 	docs, isExplain := c.HandleExplainQuery(ctx, req.Query, req.NotebookID, docs)
 
+	var tracer *ExecutionGraphTracer
 	if c.agentLoop != nil && !isExplain {
-		augmentedDocs, err := c.agentLoop.Run(ctx, req.Query, req.NotebookID, docs, nil)
+		augmentedDocs, agentTracer, err := c.agentLoop.Run(ctx, req.Query, req.NotebookID, docs, nil)
 		if err == nil && len(augmentedDocs) > 0 {
 			docs = augmentedDocs
 			c.PersistNewSources(ctx, req.NotebookID, docs)
 		}
+		tracer = agentTracer
 	}
 
 	if len(docs) == 0 {
@@ -87,12 +89,18 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		citations[i] = SourceCitationDetail{Index: idx, Title: doc.Title, URL: doc.URL, SourceType: doc.SourceType}
 	}
 
+	var traceSteps []TraceStep
+	if tracer != nil {
+		traceSteps = tracer.Traces
+	}
+
 	return &ChatResponse{
 		Query:      req.Query,
 		Answer:     answer,
 		Sources:    citations,
 		DurationMs: time.Since(startTime).Milliseconds(),
 		Context:    contextMeta,
+		GraphTrace: traceSteps,
 	}, nil
 }
 
@@ -107,7 +115,7 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 
 	var newSources []models.SourceRecord
 	if c.agentLoop != nil && !isExplain {
-		augmentedDocs, err := c.agentLoop.Run(ctx, req.Query, req.NotebookID, docs, onStatus)
+		augmentedDocs, _, err := c.agentLoop.Run(ctx, req.Query, req.NotebookID, docs, onStatus)
 		if err == nil && len(augmentedDocs) > 0 {
 			docs = augmentedDocs
 			newSources = c.PersistNewSources(ctx, req.NotebookID, docs)

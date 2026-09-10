@@ -66,8 +66,8 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 	reranker := chat.NewReranker(api.vectorClient)
 	history := chat.NewHistoryManager()
 	memoryRetriever := chat.NewMemoryRetriever(repo, api.vectorClient)
-	agentLoop := chat.NewAgentLoop(api.vectorClient, retriever, llmClient)
 	planner := chat.NewQueryPlanner(llmClient)
+	agentLoop := chat.NewAgentLoop(api.vectorClient, retriever, llmClient, planner)
 
 	api.chatController = chat.NewController(retriever, reranker, history, memoryRetriever, planner, agentLoop, llmClient, repo, api.vectorClient)
 

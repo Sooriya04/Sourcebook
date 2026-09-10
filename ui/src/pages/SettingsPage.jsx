@@ -1,10 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Search, Server, Cpu, Database, Settings, PlayCircle, Globe } from 'lucide-react';
-import { fetchSettings, updateSettings, fetchModels, switchModel } from '../services/sourcebookApi';
+import { 
+  Save, 
+  Search, 
+  Cpu, 
+  Settings, 
+  PlayCircle, 
+  Globe, 
+  Key, 
+  CheckCircle2, 
+  XCircle, 
+  ArrowLeft,
+  Sliders,
+  ShieldCheck,
+  Zap
+} from 'lucide-react';
+import { 
+  fetchSettings, 
+  updateSettings, 
+  fetchModels, 
+  testModelConfig, 
+  updateModelConfig 
+} from '../services/sourcebookApi';
 import { useNavigate } from 'react-router-dom';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('llm'); // 'llm' | 'search' | 'integrations'
+  
   const [settings, setSettings] = useState({
     search_provider: 'duckduckgo',
     max_sources: 5,
@@ -12,13 +34,22 @@ export default function SettingsPage() {
     ddg_split: 2,
     youtube_enabled: false,
     youtube_max_sources: 3,
+    deep_crawl_enabled: false,
+    deep_crawl_limit: 5,
+    deep_crawl_depth: 1,
   });
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   
-  const [models, setModels] = useState([]);
-  const [activeModel, setActiveModel] = useState('');
+  // LLM Config State
+  const [provider, setProvider] = useState('openai');
+  const [baseUrl, setBaseUrl] = useState('http://localhost:20128/v1');
+  const [activeModel, setActiveModel] = useState('ag/gemini-3.6-flash-low');
+  const [apiKey, setApiKey] = useState('');
+  const [testingKey, setTestingKey] = useState(false);
+  const [testStatus, setTestStatus] = useState(null);
 
   useEffect(() => {
     loadSettings();
@@ -30,10 +61,11 @@ export default function SettingsPage() {
       setSettings(data);
       
       const modelsData = await fetchModels();
-      setModels(modelsData.models || []);
-      setActiveModel(modelsData.active || '');
+      if (modelsData.active) setActiveModel(modelsData.active);
+      if (modelsData.provider) setProvider(modelsData.provider);
+      if (modelsData.base_url) setBaseUrl(modelsData.base_url);
     } catch (err) {
-      console.error("Failed to load settings or models:", err);
+      console.error("Failed to load settings:", err);
     } finally {
       setLoading(false);
     }
@@ -43,14 +75,25 @@ export default function SettingsPage() {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleTestConnection = async () => {
+    setTestingKey(true);
+    setTestStatus(null);
+    try {
+      const result = await testModelConfig({ provider, baseUrl, model: activeModel, apiKey });
+      setTestStatus({ valid: true, message: result.message || 'Connected successfully!' });
+    } catch (err) {
+      setTestStatus({ valid: false, error: err.message });
+    } finally {
+      setTestingKey(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaveMessage('');
     try {
       await updateSettings(settings);
-      if (activeModel) {
-        await switchModel(activeModel);
-      }
+      await updateModelConfig({ provider, baseUrl, model: activeModel, apiKey });
       setSaveMessage('Settings saved successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
@@ -62,250 +105,276 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="not-found-container">
-        <h2>Loading Settings...</h2>
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--canvas)', color: 'var(--text-main)' }}>
+        <p style={{ fontSize: '0.95rem', letterSpacing: '0.05em' }}>LOADING SETTINGS...</p>
       </div>
     );
   }
 
   return (
-    <div className="settings-page" style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', color: 'var(--text-main)', width: '100%', height: '100%', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
-        <Settings size={28} color="var(--accent-primary)" />
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 600 }}>SourceBook Settings</h1>
-      </div>
+    <div style={{ display: 'flex', width: '100%', flex: 1, height: '100%', background: 'var(--canvas)', color: 'var(--text-main)', fontFamily: 'Sora, sans-serif' }}>
+      
+      {/* Sidebar Navigation - Clean Minimalist NotebookLM Style */}
+      <aside style={{ width: '240px', borderRight: '1px solid var(--border-color)', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--panel)' }}>
+        <button 
+          onClick={() => navigate('/')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '16px', borderRadius: '6px' }}
+        >
+          <ArrowLeft size={16} /> Back to Notebooks
+        </button>
 
-      <div className="settings-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Search size={20} color="var(--accent-primary)" />
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Web Search Configuration</h2>
+        <h2 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', paddingLeft: '12px', marginBottom: '8px' }}>Settings</h2>
+
+        <button 
+          onClick={() => setActiveTab('llm')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontWeight: 500,
+            background: activeTab === 'llm' ? 'var(--bg-hover)' : 'transparent',
+            color: activeTab === 'llm' ? 'var(--text-main)' : 'var(--text-dim)'
+          }}
+        >
+          <Cpu size={18} color={activeTab === 'llm' ? 'var(--accent-primary)' : 'currentColor'} />
+          AI & Model Provider
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('search')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontWeight: 500,
+            background: activeTab === 'search' ? 'var(--bg-hover)' : 'transparent',
+            color: activeTab === 'search' ? 'var(--text-main)' : 'var(--text-dim)'
+          }}
+        >
+          <Search size={18} color={activeTab === 'search' ? 'var(--accent-primary)' : 'currentColor'} />
+          Web Search Engine
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('integrations')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontWeight: 500,
+            background: activeTab === 'integrations' ? 'var(--bg-hover)' : 'transparent',
+            color: activeTab === 'integrations' ? 'var(--text-main)' : 'var(--text-dim)'
+          }}
+        >
+          <Globe size={18} color={activeTab === 'integrations' ? 'var(--accent-primary)' : 'currentColor'} />
+          Crawling & YouTube
+        </button>
+      </aside>
+
+      {/* Main Content Area */}
+      <main style={{ flex: 1, padding: '36px 48px', overflowY: 'auto', width: '100%' }}>
+        
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 style={{ fontSize: '1.35rem', fontWeight: 600, letterSpacing: '-0.02em' }}>
+              {activeTab === 'llm' && 'AI Model & Key Configuration'}
+              {activeTab === 'search' && 'Search Discovery Engine'}
+              {activeTab === 'integrations' && 'Crawling & Media Integration'}
+            </h1>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginTop: '2px' }}>
+              {activeTab === 'llm' && 'Configure provider protocols, base URLs, target model names, and API keys.'}
+              {activeTab === 'search' && 'Set up SearXNG and DuckDuckGo engines, maximum page limits, and parallel splits.'}
+              {activeTab === 'integrations' && 'Configure Searqon domain web crawling and automated YouTube transcript fetching.'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {saveMessage && (
+              <div style={{ 
+                fontSize: '0.8rem', padding: '4px 10px', borderRadius: '6px', 
+                background: saveMessage.includes('Error') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                border: saveMessage.includes('Error') ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)',
+                color: saveMessage.includes('Error') ? '#ef4444' : '#10b981', fontWeight: 500 
+              }}>
+                {saveMessage}
+              </div>
+            )}
+            <button 
+              onClick={handleSave}
+              disabled={saving}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--accent-primary)', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.82rem', whitespace: 'nowrap' }}
+            >
+              <Save size={14} />
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
         </div>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-          Configure which search engine SourceBook uses to discover URLs during agentic synthesis.
-        </p>
 
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Search Provider</label>
-          <select 
-            value={settings.search_provider} 
-            onChange={(e) => handleChange('search_provider', e.target.value)}
-            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-          >
-            <option value="duckduckgo">DuckDuckGo (Fast, No CAPTCHAs)</option>
-            <option value="searxng">SearXNG (Private, Comprehensive)</option>
-            <option value="both">Both (Parallel Search)</option>
-          </select>
-        </div>
-
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Total Max Sources</label>
-          <input 
-            type="number" 
-            value={settings.max_sources} 
-            onChange={(e) => handleChange('max_sources', parseInt(e.target.value) || 5)}
-            min="1" max="20"
-            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-          />
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Maximum number of web pages scraped per query.</p>
-        </div>
-
-        {settings.search_provider === 'both' && (
-          <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-            <h3 style={{ fontSize: '1rem', marginBottom: '12px' }}>Parallel Routing Split</h3>
+        {/* Tab 1: AI Model Configuration */}
+        {activeTab === 'llm' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
             
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
-                <span>SearXNG Sources</span>
-                <span>{settings.searxng_split}</span>
-              </label>
-              <input 
-                type="range" 
-                value={settings.searxng_split} 
-                onChange={(e) => handleChange('searxng_split', parseInt(e.target.value))}
-                min="0" max="10"
-                style={{ width: '100%' }}
-              />
+            <div style={{ background: 'var(--bg-card)', padding: '20px 24px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Zap size={16} color="var(--accent-primary)" /> Provider Protocol
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '18px' }}>
+                {[
+                  { id: 'openai', label: 'OpenAI Compatible', desc: 'Custom local/cloud endpoints' },
+                  { id: 'ollama', label: 'Ollama Native', desc: 'Local http://localhost:11434' },
+                  { id: 'groq', label: 'Groq Cloud', desc: 'Fast LPUs (api.groq.com)' },
+                  { id: 'nvidia', label: 'NVIDIA NIM', desc: 'Cloud NIM endpoints' }
+                ].map(p => (
+                  <div 
+                    key={p.id}
+                    onClick={() => {
+                      setProvider(p.id);
+                      if (p.id === 'ollama') setBaseUrl('http://localhost:11434');
+                      else if (p.id === 'openai') setBaseUrl('http://localhost:20128/v1');
+                      else if (p.id === 'groq') setBaseUrl('https://api.groq.com/openai/v1');
+                      else if (p.id === 'nvidia') setBaseUrl('https://integrate.api.nvidia.com/v1');
+                    }}
+                    style={{
+                      padding: '10px 14px', borderRadius: '6px', border: provider === p.id ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                      background: provider === p.id ? 'var(--bg-hover)' : 'transparent', cursor: 'pointer', transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '2px' }}>{p.label}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{p.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '4px', color: 'var(--text-dim)' }}>Base Endpoint URL</label>
+                  <input 
+                    type="text" 
+                    value={baseUrl} 
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="http://localhost:20128/v1"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '4px', color: 'var(--text-dim)' }}>Target Model Name</label>
+                  <input 
+                    type="text" 
+                    value={activeModel} 
+                    onChange={(e) => setActiveModel(e.target.value)}
+                    placeholder="ag/gemini-3.6-flash-low"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '4px', color: 'var(--text-dim)' }}>API Key</label>
+                  <input 
+                    type="password" 
+                    value={apiKey} 
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-..."
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={handleTestConnection}
+                  disabled={testingKey}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--bg-hover)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '0.8rem' }}
+                >
+                  <ShieldCheck size={14} color="var(--accent-primary)" />
+                  {testingKey ? 'Verifying Endpoint...' : 'Test Connection & Key'}
+                </button>
+
+                {testStatus && (
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '4px 10px', borderRadius: '6px',
+                    background: testStatus.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    border: testStatus.valid ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                    color: testStatus.valid ? '#10b981' : '#ef4444', maxWidth: '100%', wordBreak: 'break-word'
+                  }}>
+                    {testStatus.valid ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                    <span>{testStatus.valid ? testStatus.message : testStatus.error}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Web Search Configuration */}
+        {activeTab === 'search' && (
+          <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Search Provider Routing</h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Engine Choice</label>
+              <select 
+                value={settings.search_provider} 
+                onChange={(e) => handleChange('search_provider', e.target.value)}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+              >
+                <option value="duckduckgo">DuckDuckGo (Fast, No CAPTCHAs)</option>
+                <option value="searxng">SearXNG (Private, Comprehensive)</option>
+                <option value="both">Both (Parallel Search)</option>
+              </select>
             </div>
 
             <div>
-              <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
-                <span>DuckDuckGo Sources</span>
-                <span>{settings.ddg_split}</span>
-              </label>
-              <input 
-                type="range" 
-                value={settings.ddg_split} 
-                onChange={(e) => handleChange('ddg_split', parseInt(e.target.value))}
-                min="0" max="10"
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="settings-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <PlayCircle size={20} color="#ff0000" />
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>YouTube Agent Integration</h2>
-        </div>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-          Enable YouTube integration to automatically search and transcribe videos during synthesis.
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', padding: '16px', background: 'var(--bg-app)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 500 }}>Enable YouTube Search</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>Automatically fetch transcripts for relevant queries.</p>
-          </div>
-          <label className="toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
-            <input 
-              type="checkbox" 
-              checked={settings.youtube_enabled}
-              onChange={(e) => handleChange('youtube_enabled', e.target.checked)}
-              style={{ opacity: 0, width: 0, height: 0 }}
-            />
-            <span style={{ 
-              position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, 
-              backgroundColor: settings.youtube_enabled ? 'var(--accent-primary)' : '#4b5563', 
-              transition: '.4s', borderRadius: '24px' 
-            }}>
-              <span style={{
-                position: 'absolute', content: '""', height: '18px', width: '18px', left: '3px', bottom: '3px',
-                backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
-                transform: settings.youtube_enabled ? 'translateX(20px)' : 'translateX(0)'
-              }}></span>
-            </span>
-          </label>
-        </div>
-
-        {settings.youtube_enabled && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Max YouTube Sources</label>
-            <input 
-              type="number" 
-              value={settings.youtube_max_sources} 
-              onChange={(e) => handleChange('youtube_max_sources', parseInt(e.target.value) || 3)}
-              min="1" max="10"
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-            />
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Maximum number of video transcripts to fetch per query.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="settings-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Globe size={20} color="var(--accent-primary)" />
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Searqon Deep Sub-URL Crawling</h2>
-        </div>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-          When enabled, visiting a URL will recursively discover and scrape sub-URLs under the target domain using Searqon crawler (http://localhost:4001/crawl).
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 500 }}>Enable Deep Sub-URL Crawling</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>Scrape sub-pages under target domain via Searqon.</p>
-          </div>
-          <label className="toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
-            <input 
-              type="checkbox" 
-              checked={!!settings.deep_crawl_enabled}
-              onChange={(e) => handleChange('deep_crawl_enabled', e.target.checked)}
-              style={{ opacity: 0, width: 0, height: 0 }}
-            />
-            <span style={{ 
-              position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, 
-              backgroundColor: settings.deep_crawl_enabled ? 'var(--accent-primary)' : '#4b5563', 
-              transition: '.4s', borderRadius: '24px' 
-            }}>
-              <span style={{
-                position: 'absolute', content: '""', height: '18px', width: '18px', left: '3px', bottom: '3px',
-                backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
-                transform: settings.deep_crawl_enabled ? 'translateX(20px)' : 'translateX(0)'
-              }}></span>
-            </span>
-          </label>
-        </div>
-
-        {settings.deep_crawl_enabled && (
-          <>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Max Sub-Pages to Scrape</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Max Scraped Pages per Query</label>
               <input 
                 type="number" 
-                value={settings.deep_crawl_limit || 5} 
-                onChange={(e) => handleChange('deep_crawl_limit', parseInt(e.target.value) || 5)}
+                value={settings.max_sources} 
+                onChange={(e) => handleChange('max_sources', parseInt(e.target.value) || 5)}
                 min="1" max="20"
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.9rem' }}
               />
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Maximum number of sub-pages Searqon will crawl per domain.</p>
             </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Crawl Depth</label>
-              <input 
-                type="number" 
-                value={settings.deep_crawl_depth || 1} 
-                onChange={(e) => handleChange('deep_crawl_depth', parseInt(e.target.value) || 1)}
-                min="1" max="3"
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-              />
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '6px' }}>Recursion link depth (1 = direct child pages, max 3).</p>
-            </div>
-          </>
+          </div>
         )}
-      </div>
 
-      <div className="settings-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Cpu size={20} color="var(--accent-primary)" />
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Language Model Configuration</h2>
-        </div>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-          Select and switch the active local LLM model dynamically. Available models are queried from Ollama.
-        </p>
+        {/* Tab 3: Crawling & Integrations */}
+        {activeTab === 'integrations' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <PlayCircle size={18} color="#ef4444" /> YouTube Transcript Search
+              </h3>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Select Active LLM Model</label>
-          <select 
-            value={activeModel} 
-            onChange={(e) => setActiveModel(e.target.value)}
-            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-          >
-            {models.length === 0 ? (
-              <option value="">No models available</option>
-            ) : (
-              models.map((m) => (
-                <option key={m.name} value={m.name}>
-                  {m.display_name || m.name}
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-      </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>Automatically Fetch Video Transcripts</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '2px' }}>Search and ingest YouTube transcripts directly into notebook RAG context.</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={settings.youtube_enabled}
+                  onChange={(e) => handleChange('youtube_enabled', e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+              </div>
+            </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button 
-          onClick={() => navigate('/')}
-          style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer' }}
-        >
-          Back to Home
-        </button>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {saveMessage && <span style={{ color: saveMessage.includes('Error') ? '#ef4444' : '#10b981', fontSize: '0.9rem' }}>{saveMessage}</span>}
-          <button 
-            onClick={handleSave}
-            disabled={saving}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', background: 'var(--accent-primary)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            <Save size={16} />
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
-        </div>
-      </div>
+            <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} color="var(--accent-primary)" /> Searqon Recursive Sub-URL Crawler
+              </h3>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>Enable Recursive Domain Crawling</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '2px' }}>Discover sub-links under target domain using Searqon service.</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={!!settings.deep_crawl_enabled}
+                  onChange={(e) => handleChange('deep_crawl_enabled', e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
     </div>
   );
 }

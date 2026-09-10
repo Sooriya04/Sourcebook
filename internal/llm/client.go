@@ -50,14 +50,14 @@ func NewClient() *Client {
 }
 
 func (c *Client) Generate(ctx context.Context, messages []Message) (string, error) {
-	if c.provider == "openai" {
+	if c.provider != "ollama" {
 		return c.generateOpenAI(ctx, messages)
 	}
 	return c.generateOllama(ctx, messages)
 }
 
 func (c *Client) GenerateStream(ctx context.Context, messages []Message, onToken func(string) error) error {
-	if c.provider == "openai" {
+	if c.provider != "ollama" {
 		return c.generateOpenAIStream(ctx, messages, onToken)
 	}
 	return c.generateOllamaStream(ctx, messages, onToken)
@@ -271,20 +271,49 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 		return "", fmt.Errorf("openai returned status %d: %s", resp.StatusCode, string(respBytes))
 	}
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// 1. Try standard OpenAI non-streaming JSON
 	var res struct {
 		Choices []struct {
 			Message Message `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return "", fmt.Errorf("failed to decode openai response: %w", err)
+	if err := json.Unmarshal(bodyBytes, &res); err == nil && len(res.Choices) > 0 {
+		return res.Choices[0].Message.Content, nil
 	}
 
-	if len(res.Choices) == 0 {
-		return "", fmt.Errorf("openai returned empty choices")
+	// 2. Fallback: If proxy returns SSE stream ("data: {...}")
+	var fullText strings.Builder
+	lines := strings.Split(string(bodyBytes), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "data: ") {
+			dataStr := strings.TrimPrefix(line, "data: ")
+			if dataStr == "[DONE]" {
+				break
+			}
+			var chunk struct {
+				Choices []struct {
+					Delta struct {
+						Content string `json:"content"`
+					} `json:"delta"`
+				} `json:"choices"`
+			}
+			if err := json.Unmarshal([]byte(dataStr), &chunk); err == nil && len(chunk.Choices) > 0 {
+				fullText.WriteString(chunk.Choices[0].Delta.Content)
+			}
+		}
 	}
 
-	return res.Choices[0].Message.Content, nil
+	if fullText.Len() > 0 {
+		return fullText.String(), nil
+	}
+
+	return "", fmt.Errorf("failed to parse response from LLM endpoint")
 }
 
 func (c *Client) SetModel(modelName string) {
@@ -293,4 +322,33 @@ func (c *Client) SetModel(modelName string) {
 
 func (c *Client) GetModel() string {
 	return c.model
+}
+
+func (c *Client) SetConfig(provider, baseURL, model, apiKey string) {
+	if provider != "" {
+		c.provider = provider
+	}
+	if baseURL != "" {
+		c.baseURL = strings.TrimSuffix(baseURL, "/")
+	}
+	if model != "" {
+		c.model = model
+	}
+	c.apiKey = apiKey
+}
+
+func (c *Client) GetConfig() (string, string, string, string) {
+	return c.provider, c.baseURL, c.model, c.apiKey
+}
+
+// TestConnection validates if the configured model / API key / BaseURL is responsive.
+func (c *Client) TestConnection(ctx context.Context) (bool, string, error) {
+	testMsg := []Message{
+		{Role: "user", Content: "ping"},
+	}
+	res, err := c.Generate(ctx, testMsg)
+	if err != nil {
+		return false, "", err
+	}
+	return true, res, nil
 }

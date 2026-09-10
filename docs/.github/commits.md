@@ -345,4 +345,15 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **3-Layer Context Assembly & Limits (`history.go`)**: Built a 3-layer context builder combining System Instructions, Grounded Sources, Top-K Semantic Memories, and Recent Conversation Windows (up to 8 messages), enforcing turn deduplication and character limit safeguards to prevent prompt bloat.
 - **Dynamic Ollama Model Resolution & Health Auto-Fallback (`models_handler.go`, `health_handler.go`, `chat_handler.go`, `chat_stream_handler.go`)**: Replaced hardcoded model fallbacks (`gemma2`, `phi4-mini`) with dynamic querying of local Ollama tags (`/api/tags` via `LLM_URL`). Configured health handlers to auto-detect installed Ollama models (e.g. `phi4-mini:latest`) and dynamically update the active LLM client.
 
+## Commit 44: Agentic RAG Graph Execution Machine, Multi-Provider Open-SDK, and NotebookLM Settings Redesign
+- **Formal Graph State Machine & Tracer (`graph_tracer.go`)**: Implemented an explicit graph execution state machine (`StateInit`, `StateEvaluate`, `StateReformulate`, `StateReason`, `StateExecuteTool`, `StateSynthesize`, `StateFinish`) with step-by-step latency, document yield, and thought telemetry.
+- **Adaptive Query Reformulation Node (`agent_loop.go`)**: Built dynamic query rewriting when context evaluation returns low relevance scores or zero document yields, automatically decomposing queries into targeted research terms before re-executing tools.
+- **Frontend Graph Trace Telemetry (`MessageBubble.jsx`)**: Rendered a collapsible **"⚡ Agentic Execution Graph Trace"** UI drawer in AI responses, displaying state transitions and step durations.
+- **Multi-Provider Open-SDK Support (`client.go`)**: Expanded LLM client protocols to support custom OpenAI-compatible endpoints, local proxies (9router, vLLM, LM Studio), Groq Cloud, NVIDIA NIM, and Ollama with thread-safe runtime configuration updating.
+- **Dual-Mode Response Parsing (`client.go`)**: Added support for parsing both standard OpenAI JSON objects and SSE event stream chunks (`data: ...`) from local proxies.
+- **Dynamic Provider Health Checker (`health_handler.go`)**: Updated `/api/sourcebook/v1/health/llm` to test connection health dynamically across any configured provider instead of hardcoding Ollama HTTP GET pings.
+- **NotebookLM Minimalist Settings Redesign (`SettingsPage.jsx`)**: Redesigned `/settings` with a clean tabbed sidebar layout, quick-select provider tiles, dynamic header subtitles, responsive 100% viewport width layout, and hidden scrollbars.
+- **Interactive API Key Verification**: Added a `⚡ Test Connection & Key` backend route (`models_handler.go`) that validates API keys and endpoints dynamically before saving settings.
+
+
 

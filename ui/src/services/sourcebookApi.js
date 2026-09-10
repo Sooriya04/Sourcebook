@@ -211,6 +211,29 @@ export async function switchModel(modelName) {
   return await response.json();
 }
 
+export async function testModelConfig({ provider, baseUrl, model, apiKey }) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/models`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, base_url: baseUrl, model, api_key: apiKey, action: 'test' }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.valid) {
+    throw new Error(data.error || data.message || 'API Key or Model Verification failed');
+  }
+  return data;
+}
+
+export async function updateModelConfig({ provider, baseUrl, model, apiKey }) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/models`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, base_url: baseUrl, model, api_key: apiKey, action: 'update' }),
+  });
+  if (!response.ok) throw new Error(`Failed to update model settings: ${response.status}`);
+  return await response.json();
+}
+
 export async function exportNotebook(id) {
   const response = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks/${id}/export`);
   if (!response.ok) throw new Error(`Failed to export notebook: ${response.status}`);

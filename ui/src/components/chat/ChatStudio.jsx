@@ -65,12 +65,17 @@ export default function ChatStudio({
   };
 
   useEffect(() => {
-    fetchLLMHealth()
-      .then(setLlmHealth)
-      .catch(err => {
-        console.warn("Failed to check LLM health:", err);
-        setLlmHealth({ status: 'offline', model: '', embeddings: '' });
-      });
+    const checkHealth = () => {
+      fetchLLMHealth()
+        .then(setLlmHealth)
+        .catch(err => {
+          console.warn("Failed to check LLM health:", err);
+          setLlmHealth({ status: 'offline', model: '', embeddings: '' });
+        });
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Keyboard Shortcuts Handler

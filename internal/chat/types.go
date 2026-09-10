@@ -19,6 +19,7 @@ type ChatResponse struct {
 	Sources    []SourceCitationDetail `json:"sources"`
 	DurationMs int64                  `json:"duration_ms"`
 	Context    string                 `json:"context"` // "Notebook", "Web", "Notebook + Web"
+	GraphTrace []TraceStep            `json:"graph_trace,omitempty"`
 }
 
 type SourceCitationDetail struct {

@@ -117,7 +117,24 @@ export default function MessageBubble({
         )}
 
         {!isUser && message.content && (
-          <div className="message-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <>
+            {message.graph_trace && message.graph_trace.length > 0 && (
+              <details className="graph-trace-drawer" style={{ marginTop: '12px', fontSize: '0.75rem', border: '1px dashed var(--border-color)', borderRadius: '6px', padding: '8px 12px' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--accent-primary)' }}>
+                  ⚡ Agentic Execution Graph Trace ({message.graph_trace.length} state transitions)
+                </summary>
+                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {message.graph_trace.map((step, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
+                      <span><strong>Step {step.step_number} [{step.state}]</strong>: {step.action || step.thought} {step.action_input && `(${step.action_input})`}</span>
+                      <span style={{ opacity: 0.7 }}>{step.duration_ms}ms</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+
+            <div className="message-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
             <button 
               className="action-btn" 
               onClick={handleCopy}
@@ -166,6 +183,7 @@ export default function MessageBubble({
               <span>{saved ? 'Saved' : 'Save Note'}</span>
             </button>
           </div>
+          </>
         )}
       </div>
     </div>

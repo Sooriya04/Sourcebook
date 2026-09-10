@@ -119,23 +119,15 @@ button {
   color: var(--paper);
 }
 
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--canvas);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--line);
-  border: 3px solid var(--canvas);
-  border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--line-strong);
+  display: none; /* Chrome, Safari, Opera */
+  width: 0px;
+  height: 0px;
 }
 
 .app-container {
