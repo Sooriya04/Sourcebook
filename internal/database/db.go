@@ -127,5 +127,11 @@ func createTables(db *sql.DB) error {
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN deep_crawl_limit INTEGER DEFAULT 5;")
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN deep_crawl_depth INTEGER DEFAULT 1;")
 
+	// Auto-migrate: Add persistent LLM & API Key provider settings
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN llm_provider TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN llm_base_url TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN llm_model TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN llm_api_key TEXT DEFAULT '';")
+
 	return nil
 }

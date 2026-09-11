@@ -135,6 +135,10 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 			a.llmClient.SetConfig(req.Provider, req.BaseURL, req.Model, req.APIKey)
 		}
 
+		if a.repo != nil {
+			_ = a.repo.UpdateLLMSettings(req.Provider, req.BaseURL, req.Model, req.APIKey)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":  true,

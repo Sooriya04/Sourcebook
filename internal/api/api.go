@@ -28,6 +28,11 @@ type API struct {
 
 func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource providers.SearchProvider, pipelineStore *pipeline.Store, repo *database.Repository) *API {
 	llmClient := llm.NewClient()
+	if repo != nil {
+		if s, err := repo.GetSettings(); err == nil && s != nil && s.LLMProvider != "" {
+			llmClient.SetConfig(s.LLMProvider, s.LLMBaseURL, s.LLMModel, s.LLMAPIKey)
+		}
+	}
 	api := &API{
 		searchController:     c,
 		pipelineSearchSource: pipelineSearchSource,

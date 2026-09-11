@@ -1533,6 +1533,58 @@ button {
   font-size: 0.74rem;
 }
 
+.discovery-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 8px;
+}
+
+.discovery-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.discovery-select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.discovery-pills {
+  display: flex;
+  gap: 5px;
+}
+
+.discovery-pill {
+  padding: 2px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.discovery-pill:hover {
+  background: var(--panel-3);
+  color: var(--paper);
+}
+
+.discovery-pill.active {
+  background: var(--accent);
+  color: var(--canvas);
+  border-color: var(--accent);
+}
+
 .discovery-list {
   padding: 0 14px 14px;
 }

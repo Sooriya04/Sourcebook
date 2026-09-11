@@ -11,7 +11,8 @@ import {
   Layers, 
   Keyboard, 
   X,
-  Trash2
+  Trash2,
+  Globe
 } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import ThinkingIndicator from './ThinkingIndicator';
@@ -33,6 +34,7 @@ export default function ChatStudio({
   onEditAndResend,
   onClearChat,
   allSources = [],
+  scopedSourceIds,
   onCitationClick,
   activeCitation,
   onSaveNote,
@@ -271,27 +273,72 @@ export default function ChatStudio({
         background: 'rgba(255, 255, 255, 0.01)',
         fontSize: '0.82rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Mode:</span>
-          <select 
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            style={{
-              background: 'var(--bg-app)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-main)',
-              padding: '4px 10px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              outline: 'none',
-              fontSize: '0.8rem',
-              fontWeight: 500
-            }}
-          >
-            <option value="notebook">Saved Sources</option>
-            <option value="web">Web Search</option>
-            <option value="hybrid">Saved Sources + Web</option>
-          </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'inline-flex', background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '18px', padding: '2px' }}>
+            <button 
+              type="button"
+              onClick={() => setMode('notebook')}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '14px',
+                border: 'none',
+                background: mode === 'notebook' ? 'var(--accent-primary)' : 'transparent',
+                color: mode === 'notebook' ? 'var(--canvas)' : 'var(--text-muted)',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <BookOpen size={11} />
+              <span>Sources</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => setMode('web')}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '14px',
+                border: 'none',
+                background: mode === 'web' ? 'var(--accent-primary)' : 'transparent',
+                color: mode === 'web' ? 'var(--canvas)' : 'var(--text-muted)',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Globe size={11} />
+              <span>Web</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => setMode('hybrid')}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '14px',
+                border: 'none',
+                background: mode === 'hybrid' ? 'var(--accent-primary)' : 'transparent',
+                color: mode === 'hybrid' ? 'var(--canvas)' : 'var(--text-muted)',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Sparkles size={11} />
+              <span>Hybrid</span>
+            </button>
+          </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -325,11 +372,13 @@ export default function ChatStudio({
         onScroll={handleScroll}
       >
         {messages.length === 0 ? (
-          <div className="welcome-screen">
-            <h1 className="welcome-title">{notebookTitle || 'SourceBook Workspace'}</h1>
-            <div className="welcome-subtitle-container">
-              <p className={`welcome-subtitle ${!isExpanded && isLongDescription ? 'truncated' : ''}`}>
-                {notebookDescription || 'Your local-first grounded intelligence platform. Query all your uploaded sources with numerical citations.'}
+          <div className="welcome-screen" style={{ maxWidth: '640px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}>
+            <h1 className="welcome-title" style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }}>
+              {notebookTitle || 'SourceBook Workspace'}
+            </h1>
+            <div className="welcome-subtitle-container" style={{ marginBottom: '24px' }}>
+              <p className={`welcome-subtitle ${!isExpanded && isLongDescription ? 'truncated' : ''}`} style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                {notebookDescription || 'Grounded intelligence platform. Query all your uploaded sources with numerical citations.'}
               </p>
               {isLongDescription && (
                 <button 
@@ -342,17 +391,33 @@ export default function ChatStudio({
               )}
             </div>
 
-            {/* Starter Prompt Chips */}
-            <div className="starter-chips-grid">
+            {/* Prompt Suggestion Pills */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
               {starterChips.map((chip, i) => (
-                <div 
+                <button 
                   key={i} 
-                  className="starter-chip"
+                  type="button"
                   onClick={() => handleSend(chip.query)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '20px',
+                    background: 'var(--canvas-2)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.backgroundColor = 'var(--canvas-2)'; }}
                 >
                   {chip.icon}
                   <span>{chip.title}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -433,6 +498,7 @@ export default function ChatStudio({
         onSend={handleSend}
         loading={loading}
         sourceCount={allSources ? allSources.length : 0}
+        scopedCount={scopedSourceIds ? scopedSourceIds.size : (allSources ? allSources.length : 0)}
       />
     </div>
   );

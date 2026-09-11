@@ -5,6 +5,9 @@ import SourceCard from './SourceCard';
 export default function SourceList({
   sources,
   activeCitation,
+  scopedSourceIds,
+  onToggleScope,
+  onToggleAllScope,
   onSelectSource,
   onDoubleClickSource,
   onDeleteSource
@@ -18,6 +21,11 @@ export default function SourceList({
       </div>
     );
   }
+
+  const totalCount = sources.length;
+  const validScopedCount = sources.filter(s => scopedSourceIds ? (scopedSourceIds.has(s.id || String(s.index)) || (s.id && scopedSourceIds.has(String(s.index)))) : true).length;
+  const scopedCount = scopedSourceIds ? validScopedCount : totalCount;
+  const isAllScoped = scopedCount === totalCount && totalCount > 0;
 
   // Categorize sources
   const categories = {
@@ -51,7 +59,26 @@ export default function SourceList({
   });
 
   return (
-    <div className="sources-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="sources-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {onToggleAllScope && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px 4px', borderBottom: '1px solid var(--border-color)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={isAllScoped}
+              onChange={onToggleAllScope}
+              style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)', margin: 0, width: '13px', height: '13px' }}
+            />
+            <span>Select all ({scopedCount}/{totalCount})</span>
+          </label>
+          {scopedCount < totalCount && (
+            <span style={{ fontSize: '0.68rem', color: 'var(--amber)', fontWeight: 500 }}>
+              {totalCount - scopedCount} excluded
+            </span>
+          )}
+        </div>
+      )}
+
       {Object.entries(categories).map(([name, category]) => {
         if (category.items.length === 0) return null;
         
@@ -62,17 +89,25 @@ export default function SourceList({
               <span>{name} ({category.items.length})</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {category.items.map(enrichedSource => (
-                <SourceCard
-                  key={enrichedSource.id || enrichedSource.index}
-                  source={enrichedSource}
-                  isActive={activeCitation === enrichedSource.index}
-                  onClick={() => onSelectSource(enrichedSource)}
-                  onDoubleClick={() => onDoubleClickSource(enrichedSource)}
-                  onInspect={onDoubleClickSource}
-                  onDelete={onDeleteSource}
-                />
-              ))}
+              {category.items.map(enrichedSource => {
+                const sourceKey = enrichedSource.id || String(enrichedSource.index);
+                const isScoped = scopedSourceIds 
+                  ? (scopedSourceIds.has(sourceKey) || (enrichedSource.id && scopedSourceIds.has(String(enrichedSource.index)))) 
+                  : true;
+                return (
+                  <SourceCard
+                    key={enrichedSource.id || enrichedSource.index}
+                    source={enrichedSource}
+                    isActive={activeCitation === enrichedSource.index}
+                    isScoped={isScoped}
+                    onToggleScope={onToggleScope}
+                    onClick={() => onSelectSource(enrichedSource)}
+                    onDoubleClick={() => onDoubleClickSource(enrichedSource)}
+                    onInspect={onDoubleClickSource}
+                    onDelete={onDeleteSource}
+                  />
+                );
+              })}
             </div>
           </div>
         );

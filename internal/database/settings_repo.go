@@ -9,11 +9,11 @@ import (
 
 // GetSettings retrieves the global user settings, returning defaults if they don't exist yet.
 func (r *Repository) GetSettings() (*models.UserSettings, error) {
-	query := `SELECT id, search_provider, max_sources, searxng_split, ddg_split, youtube_enabled, youtube_max_sources, COALESCE(deep_crawl_enabled, 0), COALESCE(deep_crawl_limit, 5), COALESCE(deep_crawl_depth, 1), updated_at FROM user_settings WHERE id = 'global'`
+	query := `SELECT id, search_provider, max_sources, searxng_split, ddg_split, youtube_enabled, youtube_max_sources, COALESCE(deep_crawl_enabled, 0), COALESCE(deep_crawl_limit, 5), COALESCE(deep_crawl_depth, 1), COALESCE(llm_provider, ''), COALESCE(llm_base_url, ''), COALESCE(llm_model, ''), COALESCE(llm_api_key, ''), updated_at FROM user_settings WHERE id = 'global'`
 	row := r.db.QueryRow(query)
 
 	var settings models.UserSettings
-	if err := row.Scan(&settings.ID, &settings.SearchProvider, &settings.MaxSources, &settings.SearxngSplit, &settings.DdgSplit, &settings.YoutubeEnabled, &settings.YoutubeMaxSources, &settings.DeepCrawlEnabled, &settings.DeepCrawlLimit, &settings.DeepCrawlDepth, &settings.UpdatedAt); err != nil {
+	if err := row.Scan(&settings.ID, &settings.SearchProvider, &settings.MaxSources, &settings.SearxngSplit, &settings.DdgSplit, &settings.YoutubeEnabled, &settings.YoutubeMaxSources, &settings.DeepCrawlEnabled, &settings.DeepCrawlLimit, &settings.DeepCrawlDepth, &settings.LLMProvider, &settings.LLMBaseURL, &settings.LLMModel, &settings.LLMAPIKey, &settings.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			// Return default settings
 			return &models.UserSettings{
@@ -55,6 +55,25 @@ func (r *Repository) UpdateSettings(s models.UserSettings) error {
 	_, err := r.db.Exec(query, s.SearchProvider, s.MaxSources, s.SearxngSplit, s.DdgSplit, s.YoutubeEnabled, s.YoutubeMaxSources, s.DeepCrawlEnabled, s.DeepCrawlLimit, s.DeepCrawlDepth, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to update user settings: %w", err)
+	}
+	return nil
+}
+
+// UpdateLLMSettings persists the LLM provider, endpoint, model, and API key into database.
+func (r *Repository) UpdateLLMSettings(provider, baseURL, model, apiKey string) error {
+	query := `
+	INSERT INTO user_settings (id, search_provider, max_sources, searxng_split, ddg_split, llm_provider, llm_base_url, llm_model, llm_api_key, updated_at)
+	VALUES ('global', 'duckduckgo', 5, 3, 2, ?, ?, ?, ?, ?)
+	ON CONFLICT(id) DO UPDATE SET
+		llm_provider=excluded.llm_provider,
+		llm_base_url=excluded.llm_base_url,
+		llm_model=excluded.llm_model,
+		llm_api_key=excluded.llm_api_key,
+		updated_at=excluded.updated_at
+	`
+	_, err := r.db.Exec(query, provider, baseURL, model, apiKey, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update llm settings: %w", err)
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -14,16 +15,31 @@ type llmHealthResponse struct {
 	Embeddings string `json:"embeddings"`
 }
 
+var (
+	healthMu        sync.Mutex
+	cachedHealth    llmHealthResponse
+	lastHealthCheck time.Time
+)
+
 // HandleLLMHealth checks LLM connectivity dynamically across configured provider (Ollama, OpenAI, Groq, 9router, etc.)
 func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
+	healthMu.Lock()
+	if time.Since(lastHealthCheck) < 30*time.Second && cachedHealth.Status != "" {
+		res := cachedHealth
+		healthMu.Unlock()
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+	healthMu.Unlock()
+
 	status := "offline"
 	model := ""
 	if a.llmClient != nil {
 		model = a.llmClient.GetModel()
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		ok, _, err := a.llmClient.TestConnection(ctx)
 		if ok && err == nil {
@@ -40,9 +56,16 @@ func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 		embeddings = "all-MiniLM-L6-v2"
 	}
 
-	json.NewEncoder(w).Encode(llmHealthResponse{
+	res := llmHealthResponse{
 		Status:     status,
 		Model:      model,
 		Embeddings: embeddings,
-	})
+	}
+
+	healthMu.Lock()
+	cachedHealth = res
+	lastHealthCheck = time.Now()
+	healthMu.Unlock()
+
+	json.NewEncoder(w).Encode(res)
 }

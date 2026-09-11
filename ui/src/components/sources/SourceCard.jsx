@@ -3,10 +3,24 @@ import { Globe, FileText, Video, Trash2, Loader2, Eye } from 'lucide-react';
 import { truncateUrl } from '../../utils/formatters';
 import { pingSourceURL } from '../../services/sourcebookApi';
 
-export default function SourceCard({ source, isActive, onClick, onDoubleClick, onInspect, onDelete }) {
+export default function SourceCard({ 
+  source, 
+  isActive, 
+  isScoped = true,
+  onToggleScope,
+  onClick, 
+  onDoubleClick, 
+  onInspect, 
+  onDelete 
+}) {
   const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
   const [onlineStatus, setOnlineStatus] = useState('checking'); // 'checking', 'online', 'offline', 'local'
+
+  // Approximate metrics (word count & read time)
+  const textBody = source.content || source.snippet || '';
+  const wordCount = textBody ? textBody.trim().split(/\s+/).length : 0;
+  const readTimeMin = Math.max(1, Math.round(wordCount / 200));
 
   useEffect(() => {
     if (!source.url || !source.url.startsWith('http')) {
@@ -71,6 +85,27 @@ export default function SourceCard({ source, isActive, onClick, onDoubleClick, o
       style={{ cursor: isIndexing ? 'wait' : 'pointer', opacity: isIndexing ? 0.7 : 1 }}
     >
       <div className="source-card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {onToggleScope && (
+          <input
+            type="checkbox"
+            checked={isScoped}
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleScope(source.id || String(source.index));
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="source-scope-checkbox"
+            title={isScoped ? "Included in chat context (Click to exclude)" : "Excluded from chat context (Click to include)"}
+            style={{
+              cursor: 'pointer',
+              accentColor: 'var(--accent-primary)',
+              margin: '0 2px 0 0',
+              width: '13px',
+              height: '13px',
+              flexShrink: 0
+            }}
+          />
+        )}
         {source.index && <span className="source-index">[{source.index}]</span>}
         {onlineStatus !== 'local' && (
           <span
@@ -86,7 +121,7 @@ export default function SourceCard({ source, isActive, onClick, onDoubleClick, o
             title={onlineStatus === 'online' ? 'Source Online' : onlineStatus === 'offline' ? 'Source Offline' : 'Checking Health...'}
           />
         )}
-        <span className="source-title" style={{ flex: 1 }}>{source.title || 'Untitled Source'}</span>
+        <span className="source-title" style={{ flex: 1, opacity: isScoped ? 1 : 0.6 }}>{source.title || 'Untitled Source'}</span>
         {isIndexing ? (
           <div className="source-status-badge">
             <Loader2 size={12} className="spin" color="var(--amber)" />
@@ -122,11 +157,18 @@ export default function SourceCard({ source, isActive, onClick, onDoubleClick, o
         )}
       </div>
 
-      <div className="source-url">
-        {renderIcon()}
-        <span style={{ marginLeft: '4px' }}>
-          {source.url ? truncateUrl(source.url) : source.filename || 'Uploaded Document'}
-        </span>
+      <div className="source-url" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+          {renderIcon()}
+          <span style={{ marginLeft: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {source.url ? truncateUrl(source.url) : source.filename || 'Uploaded Document'}
+          </span>
+        </div>
+        {wordCount > 0 && (
+          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginLeft: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {readTimeMin}m read
+          </span>
+        )}
       </div>
     </div>
   );

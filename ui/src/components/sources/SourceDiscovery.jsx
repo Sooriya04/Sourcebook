@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Check, FileSearch, PlayCircle } from 'lucide-react';
+import { ChevronLeft, Check, Globe, PlayCircle } from 'lucide-react';
 import { searchSources } from '../../services/sourcebookApi';
 
 export default function SourceDiscovery({ query, onImport, onCancel }) {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState([]);
   const [selectedUrls, setSelectedUrls] = useState(new Set());
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     if (!query) return;
@@ -32,45 +33,51 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
     return () => { isMounted = false; };
   }, [query]);
 
+  const isYouTube = (url, src) => url?.includes('youtube.com') || url?.includes('youtu.be') || src === 'YouTube';
+
+  const filteredResults = results.filter(res => {
+    const isYT = isYouTube(res.url, res.source);
+    if (filterType === 'web') return !isYT;
+    if (filterType === 'youtube') return isYT;
+    return true;
+  });
+
   const toggleSelection = (url) => {
-    const newSelection = new Set(selectedUrls);
-    if (newSelection.has(url)) {
-      newSelection.delete(url);
-    } else {
-      if (newSelection.size >= 20) {
-        alert("Maximum 20 sources can be imported at once.");
-        return;
-      }
-      newSelection.add(url);
-    }
-    setSelectedUrls(newSelection);
+    const next = new Set(selectedUrls);
+    if (next.has(url)) next.delete(url);
+    else next.add(url);
+    setSelectedUrls(next);
   };
 
   const handleSelectAll = () => {
     if (selectedUrls.size === results.length) {
       setSelectedUrls(new Set());
     } else {
-      const allUrls = results.slice(0, 20).map(r => r.url);
-      setSelectedUrls(new Set(allUrls));
+      setSelectedUrls(new Set(results.map(r => r.url)));
     }
   };
 
   const handleImport = () => {
     const sourcesToImport = results
       .filter(r => selectedUrls.has(r.url))
-      .map(r => ({ title: r.title, url: r.url, type: 'web' }));
-    
-    if (sourcesToImport.length > 0) {
-      onImport(sourcesToImport);
-    }
+      .map(r => ({
+        title: r.title,
+        url: r.url,
+        type: isYouTube(r.url, r.source) ? 'youtube' : 'web'
+      }));
+    if (sourcesToImport.length > 0) onImport(sourcesToImport);
   };
+
+  const ytCount = results.filter(r => isYouTube(r.url, r.source)).length;
+  const webCount = results.length - ytCount;
 
   return (
     <div className="source-discovery-panel">
       <div className="discovery-header">
         <button className="back-to-sources-btn" onClick={onCancel}>
-          <ChevronLeft size={16} /> Sources
+          <ChevronLeft size={16} /> Back
         </button>
+        <span className="discovery-header-title">Web Discovery</span>
       </div>
 
       <div className="discovery-results-container">
@@ -81,48 +88,88 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
           </div>
         ) : (
           <>
-            <div className="discovery-results-header">
-              <button className="select-all-btn" onClick={handleSelectAll}>
-                {selectedUrls.size === results.length && results.length > 0 ? 'Clear all' : 'Select all'}
-              </button>
-            </div>
-            
-            <div className="discovery-list">
-              {results.map((res, i) => {
-                const isYouTube = res.url.includes('youtube.com') || res.url.includes('youtu.be') || res.source === 'YouTube';
-                return (
-                <div 
-                  key={i} 
-                  className={`discovery-item ${selectedUrls.has(res.url) ? 'selected' : ''}`}
-                  onClick={() => toggleSelection(res.url)}
+            <div className="discovery-toolbar">
+              <div className="discovery-toolbar-row">
+                <label className="discovery-select-all-label">
+                  <input
+                    type="checkbox"
+                    checked={selectedUrls.size === results.length && results.length > 0}
+                    onChange={handleSelectAll}
+                    style={{ accentColor: 'var(--accent)', cursor: 'pointer', margin: 0 }}
+                  />
+                  <span>Select all ({selectedUrls.size}/{results.length})</span>
+                </label>
+                <button type="button" className="btn btn-ghost" style={{ fontSize: '0.68rem', padding: '2px 8px' }} onClick={handleSelectAll}>
+                  {selectedUrls.size === results.length ? 'Clear' : 'All'}
+                </button>
+              </div>
+
+              <div className="discovery-pills">
+                <button
+                  type="button"
+                  className={`discovery-pill ${filterType === 'all' ? 'active' : ''}`}
+                  onClick={() => setFilterType('all')}
                 >
-                  <div className="discovery-item-icon">
-                    {isYouTube ? <PlayCircle size={14} color="#ff0000" /> : <FileSearch size={14} />}
+                  All ({results.length})
+                </button>
+                {webCount > 0 && (
+                  <button
+                    type="button"
+                    className={`discovery-pill ${filterType === 'web' ? 'active' : ''}`}
+                    onClick={() => setFilterType('web')}
+                  >
+                    Web ({webCount})
+                  </button>
+                )}
+                {ytCount > 0 && (
+                  <button
+                    type="button"
+                    className={`discovery-pill ${filterType === 'youtube' ? 'active' : ''}`}
+                    onClick={() => setFilterType('youtube')}
+                  >
+                    YouTube ({ytCount})
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="discovery-list">
+              {filteredResults.map((res, i) => {
+                const isYT = isYouTube(res.url, res.source);
+                const isSelected = selectedUrls.has(res.url);
+                return (
+                  <div
+                    key={i}
+                    className={`discovery-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => toggleSelection(res.url)}
+                  >
+                    <div className="discovery-item-icon">
+                      {isYT ? <PlayCircle size={15} color="#ef4444" /> : <Globe size={15} />}
+                    </div>
+                    <div className="discovery-item-content">
+                      <div className="discovery-item-title">{res.title || 'Untitled Source'}</div>
+                      {res.snippet && <div className="discovery-item-snippet">{res.snippet}</div>}
+                    </div>
+                    <div className="discovery-checkbox">
+                      {isSelected && <Check size={12} className="check-mark" />}
+                    </div>
                   </div>
-                  <div className="discovery-item-content">
-                    <div className="discovery-item-title">{res.title}</div>
-                    <div className="discovery-item-snippet">{res.snippet}</div>
-                  </div>
-                  <div className="discovery-checkbox">
-                    {selectedUrls.has(res.url) && <Check size={13} strokeWidth={3} />}
-                  </div>
-                </div>
-              )})}
+                );
+              })}
             </div>
           </>
         )}
       </div>
 
       <div className="discovery-footer">
-        <div className="selected-count">
-          {selectedUrls.size} sources selected
-        </div>
-        <button 
-          className="import-btn" 
+        <div className="selected-count">{selectedUrls.size} selected</div>
+        <button
+          className="btn btn-primary"
+          style={{ padding: '6px 14px', fontSize: '0.78rem' }}
           disabled={selectedUrls.size === 0 || loading}
           onClick={handleImport}
         >
-          Import
+          Import {selectedUrls.size > 0 ? `(${selectedUrls.size})` : ''}
         </button>
       </div>
     </div>

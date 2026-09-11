@@ -36,7 +36,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }
   };
 
-  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null) => {
+  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null, scopedSourceIds = []) => {
     if (!queryText?.trim() || loading) return;
 
     // Abort any existing stream
@@ -67,7 +67,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
         query: queryText,
         notebookId,
         maxSources,
-        scopedSourceIds: [],
+        scopedSourceIds: Array.isArray(scopedSourceIds) ? scopedSourceIds : [],
         mode,
         history,
         abortSignal: controller.signal,

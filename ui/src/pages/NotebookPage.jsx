@@ -86,11 +86,15 @@ export default function NotebookPage({ getNotebook }) {
     setSelectedSource,
     activeCitation,
     setActiveCitation,
+    scopedSourceIds,
+    setScopedSourceIds,
+    toggleSourceScope,
+    toggleAllSourcesScope,
     addSource,
     addMultipleSources,
     updateMultipleSources,
     removeSource
-  } = useSources(EMPTY_SOURCES);
+  } = useSources(EMPTY_SOURCES, id);
 
   const handleNewSourcesFromAPI = (newSources) => {
     addMultipleSources(newSources);
@@ -238,11 +242,22 @@ export default function NotebookPage({ getNotebook }) {
     }
   };
 
+  const handleSendMessage = (query, mode = 'notebook', overrideHistory = null) => {
+    sendMessage(query, mode, overrideHistory, Array.from(scopedSourceIds));
+  };
+
   const handleExplainSource = (src) => {
     setActiveMode('chat');
     setSelectedSource(null);
     setInspectingSource(null);
-    sendMessage(`Explain this source in detail: "${src.title}" [${src.index}]`);
+    const srcId = src.id || String(src.index);
+    sendMessage(`Explain this source in detail: "${src.title}" [${src.index}]`, 'notebook', null, [srcId]);
+  };
+
+  const handleChatWithSource = (src) => {
+    const srcId = src.id || String(src.index);
+    setScopedSourceIds(new Set([srcId]));
+    setInspectingSource(null);
   };
 
   const handleImportDiscovery = async (imported) => {
@@ -404,6 +419,9 @@ export default function NotebookPage({ getNotebook }) {
         <Sidebar
           sources={sources}
           activeCitation={activeCitation}
+          scopedSourceIds={scopedSourceIds}
+          onToggleScope={toggleSourceScope}
+          onToggleAllScope={toggleAllSourcesScope}
           onSelectSource={(source) => setActiveCitation(source.index)}
           onDoubleClickSource={handleDoubleClickSource}
           onDeleteSource={removeSource}
@@ -416,6 +434,7 @@ export default function NotebookPage({ getNotebook }) {
           inspectingSource={inspectingSource}
           setInspectingSource={setInspectingSource}
           onExplainSource={handleExplainSource}
+          onChatWithSource={handleChatWithSource}
         />
 
         <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -426,12 +445,13 @@ export default function NotebookPage({ getNotebook }) {
               streamPhase={streamPhase}
               maxSources={maxSources}
               setMaxSources={setMaxSources}
-              onSendMessage={sendMessage}
+              onSendMessage={handleSendMessage}
               onStopStream={stopStream}
               onRegenerate={regenerateMessage}
               onEditAndResend={editAndResendMessage}
               onClearChat={clearChat}
               allSources={sources}
+              scopedSourceIds={scopedSourceIds}
               onCitationClick={handleCitationClick}
               activeCitation={activeCitation}
               onSaveNote={handleSaveNote}

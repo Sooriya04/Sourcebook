@@ -13,5 +13,9 @@ type UserSettings struct {
 	DeepCrawlEnabled  bool      `json:"deep_crawl_enabled"`
 	DeepCrawlLimit    int       `json:"deep_crawl_limit"`
 	DeepCrawlDepth    int       `json:"deep_crawl_depth"`
+	LLMProvider       string    `json:"llm_provider"`
+	LLMBaseURL        string    `json:"llm_base_url"`
+	LLMModel          string    `json:"llm_model"`
+	LLMAPIKey         string    `json:"llm_api_key"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

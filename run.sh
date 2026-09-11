@@ -96,13 +96,9 @@ fi
 
 
 # 2. Build and Start Go SourceBook Backend Server
-if [ -f "bin/sourcebook-server" ]; then
-  echo "⚡ Starting Go SourceBook Backend Server on port ${PORT:-5000}..."
-  ./bin/sourcebook-server &
-else
-  echo "⚠️ SourceBook Server binary not found, falling back to source..."
-  go run ./cmd/server/main.go &
-fi
+echo "⚡ Building and starting Go SourceBook Backend Server on port ${PORT:-5000}..."
+go build -o bin/sourcebook-server ./cmd/server/main.go
+./bin/sourcebook-server &
 
 # Wait for background jobs
 wait

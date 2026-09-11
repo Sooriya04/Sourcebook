@@ -2,7 +2,7 @@ import React, { useState, forwardRef } from 'react';
 import { ArrowRight, Layers } from 'lucide-react';
 
 const PromptBar = forwardRef(function PromptBar(
-  { onSend, loading, sourceCount = 0 }, 
+  { onSend, loading, sourceCount = 0, scopedCount }, 
   ref
 ) {
   const [query, setQuery] = useState('');
@@ -35,9 +35,18 @@ const PromptBar = forwardRef(function PromptBar(
         />
         
         <div className="prompt-controls-right">
-          <div className="sources-count-pill" title="Active notebook sources indexed">
+          <div 
+            className="sources-count-pill" 
+            title={scopedCount !== undefined && scopedCount !== sourceCount 
+              ? `${scopedCount} of ${sourceCount} sources active in chat scope` 
+              : "Active notebook sources indexed"}
+          >
             <Layers size={13} />
-            <span>{sourceCount} {sourceCount === 1 ? 'source' : 'sources'}</span>
+            <span>
+              {scopedCount !== undefined && scopedCount !== sourceCount
+                ? `${scopedCount}/${sourceCount} sources`
+                : `${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'}`}
+            </span>
           </div>
 
           <button
