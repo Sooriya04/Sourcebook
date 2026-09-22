@@ -176,13 +176,7 @@ button {
 }
 
 .brand-logo {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  background: var(--paper);
-  color: var(--canvas);
-  border-radius: 10px;
+  display: none !important;
 }
 
 .brand-name {

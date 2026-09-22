@@ -14,7 +14,7 @@ import AddSourceModal from '../components/sources/AddSourceModal';
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
-import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript } from '../services/sourcebookApi';
 
 const EMPTY_SOURCES = [];
 const EMPTY_NOTES = [];
@@ -264,11 +264,24 @@ export default function NotebookPage({ getNotebook }) {
     setInspectingSource(null);
   };
 
-  const handleAddUrlDirect = (url) => {
+  const handleAddUrlDirect = async (url) => {
     if (!url) return;
     const isYT = url.includes('youtube.com') || url.includes('youtu.be');
     if (isYT) {
-      addSource(parseYouTubeURL(url));
+      const fallbackObj = parseYouTubeURL(url);
+      addSource({ ...fallbackObj, status: 'Indexing...' });
+      try {
+        const transcriptData = await fetchYouTubeTranscript(url);
+        updateSource({
+          ...fallbackObj,
+          title: transcriptData.title || fallbackObj.title,
+          content: transcriptData.content,
+          status: 'Ready'
+        });
+      } catch (err) {
+        console.warn('YouTube transcript failed, retaining URL entry:', err);
+        updateSource({ ...fallbackObj, status: 'Ready' });
+      }
     } else {
       let title = url;
       try { title = new URL(url).hostname; } catch {}
@@ -497,6 +510,7 @@ export default function NotebookPage({ getNotebook }) {
 
       <NotebookHeader
         title={notebook.title}
+        notebookId={notebook?.id || notebookId}
         onClearChat={clearChat}
         messageCount={messages.length}
         activeMode={activeMode}

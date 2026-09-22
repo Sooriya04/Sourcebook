@@ -161,6 +161,10 @@ func sendError(w http.ResponseWriter, status int, detail string) {
 func main() {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
 	mux.HandleFunc("/parse/pdf", enableCORS(handleParsePDF))
 	mux.HandleFunc("/parse/markdown", enableCORS(handleParseMarkdown))
 

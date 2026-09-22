@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Search, Cpu, Globe, ArrowLeft, Layers } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { 
   fetchSettings, 
   updateSettings, 
@@ -8,13 +6,14 @@ import {
   testModelConfig, 
   updateModelConfig 
 } from '../services/sourcebookApi';
-import LLMSettingsTab from '../components/settings/LLMSettingsTab';
+import SettingsSidebar from '../components/settings/SettingsSidebar';
+import SettingsHeader from '../components/settings/SettingsHeader';
+import LLMSettingsTab, { DEFAULT_PROVIDER_CONFIGS } from '../components/settings/LLMSettingsTab';
 import SearchSettingsTab from '../components/settings/SearchSettingsTab';
 import MediaSettingsTab from '../components/settings/MediaSettingsTab';
 import EmbeddingSettingsTab from '../components/settings/EmbeddingSettingsTab';
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('llm');
   const [settings, setSettings] = useState({
     search_provider: 'duckduckgo', searxng_url: 'http://localhost:8080', max_sources: 5,
@@ -27,9 +26,13 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState('');
   
   const [provider, setProvider] = useState('openai');
-  const [baseUrl, setBaseUrl] = useState('http://localhost:20128/v1');
-  const [activeModel, setActiveModel] = useState('ag/gemini-3.6-flash-low');
-  const [apiKey, setApiKey] = useState('');
+  const [providerConfigs, setProviderConfigs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sourcebook_provider_configs');
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return { ...DEFAULT_PROVIDER_CONFIGS };
+  });
   const [testingKey, setTestingKey] = useState(false);
   const [testStatus, setTestStatus] = useState(null);
 
@@ -38,25 +41,63 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     try {
       const data = await fetchSettings();
+      let configs = { ...DEFAULT_PROVIDER_CONFIGS };
+      try {
+        const local = localStorage.getItem('sourcebook_provider_configs');
+        if (local) configs = { ...configs, ...JSON.parse(local) };
+      } catch (_) {}
+
       if (data) {
         setSettings(prev => ({ ...prev, ...data }));
-        if (data.llm_provider) setProvider(data.llm_provider);
-        if (data.llm_base_url) setBaseUrl(data.llm_base_url);
-        if (data.llm_model) setActiveModel(data.llm_model);
-        if (data.llm_api_key) setApiKey(data.llm_api_key);
+        if (data.provider_configs) {
+          try {
+            configs = { ...configs, ...JSON.parse(data.provider_configs) };
+          } catch (_) {}
+        }
+        if (data.llm_provider) {
+          setProvider(data.llm_provider);
+          configs[data.llm_provider] = {
+            ...configs[data.llm_provider],
+            baseUrl: data.llm_base_url || configs[data.llm_provider]?.baseUrl,
+            model: data.llm_model || configs[data.llm_provider]?.model,
+            apiKey: data.llm_api_key !== undefined ? data.llm_api_key : configs[data.llm_provider]?.apiKey,
+          };
+        }
       }
+
       const modelsData = await fetchModels();
-      if (modelsData) {
-        if (modelsData.active) setActiveModel(modelsData.active);
-        if (modelsData.provider) setProvider(modelsData.provider);
-        if (modelsData.base_url) setBaseUrl(modelsData.base_url);
-        if (modelsData.api_key) setApiKey(modelsData.api_key);
+      if (modelsData && modelsData.provider) {
+        setProvider(modelsData.provider);
+        configs[modelsData.provider] = {
+          ...configs[modelsData.provider],
+          baseUrl: modelsData.base_url || configs[modelsData.provider]?.baseUrl,
+          model: modelsData.active || configs[modelsData.provider]?.model,
+          apiKey: modelsData.api_key !== undefined ? modelsData.api_key : configs[modelsData.provider]?.apiKey,
+        };
       }
+
+      setProviderConfigs(configs);
     } catch (err) {
       console.error("Failed to load settings:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfigChange = (pId, field, value) => {
+    setProviderConfigs(prev => {
+      const updated = {
+        ...prev,
+        [pId]: {
+          ...(prev[pId] || DEFAULT_PROVIDER_CONFIGS[pId] || {}),
+          [field]: value
+        }
+      };
+      try {
+        localStorage.setItem('sourcebook_provider_configs', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
   };
 
   const handleChange = (field, value) => {
@@ -66,8 +107,14 @@ export default function SettingsPage() {
   const handleTestConnection = async () => {
     setTestingKey(true);
     setTestStatus(null);
+    const cfg = providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.openai;
     try {
-      const result = await testModelConfig({ provider, baseUrl, model: activeModel, apiKey });
+      const result = await testModelConfig({
+        provider,
+        baseUrl: cfg.baseUrl,
+        model: cfg.model,
+        apiKey: cfg.apiKey
+      });
       setTestStatus({ valid: true, message: result.message || 'Connected successfully!' });
       setTimeout(() => setTestStatus(null), 4000);
     } catch (err) {
@@ -81,10 +128,23 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveMessage('');
+    const cfg = providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.openai;
     try {
-      const payload = { ...settings, llm_provider: provider, llm_base_url: baseUrl, llm_model: activeModel, llm_api_key: apiKey };
+      const payload = {
+        ...settings,
+        llm_provider: provider,
+        llm_base_url: cfg.baseUrl,
+        llm_model: cfg.model,
+        llm_api_key: cfg.apiKey,
+        provider_configs: JSON.stringify(providerConfigs)
+      };
       await updateSettings(payload);
-      await updateModelConfig({ provider, baseUrl, model: activeModel, apiKey });
+      await updateModelConfig({
+        provider,
+        baseUrl: cfg.baseUrl,
+        model: cfg.model,
+        apiKey: cfg.apiKey
+      });
       setSaveMessage('Settings saved successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
@@ -102,84 +162,26 @@ export default function SettingsPage() {
     );
   }
 
-  const tabs = [
-    { id: 'llm', label: 'AI & Model Provider', icon: <Cpu size={18} /> },
-    { id: 'search', label: 'Web Search Engine', icon: <Search size={18} /> },
-    { id: 'media', label: 'Crawling & Media', icon: <Globe size={18} /> },
-    { id: 'embedding', label: 'Vector & Embeddings', icon: <Layers size={18} /> }
-  ];
-
   return (
     <div style={{ display: 'flex', width: '100%', flex: 1, height: '100%', background: 'var(--canvas)', color: 'var(--text-main)', fontFamily: 'Sora, sans-serif' }}>
-      <aside style={{ width: '240px', borderRight: '1px solid var(--border-color)', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--panel)' }}>
-        <button 
-          onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '16px', borderRadius: '6px' }}
-        >
-          <ArrowLeft size={16} /> Back to Notebooks
-        </button>
-
-        <h2 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', paddingLeft: '12px', marginBottom: '8px' }}>Settings</h2>
-
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontWeight: 500,
-              background: activeTab === tab.id ? 'var(--bg-hover)' : 'transparent',
-              color: activeTab === tab.id ? 'var(--text-main)' : 'var(--text-dim)'
-            }}
-          >
-            {React.cloneElement(tab.icon, { color: activeTab === tab.id ? 'var(--accent-primary)' : 'currentColor' })}
-            {tab.label}
-          </button>
-        ))}
-      </aside>
+      <SettingsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main style={{ flex: 1, padding: '36px 48px', overflowY: 'auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h1 style={{ fontSize: '1.35rem', fontWeight: 600, letterSpacing: '-0.02em' }}>
-              {activeTab === 'llm' && 'AI Model & Key Configuration'}
-              {activeTab === 'search' && 'Search Discovery Engine'}
-              {activeTab === 'media' && 'Crawling & Media Integration'}
-              {activeTab === 'embedding' && 'Vector Embeddings & Search Index'}
-            </h1>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginTop: '2px' }}>
-              Configure endpoints, models, and API keys stored persistently in SQLite database.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {saveMessage && (
-              <div style={{ 
-                fontSize: '0.8rem', padding: '4px 10px', borderRadius: '6px', 
-                background: saveMessage.includes('Error') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                border: saveMessage.includes('Error') ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)',
-                color: saveMessage.includes('Error') ? '#ef4444' : '#10b981', fontWeight: 500 
-              }}>
-                {saveMessage}
-              </div>
-            )}
-            <button 
-              onClick={handleSave}
-              disabled={saving}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--accent-primary)', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.82rem', whitespace: 'nowrap' }}
-            >
-              <Save size={14} />
-              {saving ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
-        </div>
+        <SettingsHeader 
+          activeTab={activeTab}
+          saveMessage={saveMessage}
+          saving={saving}
+          onSave={handleSave}
+        />
 
         {activeTab === 'llm' && (
           <LLMSettingsTab
-            provider={provider} setProvider={setProvider}
-            baseUrl={baseUrl} setBaseUrl={setBaseUrl}
-            activeModel={activeModel} setActiveModel={setActiveModel}
-            apiKey={apiKey} setApiKey={setApiKey}
-            testingKey={testingKey} testStatus={testStatus}
+            provider={provider}
+            setProvider={setProvider}
+            providerConfigs={providerConfigs}
+            onChangeConfig={handleConfigChange}
+            testingKey={testingKey}
+            testStatus={testStatus}
             onTestConnection={handleTestConnection}
           />
         )}

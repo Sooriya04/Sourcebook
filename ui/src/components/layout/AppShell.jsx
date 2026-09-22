@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function AppShell({ children }) {
@@ -12,9 +12,6 @@ export default function AppShell({ children }) {
         <header className="top-nav-bar">
           <div className="nav-left">
             <Link to="/" className="brand-link">
-              <div className="brand-logo">
-                <BookOpen size={20} color="var(--text-main)" />
-              </div>
               <span className="brand-name">SourceBook</span>
             </Link>
           </div>

@@ -13,9 +13,9 @@ import (
 func InitDB(dataSourceName string) (*sql.DB, error) {
 	dsn := dataSourceName
 	if !strings.Contains(dsn, "?") {
-		dsn += "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
+		dsn += "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
 	} else {
-		dsn += "&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
+		dsn += "&_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
 	}
 
 	db, err := sql.Open("sqlite3", dsn)
@@ -140,6 +140,7 @@ func createTables(db *sql.DB) error {
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN embedding_provider TEXT DEFAULT '';")
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN embedding_url TEXT DEFAULT '';")
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN embedding_model TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN provider_configs TEXT DEFAULT '';")
 
 	return nil
 }

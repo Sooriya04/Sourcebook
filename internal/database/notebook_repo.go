@@ -73,6 +73,8 @@ func (r *Repository) GetNotebook(id string) (*models.Notebook, error) {
 }
 
 func (r *Repository) DeleteNotebook(id string) error {
+	_, _ = r.db.Exec(`DELETE FROM sources WHERE notebook_id = ?`, id)
+	_, _ = r.db.Exec(`DELETE FROM notes WHERE notebook_id = ?`, id)
 	query := `DELETE FROM notebooks WHERE id = ?`
 	_, err := r.db.Exec(query, id)
 	return err

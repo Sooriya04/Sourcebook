@@ -23,7 +23,7 @@ type JinaBatchResponse struct {
 	Data    []JinaScrapeResult `json:"data"`
 }
 
-// ScrapeWithJina sends a batch of URLs to the local Jina Ingestion Microservice.
+// ScrapeWithJina sends URLs to the local Jina service, falling back to public r.jina.ai if offline.
 func ScrapeWithJina(ctx context.Context, urls []string) ([]JinaScrapeResult, error) {
 	jinaServiceURL := os.Getenv("JINA_SERVICE_URL")
 	if jinaServiceURL == "" {
@@ -31,37 +31,57 @@ func ScrapeWithJina(ctx context.Context, urls []string) ([]JinaScrapeResult, err
 	}
 
 	endpoint := fmt.Sprintf("%s/scrape/batch", jinaServiceURL)
-
-	reqPayload := map[string]interface{}{
-		"urls": urls,
-	}
-
+	reqPayload := map[string]interface{}{"urls": urls}
 	bodyBytes, err := json.Marshal(reqPayload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal jina scrape request: %w", err)
+	if err == nil {
+		req, reqErr := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(bodyBytes))
+		if reqErr == nil {
+			req.Header.Set("Content-Type", "application/json")
+			client := &http.Client{Timeout: 30 * time.Second}
+			resp, doErr := client.Do(req)
+			if doErr == nil && resp.StatusCode == http.StatusOK {
+				defer resp.Body.Close()
+				var respPayload JinaBatchResponse
+				if decodeErr := json.NewDecoder(resp.Body).Decode(&respPayload); decodeErr == nil && respPayload.Success {
+					return respPayload.Data, nil
+				}
+			}
+		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create http request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	// Fallback to public r.jina.ai reader
+	return fetchViaPublicJina(ctx, urls)
+}
 
-	client := &http.Client{Timeout: 40 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("http call to jina microservice failed: %w", err)
-	}
-	defer resp.Body.Close()
+func fetchViaPublicJina(ctx context.Context, urls []string) ([]JinaScrapeResult, error) {
+	var results []JinaScrapeResult
+	httpClient := &http.Client{Timeout: 12 * time.Second}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("jina microservice returned non-200 status: %d", resp.StatusCode)
+	for _, u := range urls {
+		rURL := fmt.Sprintf("https://r.jina.ai/%s", u)
+		req, err := http.NewRequestWithContext(ctx, "GET", rURL, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		resp, err := httpClient.Do(req)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(resp.Body)
+			resp.Body.Close()
+			md := buf.String()
+			if len(md) > 50 {
+				results = append(results, JinaScrapeResult{
+					URL:      u,
+					Markdown: md,
+					Success:  true,
+				})
+			}
+		}
 	}
 
-	var respPayload JinaBatchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respPayload); err != nil {
-		return nil, fmt.Errorf("failed to decode jina service response: %w", err)
+	if len(results) > 0 {
+		return results, nil
 	}
-
-	return respPayload.Data, nil
+	return nil, fmt.Errorf("unable to scrape URLs via local or public Jina")
 }

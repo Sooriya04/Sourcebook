@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
 )
 
-// HandleYouTubeTranscript proxies YouTube transcript requests to the standalone Python microservice.
+// HandleYouTubeTranscript proxies YouTube transcript requests to the standalone microservice
+// or falls back to local direct Python execution.
 func (a *API) HandleYouTubeTranscript(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -21,10 +21,14 @@ func (a *API) HandleYouTubeTranscript(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		URL string `json:"url"`
 	}
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.URL == "" {
 		http.Error(w, "Valid 'url' parameter is required", http.StatusBadRequest)
 		return
+	}
+
+	title := FetchYouTubeTitle(r.Context(), req.URL)
+	if title == "" || title == "YouTube Video" {
+		title = "YouTube Transcript"
 	}
 
 	ytServiceURL := ""
@@ -40,40 +44,40 @@ func (a *API) HandleYouTubeTranscript(w http.ResponseWriter, r *http.Request) {
 		ytServiceURL = "http://127.0.0.1:6001"
 	}
 
-	log.Printf("[YouTube] Forwarding transcript request for URL %q to base %s", req.URL, ytServiceURL)
-
 	endpoint := fmt.Sprintf("%s/youtube/transcript", ytServiceURL)
 	bodyBytes, _ := json.Marshal(map[string]string{"url": req.URL})
 	ytReq, err := http.NewRequestWithContext(r.Context(), "POST", endpoint, bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
-		return
+	if err == nil {
+		ytReq.Header.Set("Content-Type", "application/json")
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, doErr := client.Do(ytReq)
+		if doErr == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var result struct {
+					Text string `json:"text"`
+				}
+				if json.NewDecoder(resp.Body).Decode(&result) == nil && result.Text != "" {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"success": true,
+						"url":     req.URL,
+						"title":   title,
+						"content": result.Text,
+						"type":    "youtube",
+					})
+					return
+				}
+			}
+		}
 	}
-	ytReq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(ytReq)
-	if err != nil {
-		log.Printf("[YouTube] Service error: %v", err)
-		http.Error(w, fmt.Sprintf("YouTube transcript service unavailable: %v", err), http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[YouTube] Microservice returned status %d: %s", resp.StatusCode, string(respBody))
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(resp.StatusCode)
-		w.Write(respBody)
-		return
-	}
-
-	var result struct {
-		Text string `json:"text"`
-	}
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		http.Error(w, "Failed to parse transcript response", http.StatusInternalServerError)
+	// Fallback to direct local Python execution
+	log.Printf("[YouTube] Microservice offline, running direct local python fallback for %s", req.URL)
+	text, fbErr := fetchLocalYouTubeTranscript(req.URL)
+	if fbErr != nil {
+		log.Printf("[YouTube] Local python fallback failed: %v", fbErr)
+		http.Error(w, fmt.Sprintf("Failed to extract YouTube transcript: %v", fbErr), http.StatusBadGateway)
 		return
 	}
 
@@ -81,8 +85,8 @@ func (a *API) HandleYouTubeTranscript(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"url":     req.URL,
-		"title":   "YouTube Transcript",
-		"content": result.Text,
+		"title":   title,
+		"content": text,
 		"type":    "youtube",
 	})
 }

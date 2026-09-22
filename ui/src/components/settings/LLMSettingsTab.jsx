@@ -1,15 +1,46 @@
 import React from 'react';
 import { Zap, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
 
+export const DEFAULT_PROVIDER_CONFIGS = {
+  openai: {
+    baseUrl: 'http://localhost:20128/v1',
+    model: 'ag/gemini-3.6-flash-low',
+    apiKey: '',
+    placeholderUrl: 'http://localhost:20128/v1',
+    placeholderModel: 'ag/gemini-3.6-flash-low',
+    placeholderKey: 'sk-... (optional for local proxy)'
+  },
+  ollama: {
+    baseUrl: 'http://localhost:11434',
+    model: 'gemma2',
+    apiKey: '',
+    placeholderUrl: 'http://localhost:11434',
+    placeholderModel: 'gemma2, llama3, qwen2.5',
+    placeholderKey: 'Not required for local Ollama'
+  },
+  groq: {
+    baseUrl: 'https://api.groq.com/openai/v1',
+    model: 'llama-3.3-70b-versatile',
+    apiKey: '',
+    placeholderUrl: 'https://api.groq.com/openai/v1',
+    placeholderModel: 'llama-3.3-70b-versatile',
+    placeholderKey: 'gsk_...'
+  },
+  nvidia: {
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    model: 'meta/llama-3.1-70b-instruct',
+    apiKey: '',
+    placeholderUrl: 'https://integrate.api.nvidia.com/v1',
+    placeholderModel: 'meta/llama-3.1-70b-instruct',
+    placeholderKey: 'nvapi-...'
+  }
+};
+
 export default function LLMSettingsTab({
   provider,
   setProvider,
-  baseUrl,
-  setBaseUrl,
-  activeModel,
-  setActiveModel,
-  apiKey,
-  setApiKey,
+  providerConfigs,
+  onChangeConfig,
   testingKey,
   testStatus,
   onTestConnection
@@ -21,13 +52,8 @@ export default function LLMSettingsTab({
     { id: 'nvidia', label: 'NVIDIA NIM', desc: 'Cloud NIM endpoints' }
   ];
 
-  const handleProviderSelect = (id) => {
-    setProvider(id);
-    if (id === 'ollama') setBaseUrl('http://localhost:11434');
-    else if (id === 'openai') setBaseUrl('http://localhost:20128/v1');
-    else if (id === 'groq') setBaseUrl('https://api.groq.com/openai/v1');
-    else if (id === 'nvidia') setBaseUrl('https://integrate.api.nvidia.com/v1');
-  };
+  const meta = DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.openai;
+  const current = (providerConfigs && providerConfigs[provider]) || meta;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
@@ -40,7 +66,7 @@ export default function LLMSettingsTab({
           {providers.map(p => (
             <div
               key={p.id}
-              onClick={() => handleProviderSelect(p.id)}
+              onClick={() => setProvider(p.id)}
               style={{
                 padding: '10px 14px',
                 borderRadius: '6px',
@@ -63,9 +89,9 @@ export default function LLMSettingsTab({
             </label>
             <input
               type="text"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="http://localhost:20128/v1"
+              value={current.baseUrl ?? meta.baseUrl}
+              onChange={(e) => onChangeConfig(provider, 'baseUrl', e.target.value)}
+              placeholder={meta.placeholderUrl}
               style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.85rem' }}
             />
           </div>
@@ -76,9 +102,9 @@ export default function LLMSettingsTab({
             </label>
             <input
               type="text"
-              value={activeModel}
-              onChange={(e) => setActiveModel(e.target.value)}
-              placeholder="ag/gemini-3.6-flash-low"
+              value={current.model ?? meta.model}
+              onChange={(e) => onChangeConfig(provider, 'model', e.target.value)}
+              placeholder={meta.placeholderModel}
               style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.85rem' }}
             />
           </div>
@@ -89,9 +115,9 @@ export default function LLMSettingsTab({
             </label>
             <input
               type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter API key or leave unchanged"
+              value={current.apiKey ?? ''}
+              onChange={(e) => onChangeConfig(provider, 'apiKey', e.target.value)}
+              placeholder={meta.placeholderKey}
               style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '0.85rem' }}
             />
           </div>

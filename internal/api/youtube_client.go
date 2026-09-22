@@ -131,44 +131,7 @@ func DiscoverYouTubeMetadata(ctx context.Context, query string, maxVideo int) ([
 	return results, nil
 }
 
-func FetchSingleYouTubeTranscript(ctx context.Context, url string) (string, error) {
-	youtubeURL := os.Getenv("YOUTUBE_SERVICE_URL")
-	if youtubeURL == "" {
-		youtubeURL = "http://localhost:6001"
-	}
 
-	reqBody, _ := json.Marshal(map[string]interface{}{
-		"url": url,
-	})
-
-	endpoint := fmt.Sprintf("%s/youtube/transcript", youtubeURL)
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return "", fmt.Errorf("failed to create youtube transcript request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("youtube transcript request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("youtube transcript returned status %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var data struct {
-		Text string `json:"text"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", fmt.Errorf("failed to decode youtube transcript response: %w", err)
-	}
-
-	return data.Text, nil
-}
 
 // FetchYouTubeTitle attempts to fetch the real title of a YouTube video via YouTube's public oEmbed API.
 func FetchYouTubeTitle(ctx context.Context, videoURL string) string {

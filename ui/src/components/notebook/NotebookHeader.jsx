@@ -3,7 +3,7 @@ import { ArrowLeft, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SentinelStatus from '../layout/SentinelStatus';
 
-export default function NotebookHeader({ title, onClearChat, messageCount, activeMode, setActiveMode, onExport }) {
+export default function NotebookHeader({ title, notebookId, onClearChat, messageCount, activeMode, setActiveMode, onExport }) {
   return (
     <div className="notebook-header">
       <div className="header-left">
@@ -11,7 +11,7 @@ export default function NotebookHeader({ title, onClearChat, messageCount, activ
           <ArrowLeft size={16} />
         </Link>
         <h2 className="current-notebook-title">{title}</h2>
-        <SentinelStatus />
+        <SentinelStatus notebookId={notebookId} />
       </div>
 
       <div className="header-actions">

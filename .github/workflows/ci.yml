@@ -46,3 +46,12 @@ jobs:
 
       - name: Build Vite Frontend
         run: cd ui && npm run build
+
+  docker:
+    name: Docker Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config

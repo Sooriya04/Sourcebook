@@ -161,7 +161,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
             onClick={handleImport}
             className={`btn-discovery-import ${selectedUrls.size > 0 ? 'active' : ''}`}
           >
-            Import {selectedUrls.size > 0 ? `(${selectedUrls.size})` : ''}
+            Import
           </button>
         </div>
       </div>

@@ -31,9 +31,12 @@ func IsSocialURL(url string) bool {
 	// RSS/Atom check
 	isFeed := strings.HasSuffix(lower, ".xml") ||
 		strings.HasSuffix(lower, ".rss") ||
-		strings.Contains(lower, "/feed") ||
-		strings.Contains(lower, "/rss") ||
-		strings.Contains(lower, "atom")
+		strings.HasSuffix(lower, "/feed") ||
+		strings.Contains(lower, "/feed/") ||
+		strings.HasSuffix(lower, "/rss") ||
+		strings.Contains(lower, "/rss/") ||
+		strings.HasSuffix(lower, "/atom.xml") ||
+		strings.Contains(lower, "/atom/")
 
 	// Social platforms check
 	isPlatform := strings.Contains(lower, "weixin.qq.com") ||

@@ -23,5 +23,6 @@ type UserSettings struct {
 	EmbeddingProvider string    `json:"embedding_provider"`
 	EmbeddingURL      string    `json:"embedding_url"`
 	EmbeddingModel    string    `json:"embedding_model"`
+	ProviderConfigs   string    `json:"provider_configs"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

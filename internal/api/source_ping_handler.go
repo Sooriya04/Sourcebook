@@ -33,26 +33,37 @@ func (a *API) HandleSourcePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fast ping with 1.5 second timeout
 	client := &http.Client{
-		Timeout: 1500 * time.Millisecond,
+		Timeout: 3500 * time.Millisecond,
 	}
 
-	resp, err := client.Head(req.URL)
+	reqHead, err := http.NewRequestWithContext(r.Context(), "HEAD", req.URL, nil)
 	online := false
 	statusCode := 0
 
 	if err == nil {
-		online = (resp.StatusCode >= 200 && resp.StatusCode < 400)
-		statusCode = resp.StatusCode
-		resp.Body.Close()
-	} else {
-		// Try GET request as fallback if HEAD fails (some servers reject HEAD)
-		resp, err = client.Get(req.URL)
-		if err == nil {
-			online = (resp.StatusCode >= 200 && resp.StatusCode < 400)
+		reqHead.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		reqHead.Header.Set("Accept", "*/*")
+		resp, headErr := client.Do(reqHead)
+		if headErr == nil {
 			statusCode = resp.StatusCode
+			online = (resp.StatusCode >= 200 && resp.StatusCode < 400)
 			resp.Body.Close()
+		}
+	}
+
+	if !online {
+		reqGet, getErr := http.NewRequestWithContext(r.Context(), "GET", req.URL, nil)
+		if getErr == nil {
+			reqGet.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+			reqGet.Header.Set("Accept", "*/*")
+			reqGet.Header.Set("Range", "bytes=0-1024")
+			resp, doErr := client.Do(reqGet)
+			if doErr == nil {
+				statusCode = resp.StatusCode
+				online = (resp.StatusCode >= 200 && resp.StatusCode < 500)
+				resp.Body.Close()
+			}
 		}
 	}
 

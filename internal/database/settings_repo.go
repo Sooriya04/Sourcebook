@@ -14,6 +14,7 @@ func (r *Repository) GetSettings() (*models.UserSettings, error) {
 		COALESCE(llm_provider, ''), COALESCE(llm_base_url, ''), COALESCE(llm_model, ''), COALESCE(llm_api_key, ''),
 		COALESCE(searxng_url, ''), COALESCE(searqon_url, ''), COALESCE(youtube_service_url, ''),
 		COALESCE(embedding_provider, ''), COALESCE(embedding_url, ''), COALESCE(embedding_model, ''),
+		COALESCE(provider_configs, ''),
 		updated_at FROM user_settings WHERE id = 'global'`
 	row := r.db.QueryRow(query)
 
@@ -23,6 +24,7 @@ func (r *Repository) GetSettings() (*models.UserSettings, error) {
 		&s.LLMProvider, &s.LLMBaseURL, &s.LLMModel, &s.LLMAPIKey,
 		&s.SearxngURL, &s.SearqonURL, &s.YoutubeServiceURL,
 		&s.EmbeddingProvider, &s.EmbeddingURL, &s.EmbeddingModel,
+		&s.ProviderConfigs,
 		&s.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -79,8 +81,8 @@ func (r *Repository) UpdateSettings(s models.UserSettings) error {
 		youtube_enabled, youtube_max_sources, deep_crawl_enabled, deep_crawl_limit, deep_crawl_depth,
 		llm_provider, llm_base_url, llm_model, llm_api_key,
 		searxng_url, searqon_url, youtube_service_url,
-		embedding_provider, embedding_url, embedding_model, updated_at)
-	VALUES ('global', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		embedding_provider, embedding_url, embedding_model, provider_configs, updated_at)
+	VALUES ('global', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	ON CONFLICT(id) DO UPDATE SET
 		search_provider=excluded.search_provider,
 		max_sources=excluded.max_sources,
@@ -101,13 +103,14 @@ func (r *Repository) UpdateSettings(s models.UserSettings) error {
 		embedding_provider=excluded.embedding_provider,
 		embedding_url=excluded.embedding_url,
 		embedding_model=excluded.embedding_model,
+		provider_configs=CASE WHEN excluded.provider_configs != '' THEN excluded.provider_configs ELSE user_settings.provider_configs END,
 		updated_at=excluded.updated_at
 	`
 	_, err := r.db.Exec(query, s.SearchProvider, s.MaxSources, s.SearxngSplit, s.DdgSplit,
 		s.YoutubeEnabled, s.YoutubeMaxSources, s.DeepCrawlEnabled, s.DeepCrawlLimit, s.DeepCrawlDepth,
 		s.LLMProvider, s.LLMBaseURL, s.LLMModel, apiKey,
 		s.SearxngURL, s.SearqonURL, s.YoutubeServiceURL,
-		s.EmbeddingProvider, s.EmbeddingURL, s.EmbeddingModel, time.Now())
+		s.EmbeddingProvider, s.EmbeddingURL, s.EmbeddingModel, s.ProviderConfigs, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to update user settings: %w", err)
 	}
