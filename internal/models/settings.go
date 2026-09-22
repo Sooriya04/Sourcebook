@@ -17,5 +17,11 @@ type UserSettings struct {
 	LLMBaseURL        string    `json:"llm_base_url"`
 	LLMModel          string    `json:"llm_model"`
 	LLMAPIKey         string    `json:"llm_api_key"`
+	SearxngURL        string    `json:"searxng_url"`
+	SearqonURL        string    `json:"searqon_url"`
+	YoutubeServiceURL string    `json:"youtube_service_url"`
+	EmbeddingProvider string    `json:"embedding_provider"`
+	EmbeddingURL      string    `json:"embedding_url"`
+	EmbeddingModel    string    `json:"embedding_model"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

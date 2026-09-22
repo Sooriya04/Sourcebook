@@ -19,7 +19,7 @@ func (a *API) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodPut {
+	if r.Method == http.MethodPut || r.Method == http.MethodPost {
 		var req models.UserSettings
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
@@ -30,6 +30,11 @@ func (a *API) HandleSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		if a.llmClient != nil && (req.LLMProvider != "" || req.LLMBaseURL != "" || req.LLMModel != "" || req.LLMAPIKey != "") {
+			a.llmClient.SetConfig(req.LLMProvider, req.LLMBaseURL, req.LLMModel, req.LLMAPIKey)
+		}
+		InvalidateHealthCache()
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{

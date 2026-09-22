@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"sourcebook/internal/llm"
 	"sourcebook/internal/utils"
 )
 
@@ -100,49 +99,29 @@ func (c *Controller) HandleExplainQuery(ctx context.Context, query string, noteb
 	return docs, false
 }
 
-// BatchAndSummarize processes documents one by one to extract query-relevant information.
+// BatchAndSummarize cleans and normalizes document content, ensuring each document is sized appropriately for LLM context without losing source fidelity.
 func (c *Controller) BatchAndSummarize(ctx context.Context, query string, docs []Document, onStatus func(string)) []Document {
-	var summarizedDocs []Document
+	var preparedDocs []Document
 
 	for i, doc := range docs {
 		cleaned := utils.CleanText(doc.Content)
-		if len(cleaned) < 500 {
-			doc.Content = cleaned
-			summarizedDocs = append(summarizedDocs, doc)
-			continue
+		if cleaned == "" {
+			cleaned = utils.CleanText(doc.Title)
 		}
 
 		if onStatus != nil {
-			onStatus(fmt.Sprintf("Digesting source %d/%d: %s...", i+1, len(docs), doc.Title))
+			onStatus(fmt.Sprintf("Preparing source %d/%d: %s...", i+1, len(docs), doc.Title))
 		}
 
-		prompt := fmt.Sprintf(`You are a precise facts extractor. Read the following source document and extract key factual points relevant to the query: %q.
-Keep the extraction extremely concise, returning only the direct facts as a bulleted list. Keep it under 200 words total. Do not add any conversational text.
-
-Document Title: %s
-Content:
-%s`, query, doc.Title, cleaned)
-
-		messages := []llm.Message{
-			{Role: "user", Content: prompt},
+		// Keep up to 6000 runes per document so full authentic content is fed to synthesis
+		runes := []rune(cleaned)
+		if len(runes) > 6000 {
+			doc.Content = string(runes[:6000]) + "\n\n... [Content truncated for context limits]"
+		} else {
+			doc.Content = cleaned
 		}
-
-		summary, err := c.llmClient.Generate(ctx, messages)
-		if err != nil {
-			log.Printf("[BatchAndSummarize] Warning: failed to digest %q: %v", doc.Title, err)
-			runes := []rune(cleaned)
-			if len(runes) > 1000 {
-				doc.Content = string(runes[:1000]) + "... [Truncated]"
-			} else {
-				doc.Content = cleaned
-			}
-			summarizedDocs = append(summarizedDocs, doc)
-			continue
-		}
-
-		doc.Content = summary
-		summarizedDocs = append(summarizedDocs, doc)
+		preparedDocs = append(preparedDocs, doc)
 	}
 
-	return summarizedDocs
+	return preparedDocs
 }

@@ -1,0 +1,50 @@
+services:
+  sourcebook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sourcebook-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - SEARXNG_URL=http://searxng:8080
+      - YOUTUBE_SERVICE_URL=http://youtube-service:6001
+      - LLM_PROVIDER=ollama
+      - LLM_URL=http://host.docker.internal:11434
+      - LLM_MODEL=gemma2
+    volumes:
+      - sourcebook_data:/app/data
+    depends_on:
+      - searxng
+      - youtube-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: sourcebook-searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+  youtube-service:
+    build:
+      context: ./services/youtube
+      dockerfile: Dockerfile
+    container_name: sourcebook-youtube
+    restart: unless-stopped
+    ports:
+      - "6001:6001"
+
+volumes:
+  sourcebook_data:

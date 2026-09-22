@@ -350,7 +350,18 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 				unresolved[u] = true
 			}
 
-			searqonURL := os.Getenv("SEARQON_SCRAPE_URL")
+			searqonURL := ""
+			if a.repo != nil {
+				if s, err := a.repo.GetSettings(); err == nil && s.SearqonURL != "" {
+					searqonURL = s.SearqonURL
+				}
+			}
+			if searqonURL == "" {
+				searqonURL = os.Getenv("SEARQON_SCRAPE_URL")
+			}
+			if searqonURL == "" {
+				searqonURL = "http://127.0.0.1:4001/scrape/batch"
+			}
 			var searqonSuccess bool
 			var respBody []byte
 

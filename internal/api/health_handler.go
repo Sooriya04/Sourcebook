@@ -21,13 +21,26 @@ var (
 	lastHealthCheck time.Time
 )
 
-// HandleLLMHealth checks LLM connectivity dynamically across configured provider (Ollama, OpenAI, Groq, 9router, etc.)
+// InvalidateHealthCache resets the cached LLM status so subsequent checks re-verify immediately.
+func InvalidateHealthCache() {
+	healthMu.Lock()
+	cachedHealth = llmHealthResponse{}
+	lastHealthCheck = time.Time{}
+	healthMu.Unlock()
+}
+
+// HandleLLMHealth checks LLM connectivity dynamically across configured provider (Ollama, OpenAI, Groq, etc.)
 func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	healthMu.Lock()
-	if time.Since(lastHealthCheck) < 30*time.Second && cachedHealth.Status != "" {
+	// Cache "online" for 30s, but recheck "offline" much faster (3s) so status recovers promptly
+	cacheDuration := 30 * time.Second
+	if cachedHealth.Status == "offline" {
+		cacheDuration = 3 * time.Second
+	}
+	if time.Since(lastHealthCheck) < cacheDuration && cachedHealth.Status != "" {
 		res := cachedHealth
 		healthMu.Unlock()
 		json.NewEncoder(w).Encode(res)
@@ -39,19 +52,34 @@ func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 	model := ""
 	if a.llmClient != nil {
 		model = a.llmClient.GetModel()
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		ok, _, err := a.llmClient.TestConnection(ctx)
+		ok, err := a.llmClient.Ping(ctx)
 		if ok && err == nil {
 			status = "online"
 		}
 	}
 
 	if model == "" {
-		model = os.Getenv("LLM_MODEL")
+		if a.repo != nil {
+			if s, err := a.repo.GetSettings(); err == nil && s.LLMModel != "" {
+				model = s.LLMModel
+			}
+		}
+		if model == "" {
+			model = os.Getenv("LLM_MODEL")
+		}
 	}
 
-	embeddings := os.Getenv("EMBEDDING_MODEL")
+	embeddings := ""
+	if a.repo != nil {
+		if s, err := a.repo.GetSettings(); err == nil && s.EmbeddingModel != "" {
+			embeddings = s.EmbeddingModel
+		}
+	}
+	if embeddings == "" {
+		embeddings = os.Getenv("EMBEDDING_MODEL")
+	}
 	if embeddings == "" {
 		embeddings = "all-MiniLM-L6-v2"
 	}

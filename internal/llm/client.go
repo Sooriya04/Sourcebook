@@ -334,11 +334,48 @@ func (c *Client) SetConfig(provider, baseURL, model, apiKey string) {
 	if model != "" {
 		c.model = model
 	}
-	c.apiKey = apiKey
+	if apiKey != "" {
+		c.apiKey = apiKey
+	}
 }
 
 func (c *Client) GetConfig() (string, string, string, string) {
 	return c.provider, c.baseURL, c.model, c.apiKey
+}
+
+// Ping quickly checks endpoint connectivity without triggering a full LLM token generation
+func (c *Client) Ping(ctx context.Context) (bool, error) {
+	if c.provider == "ollama" {
+		reqURL := fmt.Sprintf("%s/api/tags", c.baseURL)
+		req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+		if err != nil {
+			return false, err
+		}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return false, err
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode == http.StatusOK, nil
+	}
+
+	reqURL := fmt.Sprintf("%s/models", c.baseURL)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err == nil {
+		if c.apiKey != "" {
+			req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		}
+		resp, err := c.httpClient.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return true, nil
+			}
+		}
+	}
+
+	ok, _, err := c.TestConnection(ctx)
+	return ok, err
 }
 
 // TestConnection validates if the configured model / API key / BaseURL is responsive.

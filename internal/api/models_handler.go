@@ -18,6 +18,7 @@ type modelsResponse struct {
 	Active   string      `json:"active"`
 	Provider string      `json:"provider"`
 	BaseURL  string      `json:"base_url"`
+	APIKey   string      `json:"api_key"`
 }
 
 type configUpdateRequest struct {
@@ -69,14 +70,13 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		_ = apiKey // keep key secure
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(modelsResponse{
 			Models:   modelsList,
 			Active:   activeModel,
 			Provider: provider,
 			BaseURL:  baseURL,
+			APIKey:   apiKey,
 		})
 		return
 	}
@@ -138,6 +138,7 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 		if a.repo != nil {
 			_ = a.repo.UpdateLLMSettings(req.Provider, req.BaseURL, req.Model, req.APIKey)
 		}
+		InvalidateHealthCache()
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{

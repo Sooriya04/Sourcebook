@@ -14,6 +14,7 @@ import {
   Trash2,
   Globe
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import MessageBubble from './MessageBubble';
 import ThinkingIndicator from './ThinkingIndicator';
 import PromptBar from './PromptBar';
@@ -44,11 +45,14 @@ export default function ChatStudio({
   isSourcesCollapsed,
   onToggleSources,
   isStudioCollapsed,
-  onToggleStudio
+  onToggleStudio,
+  onAddUrl
 }) {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [mode, setMode] = useState('notebook');
-  const [llmHealth, setLlmHealth] = useState({ status: 'offline', model: '', embeddings: '' });
+  const [llmHealth, setLlmHealth] = useState({ status: 'checking', model: '', embeddings: '' });
+  const [showOfflineBanner, setShowOfflineBanner] = useState(false);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
@@ -79,6 +83,16 @@ export default function ChatStudio({
     const interval = setInterval(checkHealth, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (llmHealth.status === 'offline') {
+      setShowOfflineBanner(true);
+      const timer = setTimeout(() => setShowOfflineBanner(false), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowOfflineBanner(false);
+    }
+  }, [llmHealth.status]);
 
   // Keyboard Shortcuts Handler
   useKeyboard({
@@ -341,20 +355,74 @@ export default function ChatStudio({
           </div>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div 
+          onClick={() => navigate('/settings')}
+          title="Click to configure LLM in Settings"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: 'var(--panel-2)' }}
+        >
           <span style={{
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: llmHealth.status === 'online' ? '#10b981' : '#ef4444',
-            boxShadow: llmHealth.status === 'online' ? '0 0 8px #10b981' : '0 0 8px #ef4444',
+            background: llmHealth.status === 'online' ? '#10b981' : (llmHealth.status === 'checking' ? '#f59e0b' : '#ef4444'),
+            boxShadow: llmHealth.status === 'online' ? '0 0 8px #10b981' : (llmHealth.status === 'checking' ? '0 0 8px #f59e0b' : '0 0 8px #ef4444'),
             display: 'inline-block'
           }}></span>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-            {llmHealth.status === 'online' ? `${llmHealth.model} (Online)` : 'LLM Offline'}
+            {llmHealth.status === 'online' ? `${llmHealth.model} (Online)` : (llmHealth.status === 'checking' ? 'Connecting...' : 'LLM Offline (Click to configure)')}
           </span>
         </div>
       </div>
+
+      {showOfflineBanner && llmHealth.status === 'offline' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '8px',
+          padding: '6px 12px',
+          margin: '0 16px 8px',
+          fontSize: '0.75rem',
+          color: '#ef4444'
+        }}>
+          <span>LLM provider is offline. Configure your model provider or API key in Settings.</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              style={{
+                background: '#ef4444',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowOfflineBanner(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#ef4444',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Interactive Controls */}
       <ChatControls 
@@ -431,6 +499,8 @@ export default function ChatStudio({
                 onCitationClick={onCitationClick}
                 activeCitation={activeCitation}
                 onSaveNote={handleSaveNoteWithToast}
+                onSendMessage={handleSend}
+                isLatest={idx === messages.length - 1}
               />
             ))}
 
@@ -496,6 +566,8 @@ export default function ChatStudio({
       <PromptBar
         ref={promptInputRef}
         onSend={handleSend}
+        onStop={onStopStream}
+        onAddUrl={onAddUrl}
         loading={loading}
         sourceCount={allSources ? allSources.length : 0}
         scopedCount={scopedSourceIds ? scopedSourceIds.size : (allSources ? allSources.length : 0)}

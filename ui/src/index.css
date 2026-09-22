@@ -1676,6 +1676,65 @@ button {
   font-size: 0.72rem;
 }
 
+.btn-select-all {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--canvas-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-select-all:hover {
+  color: var(--text-main);
+  border-color: var(--accent-primary);
+}
+
+.btn-discovery-cancel {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-discovery-cancel:hover {
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.btn-discovery-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transition: all 0.15s ease;
+}
+
+.btn-discovery-import.active {
+  background: var(--accent-primary);
+  color: #000;
+  cursor: pointer;
+}
+
+.btn-discovery-import.active:hover {
+  filter: brightness(1.08);
+}
+
 .discovery-search-form {
   margin-bottom: 6px;
 }

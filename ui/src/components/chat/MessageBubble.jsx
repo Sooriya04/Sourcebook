@@ -9,7 +9,9 @@ export default function MessageBubble({
   allSources, 
   onCitationClick, 
   activeCitation,
-  onSaveNote 
+  onSaveNote,
+  onSendMessage,
+  isLatest
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -28,11 +30,10 @@ export default function MessageBubble({
         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         .replace(/\([^)]*https?:\/\/[^)]*\)/g, '')
         .replace(/^#+\s*/g, '')
-        .replace(/\[\d+\]/g, '')
+        .slice(0, 40)
         .trim();
       onSaveNote({
-        id: `note-${Date.now()}`,
-        title: (cleanTitle.slice(0, 45) || 'Saved AI Response') + (cleanTitle.length > 45 ? '...' : ''),
+        title: cleanTitle ? `${cleanTitle}...` : 'AI Synthesis',
         content: message.content
       });
       setSaved(true);
@@ -43,22 +44,20 @@ export default function MessageBubble({
   // User Message: Sleek right-aligned chat bubble
   if (isUser) {
     return (
-      <div className="user-message-row" style={{ display: 'flex', justifyContent: 'flex-end', margin: '8px 0', width: '100%' }}>
+      <div className="user-message-row" style={{ display: 'flex', justifyContent: 'flex-end', margin: '10px 0', width: '100%' }}>
         <div 
           className="user-chat-bubble"
           style={{
             maxWidth: '75%',
-            background: 'var(--canvas-2)',
-            border: '1px solid var(--border-color)',
+            padding: '10px 14px',
             borderRadius: '16px 16px 4px 16px',
-            padding: '10px 16px',
-            color: 'var(--text-main)',
-            fontSize: '0.92rem',
-            lineHeight: '1.55',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+            background: 'var(--panel, #27272a)',
+            color: 'var(--paper, #f4f4f5)',
+            border: '1px solid var(--line, #3f3f46)',
+            fontSize: '0.88rem',
+            lineHeight: '1.5',
             wordBreak: 'break-word',
-            fontFamily: 'var(--font-sans)',
-            whiteSpace: 'pre-wrap'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
           }}
         >
           {message.content}
@@ -98,7 +97,7 @@ export default function MessageBubble({
       {message.graph_trace && message.graph_trace.length > 0 && (
         <details style={{ marginTop: '8px', fontSize: '0.74rem', border: '1px dashed var(--border-color)', borderRadius: '6px', padding: '6px 10px', background: 'var(--canvas-2)' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--accent-primary)' }}>
-            ⚡ Execution Trace ({message.graph_trace.length} transitions)
+            Execution Trace ({message.graph_trace.length} transitions)
           </summary>
           <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {message.graph_trace.map((step, idx) => (
@@ -111,26 +110,54 @@ export default function MessageBubble({
         </details>
       )}
 
-      {/* Actions */}
+      {/* Actions & Follow-up Chips */}
       {message.content && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-          <button 
-            onClick={handleCopy}
-            title="Copy message"
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer' }}
-          >
-            {copied ? <Check size={12} color="var(--text-main)" /> : <Copy size={12} />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
-          
-          <button 
-            onClick={handleSave}
-            title="Save as Studio Note"
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer' }}
-          >
-            {saved ? <Check size={12} color="var(--text-main)" /> : <Bookmark size={12} />}
-            <span>{saved ? 'Saved' : 'Save Note'}</span>
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button 
+              onClick={handleCopy}
+              title="Copy message"
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer' }}
+            >
+              {copied ? <Check size={12} color="var(--text-main)" /> : <Copy size={12} />}
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+            
+            <button 
+              onClick={handleSave}
+              title="Save as Studio Note"
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer' }}
+            >
+              {saved ? <Check size={12} color="var(--text-main)" /> : <Bookmark size={12} />}
+              <span>{saved ? 'Saved' : 'Save Note'}</span>
+            </button>
+          </div>
+
+          {isLatest && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+              {["Summarize key takeaways", "What are the limitations?", "Explain with an example"].map((sug, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onSendMessage && onSendMessage(sug)}
+                  style={{
+                    fontSize: '0.7rem',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--canvas-2)',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+                >
+                  {sug}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

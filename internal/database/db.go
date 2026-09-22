@@ -133,5 +133,13 @@ func createTables(db *sql.DB) error {
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN llm_model TEXT DEFAULT '';")
 	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN llm_api_key TEXT DEFAULT '';")
 
+	// Auto-migrate: Add customizable endpoint URLs & embedding settings
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN searxng_url TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN searqon_url TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN youtube_service_url TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN embedding_provider TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN embedding_url TEXT DEFAULT '';")
+	_, _ = db.Exec("ALTER TABLE user_settings ADD COLUMN embedding_model TEXT DEFAULT '';")
+
 	return nil
 }

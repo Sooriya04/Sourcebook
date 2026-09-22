@@ -33,10 +33,16 @@ func main() {
 	reg := registry.NewProviderRegistry()
 
 	// Initialize the primary search provider.
-	searxURL := os.Getenv("SEARXNG_URL")
+	searxURL := ""
+	if s, err := repo.GetSettings(); err == nil && s.SearxngURL != "" {
+		searxURL = s.SearxngURL
+	}
+	if searxURL == "" {
+		searxURL = os.Getenv("SEARXNG_URL")
+	}
 	if searxURL == "" {
 		searxURL = "http://localhost:8080"
-		log.Println("SEARXNG_URL environment variable not set, defaulting to http://localhost:8080")
+		log.Println("SEARXNG_URL not configured, defaulting to http://localhost:8080")
 	}
 
 	searxProvider := searx.NewSearXNGProvider(searxURL)
@@ -77,6 +83,9 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
+
+	// Mount embedded/static UI frontend if available
+	api.RegisterStaticSPA(mux, "ui/dist")
 
 	// Request logging & CORS middleware
 	corsAndLoggingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

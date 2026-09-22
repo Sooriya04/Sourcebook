@@ -1,17 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Search, Eye, Moon, Check, Terminal } from 'lucide-react';
+import { Search, Eye, Moon, Check, Terminal, UploadCloud } from 'lucide-react';
 
 import Sidebar from '../components/layout/Sidebar';
 import ChatStudio from '../components/chat/ChatStudio';
 import StudyStudio from '../components/study/StudyStudio';
 import NotesPanel from '../components/layout/NotesPanel';
 import NotebookHeader from '../components/notebook/NotebookHeader';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 import AddSourceModal from '../components/sources/AddSourceModal';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
+import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
 import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook } from '../services/sourcebookApi';
 
 const EMPTY_SOURCES = [];
@@ -37,6 +39,8 @@ export default function NotebookPage({ getNotebook }) {
   const [isStudioCollapsed, setIsStudioCollapsed] = useState(false);
   const [studyTab, setStudyTab] = useState('briefing');
   const [inspectingSource, setInspectingSource] = useState(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const syncTimeoutRef = useRef(null);
   const hasLoadedRef = useRef(false);
@@ -260,6 +264,61 @@ export default function NotebookPage({ getNotebook }) {
     setInspectingSource(null);
   };
 
+  const handleAddUrlDirect = (url) => {
+    if (!url) return;
+    const isYT = url.includes('youtube.com') || url.includes('youtu.be');
+    if (isYT) {
+      addSource(parseYouTubeURL(url));
+    } else {
+      let title = url;
+      try { title = new URL(url).hostname; } catch {}
+      addSource({ title, url, type: 'web' });
+    }
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingFile(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      setIsDraggingFile(false);
+      dragCounterRef.current = 0;
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+    dragCounterRef.current = 0;
+
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+
+    for (const file of files) {
+      try {
+        const parsed = await parseFileClientSide(file);
+        addSource(parsed);
+      } catch (err) {
+        console.error("Failed to parse dropped file:", err);
+      }
+    }
+  };
+
   const handleImportDiscovery = async (imported) => {
     const urls = imported.map(src => src.url).filter(Boolean);
     if (imported.length === 0) return;
@@ -404,7 +463,38 @@ export default function NotebookPage({ getNotebook }) {
   };
 
   return (
-    <div className="notebook-workspace-3panel">
+    <div 
+      className="notebook-workspace-3panel"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      style={{ position: 'relative' }}
+    >
+      {/* Global Drag & Drop Ingestion Overlay */}
+      {isDraggingFile && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(9, 9, 11, 0.88)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '2px dashed var(--accent-primary, #3b82f6)',
+          margin: '16px',
+          borderRadius: '16px',
+          color: '#fff',
+          pointerEvents: 'none'
+        }}>
+          <UploadCloud size={56} color="var(--accent-primary, #3b82f6)" style={{ marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 600, margin: '0 0 8px 0' }}>Drop files to ingest into notebook</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #a1a1aa)', margin: 0 }}>Supports PDF, Markdown, Plain Text, and Code</p>
+        </div>
+      )}
+
       <NotebookHeader
         title={notebook.title}
         onClearChat={clearChat}
@@ -416,71 +506,78 @@ export default function NotebookPage({ getNotebook }) {
 
       <div className="three-panel-body" style={gridColumnsStyle}>
         {/* Slot 1: Left Panel (Sources) */}
-        <Sidebar
-          sources={sources}
-          activeCitation={activeCitation}
-          scopedSourceIds={scopedSourceIds}
-          onToggleScope={toggleSourceScope}
-          onToggleAllScope={toggleAllSourcesScope}
-          onSelectSource={(source) => setActiveCitation(source.index)}
-          onDoubleClickSource={handleDoubleClickSource}
-          onDeleteSource={removeSource}
-          onOpenAddModal={() => setIsAddModalOpen(true)}
-          discoveryTopic={discoveryTopic}
-          setDiscoveryTopic={setDiscoveryTopic}
-          onImportDiscovery={handleImportDiscovery}
-          isCollapsed={isSourcesCollapsed}
-          onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
-          inspectingSource={inspectingSource}
-          setInspectingSource={setInspectingSource}
-          onExplainSource={handleExplainSource}
-          onChatWithSource={handleChatWithSource}
-        />
+        <ErrorBoundary title="Sources Panel Error">
+          <Sidebar
+            sources={sources}
+            activeCitation={activeCitation}
+            scopedSourceIds={scopedSourceIds}
+            onToggleScope={toggleSourceScope}
+            onToggleAllScope={toggleAllSourcesScope}
+            onSelectSource={(source) => setActiveCitation(source.index)}
+            onDoubleClickSource={handleDoubleClickSource}
+            onDeleteSource={removeSource}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            discoveryTopic={discoveryTopic}
+            setDiscoveryTopic={setDiscoveryTopic}
+            onImportDiscovery={handleImportDiscovery}
+            isCollapsed={isSourcesCollapsed}
+            onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+            inspectingSource={inspectingSource}
+            setInspectingSource={setInspectingSource}
+            onExplainSource={handleExplainSource}
+            onChatWithSource={handleChatWithSource}
+          />
+        </ErrorBoundary>
 
         <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {activeMode === 'chat' ? (
-            <ChatStudio
-              messages={messages}
-              loading={chatLoading}
-              streamPhase={streamPhase}
-              maxSources={maxSources}
-              setMaxSources={setMaxSources}
-              onSendMessage={handleSendMessage}
-              onStopStream={stopStream}
-              onRegenerate={regenerateMessage}
-              onEditAndResend={editAndResendMessage}
-              onClearChat={clearChat}
-              allSources={sources}
-              scopedSourceIds={scopedSourceIds}
-              onCitationClick={handleCitationClick}
-              activeCitation={activeCitation}
-              onSaveNote={handleSaveNote}
-              chatEndRef={chatEndRef}
-              notebookTitle={notebook.title}
-              notebookDescription={notebook.description}
-              isSourcesCollapsed={isSourcesCollapsed}
-              onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
-              isStudioCollapsed={isStudioCollapsed}
-              onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
-            />
-          ) : (
-            <StudyStudio notebookId={id} sources={sources} activeTab={studyTab} setActiveTab={setStudyTab} setActiveMode={setActiveMode} />
-          )}
+          <ErrorBoundary title="Chat Studio Error">
+            {activeMode === 'chat' ? (
+              <ChatStudio
+                messages={messages}
+                loading={chatLoading}
+                streamPhase={streamPhase}
+                maxSources={maxSources}
+                setMaxSources={setMaxSources}
+                onSendMessage={handleSendMessage}
+                onStopStream={stopStream}
+                onRegenerate={regenerateMessage}
+                onEditAndResend={editAndResendMessage}
+                onClearChat={clearChat}
+                allSources={sources}
+                scopedSourceIds={scopedSourceIds}
+                onCitationClick={handleCitationClick}
+                activeCitation={activeCitation}
+                onSaveNote={handleSaveNote}
+                chatEndRef={chatEndRef}
+                notebookTitle={notebook.title}
+                notebookDescription={notebook.description}
+                isSourcesCollapsed={isSourcesCollapsed}
+                onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+                isStudioCollapsed={isStudioCollapsed}
+                onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
+                onAddUrl={handleAddUrlDirect}
+              />
+            ) : (
+              <StudyStudio notebookId={id} sources={sources} activeTab={studyTab} setActiveTab={setStudyTab} setActiveMode={setActiveMode} />
+            )}
+          </ErrorBoundary>
         </div>
 
         {/* Slot 3: Right Panel (Notes & Audio Overview) */}
-        <NotesPanel
-          notes={notes}
-          onAddNote={handleSaveNote}
-          onUpdateNote={handleUpdateNote}
-          onDeleteNote={handleDeleteNote}
-          activeMode={activeMode}
-          setActiveMode={setActiveMode}
-          isCollapsed={isStudioCollapsed}
-          onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
-          studyTab={studyTab}
-          setStudyTab={setStudyTab}
-        />
+        <ErrorBoundary title="Notes Studio Error">
+          <NotesPanel
+            notes={notes}
+            onAddNote={handleSaveNote}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            activeMode={activeMode}
+            setActiveMode={setActiveMode}
+            isCollapsed={isStudioCollapsed}
+            onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
+            studyTab={studyTab}
+            setStudyTab={setStudyTab}
+          />
+        </ErrorBoundary>
       </div>
 
       {/* Add Source Modal */}

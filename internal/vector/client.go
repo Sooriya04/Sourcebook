@@ -9,14 +9,17 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
 // Client handles HTTP requests to the Ollama embedding service.
 type Client struct {
-	llmURL     string
-	model      string
-	httpClient *http.Client
+	llmURL         string
+	model          string
+	httpClient     *http.Client
+	mu             sync.Mutex
+	lastFailedTime time.Time
 }
 
 // ChunkResponse represents a single chunk and its embedding.
@@ -51,9 +54,22 @@ func NewClient() *Client {
 		llmURL: url,
 		model:  model,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 2 * time.Second,
 		},
 	}
+}
+
+// SetConfig dynamically updates the embedding endpoint and model.
+func (c *Client) SetConfig(url, model string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if url != "" {
+		c.llmURL = url
+	}
+	if model != "" {
+		c.model = model
+	}
+	c.lastFailedTime = time.Time{}
 }
 
 // GenerateEmbeddings chunks the raw text and generates vector embeddings via Ollama.
@@ -75,8 +91,15 @@ func (c *Client) GenerateEmbeddings(ctx context.Context, text string) ([]ChunkRe
 	return results, nil
 }
 
-// GenerateQueryEmbedding gets a single vector representation for a query.
+// GenerateQueryEmbedding gets a single vector representation for a query with circuit breaker.
 func (c *Client) GenerateQueryEmbedding(ctx context.Context, query string) ([]float32, error) {
+	c.mu.Lock()
+	if time.Since(c.lastFailedTime) < 30*time.Second {
+		c.mu.Unlock()
+		return nil, fmt.Errorf("embedding service is offline (circuit breaker active)")
+	}
+	c.mu.Unlock()
+
 	reqBody, err := json.Marshal(ollamaEmbedRequest{
 		Model:  c.model,
 		Prompt: query,
@@ -94,11 +117,17 @@ func (c *Client) GenerateQueryEmbedding(ctx context.Context, query string) ([]fl
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.mu.Lock()
+		c.lastFailedTime = time.Now()
+		c.mu.Unlock()
 		return nil, fmt.Errorf("failed to reach Ollama embedding service: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		c.mu.Lock()
+		c.lastFailedTime = time.Now()
+		c.mu.Unlock()
 		return nil, fmt.Errorf("Ollama returned status: %s", resp.Status)
 	}
 

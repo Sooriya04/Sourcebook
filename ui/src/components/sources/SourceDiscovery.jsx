@@ -99,37 +99,27 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
                   />
                   <span>Select all ({selectedUrls.size}/{results.length})</span>
                 </label>
-                <button type="button" className="btn btn-ghost" style={{ fontSize: '0.68rem', padding: '2px 8px' }} onClick={handleSelectAll}>
-                  {selectedUrls.size === results.length ? 'Clear' : 'All'}
+                <button type="button" onClick={handleSelectAll} className="btn-select-all">
+                  {selectedUrls.size === results.length ? 'Clear all' : 'Select all'}
                 </button>
               </div>
 
               <div className="discovery-pills">
-                <button
-                  type="button"
-                  className={`discovery-pill ${filterType === 'all' ? 'active' : ''}`}
-                  onClick={() => setFilterType('all')}
-                >
-                  All ({results.length})
-                </button>
-                {webCount > 0 && (
-                  <button
-                    type="button"
-                    className={`discovery-pill ${filterType === 'web' ? 'active' : ''}`}
-                    onClick={() => setFilterType('web')}
-                  >
-                    Web ({webCount})
-                  </button>
-                )}
-                {ytCount > 0 && (
-                  <button
-                    type="button"
-                    className={`discovery-pill ${filterType === 'youtube' ? 'active' : ''}`}
-                    onClick={() => setFilterType('youtube')}
-                  >
-                    YouTube ({ytCount})
-                  </button>
-                )}
+                {['all', 'web', 'youtube'].map(type => {
+                  if (type === 'web' && webCount === 0) return null;
+                  if (type === 'youtube' && ytCount === 0) return null;
+                  const label = type === 'all' ? `All (${results.length})` : type === 'web' ? `Web (${webCount})` : `YouTube (${ytCount})`;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      className={`discovery-pill ${filterType === type ? 'active' : ''}`}
+                      onClick={() => setFilterType(type)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -162,15 +152,18 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
       </div>
 
       <div className="discovery-footer">
-        <div className="selected-count">{selectedUrls.size} selected</div>
-        <button
-          className="btn btn-primary"
-          style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-          disabled={selectedUrls.size === 0 || loading}
-          onClick={handleImport}
-        >
-          Import {selectedUrls.size > 0 ? `(${selectedUrls.size})` : ''}
-        </button>
+        <div className="selected-count">{selectedUrls.size} of {results.length} selected</div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" onClick={onCancel} className="btn-discovery-cancel">Cancel</button>
+          <button
+            type="button"
+            disabled={selectedUrls.size === 0 || loading}
+            onClick={handleImport}
+            className={`btn-discovery-import ${selectedUrls.size > 0 ? 'active' : ''}`}
+          >
+            Import {selectedUrls.size > 0 ? `(${selectedUrls.size})` : ''}
+          </button>
+        </div>
       </div>
     </div>
   );

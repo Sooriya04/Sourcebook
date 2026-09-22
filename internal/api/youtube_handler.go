@@ -27,10 +27,17 @@ func (a *API) HandleYouTubeTranscript(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ytServiceURL := os.Getenv("YOUTUBE_SERVICE_URL")
+	ytServiceURL := ""
+	if a.repo != nil {
+		if s, err := a.repo.GetSettings(); err == nil && s.YoutubeServiceURL != "" {
+			ytServiceURL = s.YoutubeServiceURL
+		}
+	}
 	if ytServiceURL == "" {
-		http.Error(w, "YOUTUBE_SERVICE_URL environment variable is not configured", http.StatusInternalServerError)
-		return
+		ytServiceURL = os.Getenv("YOUTUBE_SERVICE_URL")
+	}
+	if ytServiceURL == "" {
+		ytServiceURL = "http://127.0.0.1:6001"
 	}
 
 	log.Printf("[YouTube] Forwarding transcript request for URL %q to base %s", req.URL, ytServiceURL)
