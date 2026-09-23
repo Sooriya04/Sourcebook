@@ -71,7 +71,7 @@ run: build
 	@fuser -k 5000/tcp 6001/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 3000/tcp 2>/dev/null || true
 	@echo "Starting production services (Searqon: 4001, YouTube: 6001, SourceBook: 5000)..."
 	@trap 'kill 0' EXIT; \
-	(if [ -f "/home/sooriya/Documents/Searqon/bin/searqon" ]; then cd /home/sooriya/Documents/Searqon && ./bin/searqon; fi) & \
+	(if [ -f "/home/sooriya/Documents/Searqon/bin/searqon" ]; then cd /home/sooriya/Documents/Searqon && PORT=4001 ./bin/searqon; fi) & \
 	($(PYTHON_BIN) -m uvicorn main:app --port 6001 --host 0.0.0.0 --app-dir services/youtube) & \
 	(if [ -f "bin/document-service" ]; then PORT=4002 ./bin/document-service; fi) & \
 	(if [ -f "bin/jina-service" ]; then PORT=4003 ./bin/jina-service; fi) & \
