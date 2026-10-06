@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -11,6 +13,16 @@ import (
 
 // InitDB initializes the SQLite database and creates the necessary tables.
 func InitDB(dataSourceName string) (*sql.DB, error) {
+	rawPath := dataSourceName
+	if idx := strings.Index(rawPath, "?"); idx != -1 {
+		rawPath = rawPath[:idx]
+	}
+	if dir := filepath.Dir(rawPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create database directory %s: %w", dir, err)
+		}
+	}
+
 	dsn := dataSourceName
 	if !strings.Contains(dsn, "?") {
 		dsn += "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"

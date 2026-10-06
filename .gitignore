@@ -2,10 +2,21 @@
 sourcebook-server
 *__pycache__*
 .venv
+
+# Database and SQLite files
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+database/*.db*
+database/*.sqlite*
+!database/.gitkeep
+
 *.log
 /server
 /bin/

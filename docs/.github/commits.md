@@ -402,6 +402,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Citation Pill Styling Refinement (`index.css`, `CitationPill.jsx`)**: Upgraded inline numerical citation pills (`[1]`, `[2]`) with soft translucent accent backgrounds (`rgba(59, 130, 246, 0.14)`), refined borders, and glowing hover states with instant quote preview cards.
 - **Searqon Port Standardization (`Makefile`)**: Configured `PORT=4001` in the unified development and production runner to ensure Searqon scraper binds to port 4001 consistently across all execution modes.
 
+## Commit 49: Dedicated Database Directory Architecture, SQLite Gitignore Hardening, and Path Auto-Migration
+- **Dedicated Database Directory (`database/`)**: Relocated SQLite database storage (`sourcebook.db`, `sourcebook.db-wal`, `sourcebook.db-shm`) into a dedicated `database/` directory with `.gitkeep` tracking, isolating state persistence from the root codebase.
+- **Comprehensive SQLite Git Ignore Rules (`.gitignore`)**: Hardened `.gitignore` with comprehensive patterns for all SQLite database and journal files (`*.db`, `*.db-journal`, `*.db-shm`, `*.db-wal`, `*.sqlite`, `*.sqlite3`, `*.sqlite-journal`, `*.sqlite-shm`, `*.sqlite-wal`, `database/*.db*`, `database/*.sqlite*`) while preserving directory tracking via `!database/.gitkeep`.
+- **Configurable Database Path & Auto-Migration (`cmd/server/main.go`, `internal/database/db.go`, `.env`, `.env.example`, `AGENTS.md`)**: Introduced `DB_PATH` environment variable support defaulting to `database/sourcebook.db`. Added directory provisioning in `InitDB` via `os.MkdirAll` and fallback migration logic in `main.go` that safely moves legacy root database files into `database/` on startup.
+- **Database Initialization Unit Testing (`internal/database/db_test.go`)**: Added automated test coverage validating nested directory creation, schema migrations, and repository initialization.
+
+
 
 
 

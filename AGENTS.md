@@ -49,6 +49,7 @@ All Go files are strictly modularized and kept **under 200 lines per file**.
 ```
 sourcebook/
 ├── cmd/server/main.go          # Entrypoint — wires HTTP routes & dependencies
+├── database/                   # SQLite database storage (sourcebook.db)
 ├── internal/
 │   ├── api/                    # Modular HTTP handlers (< 200 lines each)
 │   │   ├── api.go              # API struct and constructor
@@ -58,6 +59,7 @@ sourcebook/
 │   │   └── job_handler.go      # GET /jobs handler
 │   ├── controller/
 │   │   └── search.go           # Unified Search Controller (concurrent dispatch)
+│   ├── database/               # Database repository & SQLite migrations
 │   ├── llm/                    # LLM completion & prompt formatting
 │   │   ├── client.go           # Client supporting Ollama & OpenAI
 │   │   ├── prompt.go           # Grounded RAG prompt builder
@@ -82,6 +84,7 @@ sourcebook/
 SEARXNG_URL=http://localhost:8080                  # SearXNG Docker instance
 SEARQON_SCRAPE_URL=http://127.0.0.1:4001/scrape/batch # Searqon scraper endpoint
 PORT=5000                                          # SourceBook server port
+DB_PATH=database/sourcebook.db                     # Local SQLite database path
 
 # LLM Configuration
 LLM_PROVIDER=ollama                                # "ollama" or "openai"

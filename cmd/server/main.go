@@ -21,8 +21,25 @@ func main() {
 		log.Println("No .env file found or error reading it, using system environment variables")
 	}
 
-	// Initialize database
-	db, err := database.InitDB("sourcebook.db")
+	// Initialize database path from env or default to database/sourcebook.db
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "database/sourcebook.db"
+	}
+
+	// Migrate legacy root sourcebook.db if database/sourcebook.db doesn't exist yet
+	if dbPath == "database/sourcebook.db" {
+		if _, err := os.Stat("database/sourcebook.db"); os.IsNotExist(err) {
+			if _, err := os.Stat("sourcebook.db"); err == nil {
+				_ = os.MkdirAll("database", 0755)
+				_ = os.Rename("sourcebook.db", "database/sourcebook.db")
+				_ = os.Rename("sourcebook.db-wal", "database/sourcebook.db-wal")
+				_ = os.Rename("sourcebook.db-shm", "database/sourcebook.db-shm")
+			}
+		}
+	}
+
+	db, err := database.InitDB(dbPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
