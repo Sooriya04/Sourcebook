@@ -13,13 +13,12 @@ import (
 	"time"
 )
 
-// Client handles HTTP requests to the Ollama embedding service.
+// Client coordinates embedding generation via microservice with subprocess fallback.
 type Client struct {
-	llmURL         string
-	model          string
-	httpClient     *http.Client
-	mu             sync.Mutex
-	lastFailedTime time.Time
+	serviceURL string
+	model      string
+	httpClient *http.Client
+	mu         sync.Mutex
 }
 
 // ChunkResponse represents a single chunk and its embedding.
@@ -28,33 +27,39 @@ type ChunkResponse struct {
 	Embedding []float32 `json:"embedding"`
 }
 
-type ollamaEmbedRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
+type embedMicroserviceRequest struct {
+	Texts []string `json:"texts"`
 }
 
-type ollamaEmbedResponse struct {
-	Embedding []float32 `json:"embedding"`
+type embedMicroserviceResponse struct {
+	Embeddings [][]float32 `json:"embeddings"`
+	Dimension  int         `json:"dimension"`
+	Error      string      `json:"error"`
 }
 
-// NewClient initializes a new client for the embedding service.
+// NewClient initializes an embedding client with connection pooling.
 func NewClient() *Client {
-	url := os.Getenv("EMBEDDING_URL")
+	url := os.Getenv("EMBEDDING_SERVICE_URL")
 	if url == "" {
-		url = os.Getenv("LLM_URL")
-	}
-	if url == "" {
-		url = "http://localhost:11434"
+		url = "http://localhost:6002"
 	}
 	model := os.Getenv("EMBEDDING_MODEL")
 	if model == "" {
-		model = "nomic-embed-text"
+		model = "all-MiniLM-L6-v2"
 	}
+
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 25,
+		IdleConnTimeout:     90 * time.Second,
+	}
+
 	return &Client{
-		llmURL: url,
-		model:  model,
+		serviceURL: url,
+		model:      model,
 		httpClient: &http.Client{
-			Timeout: 2 * time.Second,
+			Timeout:   5 * time.Second,
+			Transport: transport,
 		},
 	}
 }
@@ -64,126 +69,94 @@ func (c *Client) SetConfig(url, model string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if url != "" {
-		c.llmURL = url
+		c.serviceURL = url
 	}
 	if model != "" {
 		c.model = model
 	}
-	c.lastFailedTime = time.Time{}
 }
 
-// GenerateEmbeddings chunks the raw text and generates vector embeddings via Ollama.
+// GenerateEmbeddings chunks raw text and generates dense vector embeddings.
 func (c *Client) GenerateEmbeddings(ctx context.Context, text string) ([]ChunkResponse, error) {
-	chunks := chunkTextFallback(text, 500)
-	var results []ChunkResponse
+	chunks := ChunkText(text, 500)
+	if len(chunks) == 0 {
+		return nil, nil
+	}
 
-	for _, chunk := range chunks {
-		emb, err := c.GenerateQueryEmbedding(ctx, chunk)
-		if err != nil {
-			log.Printf("[Vector] Failed to generate embedding for chunk: %v", err)
-			continue
-		}
-		results = append(results, ChunkResponse{
+	embeddings, err := c.GenerateBatchEmbeddings(ctx, chunks)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]ChunkResponse, len(chunks))
+	for i, chunk := range chunks {
+		results[i] = ChunkResponse{
 			Chunk:     chunk,
-			Embedding: emb,
-		})
+			Embedding: embeddings[i],
+		}
 	}
 	return results, nil
 }
 
-// GenerateQueryEmbedding gets a single vector representation for a query with circuit breaker.
+// GenerateQueryEmbedding generates an embedding vector for a single query text.
 func (c *Client) GenerateQueryEmbedding(ctx context.Context, query string) ([]float32, error) {
-	c.mu.Lock()
-	if time.Since(c.lastFailedTime) < 30*time.Second {
-		c.mu.Unlock()
-		return nil, fmt.Errorf("embedding service is offline (circuit breaker active)")
-	}
-	c.mu.Unlock()
-
-	reqBody, err := json.Marshal(ollamaEmbedRequest{
-		Model:  c.model,
-		Prompt: query,
-	})
+	results, err := c.GenerateBatchEmbeddings(ctx, []string{query})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query request: %w", err)
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("empty embedding returned")
+	}
+	return results[0], nil
+}
+
+// GenerateBatchEmbeddings queries the microservice, falling back to local python subprocess.
+func (c *Client) GenerateBatchEmbeddings(ctx context.Context, texts []string) ([][]float32, error) {
+	if len(texts) == 0 {
+		return nil, nil
 	}
 
-	reqURL := fmt.Sprintf("%s/api/embeddings", strings.TrimRight(c.llmURL, "/"))
-	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewBuffer(reqBody))
+	// 1. Try microservice via HTTP
+	embeddings, err := c.callMicroservice(ctx, texts)
+	if err == nil && len(embeddings) == len(texts) {
+		return embeddings, nil
+	}
+
+	// 2. Microservice unavailable or errored — fallback to local Python subprocess
+	log.Printf("[Vector] Microservice at %s unavailable (%v), falling back to Python subprocess...", c.serviceURL, err)
+	return RunEmbeddingSubprocess(ctx, texts)
+}
+
+func (c *Client) callMicroservice(ctx context.Context, texts []string) ([][]float32, error) {
+	reqBody, err := json.Marshal(embedMicroserviceRequest{Texts: texts})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create query request: %w", err)
+		return nil, err
+	}
+
+	endpoint := fmt.Sprintf("%s/embed", strings.TrimRight(c.serviceURL, "/"))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		c.mu.Lock()
-		c.lastFailedTime = time.Now()
-		c.mu.Unlock()
-		return nil, fmt.Errorf("failed to reach Ollama embedding service: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		c.mu.Lock()
-		c.lastFailedTime = time.Now()
-		c.mu.Unlock()
-		return nil, fmt.Errorf("Ollama returned status: %s", resp.Status)
+		return nil, fmt.Errorf("microservice returned HTTP %d", resp.StatusCode)
 	}
 
-	var res ollamaEmbedResponse
+	var res embedMicroserviceResponse
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, fmt.Errorf("failed to decode query response: %w", err)
+		return nil, err
+	}
+	if res.Error != "" {
+		return nil, fmt.Errorf("microservice error: %s", res.Error)
 	}
 
-	return res.Embedding, nil
-}
-
-// chunkTextFallback splits text into paragraphs and sentences to approximate chunkSize chars.
-func chunkTextFallback(text string, chunkSize int) []string {
-	paragraphs := strings.Split(text, "\n\n")
-	var chunks []string
-	currentChunk := ""
-
-	for _, p := range paragraphs {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		if len(currentChunk)+len(p)+2 <= chunkSize {
-			if currentChunk != "" {
-				currentChunk += "\n\n"
-			}
-			currentChunk += p
-		} else {
-			if currentChunk != "" {
-				chunks = append(chunks, currentChunk)
-			}
-			if len(p) > chunkSize {
-				// Too big, split by approximate sentence boundaries
-				sentences := strings.Split(p, ". ")
-				curr := ""
-				for _, s := range sentences {
-					if len(curr)+len(s)+1 <= chunkSize {
-						if curr != "" {
-							curr += ". "
-						}
-						curr += s
-					} else {
-						if curr != "" {
-							chunks = append(chunks, curr)
-						}
-						curr = s
-					}
-				}
-				currentChunk = curr
-			} else {
-				currentChunk = p
-			}
-		}
-	}
-	if currentChunk != "" {
-		chunks = append(chunks, currentChunk)
-	}
-	return chunks
+	return res.Embeddings, nil
 }

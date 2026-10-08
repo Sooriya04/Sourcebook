@@ -67,12 +67,13 @@ build: build-ui build-backend
 	@echo "Full production build completed successfully."
 
 run: build
-	@echo "Cleaning up stale ports (5000, 6001, 4001, 4002, 4003, 4004, 4005, 3000)..."
-	@fuser -k 5000/tcp 6001/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 3000/tcp 2>/dev/null || true
-	@echo "Starting production services (Searqon: 4001, YouTube: 6001, SourceBook: 5000)..."
+	@echo "Cleaning up stale ports (5000, 6001, 6002, 4001, 4002, 4003, 4004, 4005, 3000)..."
+	@fuser -k 5000/tcp 6001/tcp 6002/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 3000/tcp 2>/dev/null || true
+	@echo "Starting production services (Searqon: 4001, YouTube: 6001, Embedding: 6002, SourceBook: 5000)..."
 	@trap 'kill 0' EXIT; \
 	(if [ -f "/home/sooriya/Documents/Searqon/bin/searqon" ]; then cd /home/sooriya/Documents/Searqon && PORT=4001 ./bin/searqon; fi) & \
 	($(PYTHON_BIN) -m uvicorn main:app --port 6001 --host 0.0.0.0 --app-dir services/youtube) & \
+	($(PYTHON_BIN) -m uvicorn main:app --port 6002 --host 0.0.0.0 --app-dir services/embedding) & \
 	(if [ -f "bin/document-service" ]; then PORT=4002 ./bin/document-service; fi) & \
 	(if [ -f "bin/jina-service" ]; then PORT=4003 ./bin/jina-service; fi) & \
 	(if [ -f "bin/reddit-service" ]; then PORT=4004 ./bin/reddit-service; fi) & \
@@ -89,6 +90,10 @@ dev-youtube:
 	@echo "Starting YouTube Transcript microservice on port 6001..."
 	@$(PYTHON_BIN) -m uvicorn main:app --port 6001 --app-dir services/youtube
 
+dev-embedding:
+	@echo "Starting Embedding microservice on port 6002..."
+	@$(PYTHON_BIN) -m uvicorn main:app --port 6002 --app-dir services/embedding
+
 dev-searqon:
 	@if [ -f "/home/sooriya/Documents/Searqon/bin/searqon" ]; then \
 		echo "Starting Searqon on port 4001..."; \
@@ -98,22 +103,24 @@ dev-searqon:
 	fi
 
 dev:
-	@echo "Cleaning up stale ports (5000, 6001)..."
-	@fuser -k 5000/tcp 6001/tcp 2>/dev/null || true
-	@echo "Starting Go server, Vite UI, and YouTube microservice..."
+	@echo "Cleaning up stale ports (5000, 6001, 6002)..."
+	@fuser -k 5000/tcp 6001/tcp 6002/tcp 2>/dev/null || true
+	@echo "Starting Go server, Vite UI, YouTube, and Embedding microservices..."
 	@trap 'kill 0' EXIT; \
 	($(PYTHON_BIN) -m uvicorn main:app --port 6001 --app-dir services/youtube) & \
+	($(PYTHON_BIN) -m uvicorn main:app --port 6002 --app-dir services/embedding) & \
 	go run $(SERVER_MAIN) & \
 	(cd $(UI_DIR) && npm run dev) & \
 	wait
 
 dev-all:
-	@echo "Cleaning up stale ports (5000, 6001, 4001)..."
-	@fuser -k 5000/tcp 6001/tcp 4001/tcp 2>/dev/null || true
-	@echo "Starting Searqon, YouTube microservice, Go server, and Vite UI..."
+	@echo "Cleaning up stale ports (5000, 6001, 6002, 4001)..."
+	@fuser -k 5000/tcp 6001/tcp 6002/tcp 4001/tcp 2>/dev/null || true
+	@echo "Starting Searqon, YouTube, Embedding, Go server, and Vite UI..."
 	@trap 'kill 0' EXIT; \
 	(if [ -f "/home/sooriya/Documents/Searqon/bin/searqon" ]; then cd /home/sooriya/Documents/Searqon && ./bin/searqon; fi) & \
 	($(PYTHON_BIN) -m uvicorn main:app --port 6001 --app-dir services/youtube) & \
+	($(PYTHON_BIN) -m uvicorn main:app --port 6002 --app-dir services/embedding) & \
 	go run $(SERVER_MAIN) & \
 	(cd $(UI_DIR) && npm run dev) & \
 	wait
@@ -126,6 +133,8 @@ status:
 	@curl -4 -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/ 2>/dev/null | grep -q "200" && echo "ONLINE (200 OK)" || echo "OFFLINE"
 	@printf "  %-22s " "YouTube (6001):"
 	@curl -4 -s -o /dev/null -w "%{http_code}\n" http://localhost:6001/health 2>/dev/null | grep -q "200" && echo "ONLINE (200 OK)" || echo "OFFLINE"
+	@printf "  %-22s " "Embedding (6002):"
+	@curl -4 -s -o /dev/null -w "%{http_code}\n" http://localhost:6002/health 2>/dev/null | grep -q "200" && echo "ONLINE (200 OK)" || echo "OFFLINE"
 	@printf "  %-22s " "Searqon (4001):"
 	@curl -4 -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4001/health 2>/dev/null | grep -q "200" && echo "ONLINE (200 OK)" || echo "OFFLINE"
 	@printf "  %-22s " "SearXNG (8080):"
@@ -140,8 +149,8 @@ status:
 	@curl -4 -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4005/health 2>/dev/null | grep -q "200" && echo "ONLINE (200 OK)" || echo "OFFLINE"
 
 stop:
-	@echo "Stopping SourceBook services on ports 5000, 6001, 3000, 4001, 4002, 4003, 4004, 4005..."
-	@fuser -k 5000/tcp 6001/tcp 3000/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 2>/dev/null || true
+	@echo "Stopping SourceBook services on ports 5000, 6001, 6002, 3000, 4001, 4002, 4003, 4004, 4005..."
+	@fuser -k 5000/tcp 6001/tcp 6002/tcp 3000/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 2>/dev/null || true
 	@echo "Done."
 
 restart: stop dev
