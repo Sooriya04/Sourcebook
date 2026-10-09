@@ -5,7 +5,7 @@ export default function ChatShortcutsModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const shortcuts = [
-    { label: 'Focus Prompt Bar', key: '⌘ K' },
+    { label: 'Focus Prompt Bar', key: '/  or  ⌘ K' },
     { label: 'Toggle Sources Panel', key: '⌘ /' },
     { label: 'Toggle Studio Panel', key: '⌘ Shift S' },
     { label: 'Show Shortcuts Menu', key: '⌘ Shift ?' },

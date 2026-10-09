@@ -414,6 +414,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Service Orchestration Integration (`Makefile`, `.env`, `.env.example`)**: Added port 6002 embedding service lifecycle management to `make run`, `make dev-all`, `make dev-embedding`, `make status`, and `make stop`.
 - **Automated Concurrency & Fallback Unit Tests (`internal/vector/client_test.go`)**: Added test coverage validating HTTP batch embeddings, automatic subprocess fallback upon server outage, and 8-way concurrent subprocess execution through the bounded semaphore.
 
+## Commit 51: Chat UX Polish, Auto-Expanding Dock, Quick Clear, and Slash Hotkey
+- **Dynamic Auto-Expanding Prompt Dock (`PromptBar.jsx`)**: Upgraded the fixed single-line prompt dock with dynamic multi-line height expansion up to 160px (`Math.min(scrollHeight, 160)`), preserving visual context when writing long queries or pasting multi-paragraph research notes. Added automatic height resets upon submission and clearing.
+- **One-Click Prompt Clear Button (`PromptBar.jsx`)**: Added an inline dismiss button (`X`) within the prompt bar when text is present, enabling instant clearing without holding backspace.
+- **Universal Slash (`/`) Focus Shortcut (`useKeyboard.js`, `ChatShortcutsModal.jsx`)**: Implemented the universal `/` keyboard shortcut to immediately focus the bottom prompt bar from anywhere across the page when not actively typing inside an existing form input. Updated the keyboard shortcuts modal accordingly.
+- **Citation Hovercard Link Polish (`CitationPill.jsx`)**: Updated external source URLs inside citation preview cards with a distinct soft blue accent (`#60a5fa`) and hover underlines, ensuring external references stand out clearly against dark card backgrounds.
+
+
 
 
 

@@ -11,6 +11,15 @@ export function useKeyboard({ onFocusPrompt, onToggleSources, onToggleStudio, on
         onFocusPrompt?.();
       }
 
+      // '/' key: Quick focus prompt input when not typing in an input/textarea
+      if (e.key === '/' && !isCmdOrCtrl && !e.shiftKey) {
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea' && !document.activeElement?.isContentEditable) {
+          e.preventDefault();
+          onFocusPrompt?.();
+        }
+      }
+
       // Cmd/Ctrl + /: Toggle sources panel
       if (isCmdOrCtrl && e.key === '/') {
         e.preventDefault();

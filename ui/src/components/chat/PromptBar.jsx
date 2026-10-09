@@ -1,5 +1,5 @@
 import React, { useState, forwardRef, useEffect } from 'react';
-import { ArrowUp, Layers, Square, Globe, Sparkles, HelpCircle, BookOpen, Scale } from 'lucide-react';
+import { ArrowUp, Layers, Square, Globe, Sparkles, HelpCircle, BookOpen, Scale, X } from 'lucide-react';
 
 const COMMANDS = [
   { cmd: '/summarize', label: 'Summarize Sources', icon: <BookOpen size={12} />, prompt: 'Synthesize an executive summary of all key findings from the selected sources.' },
@@ -26,6 +26,15 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
     setQuery('');
     setShowSlash(false);
     setDetectedUrl(null);
+    if (ref?.current) {
+      ref.current.style.height = 'auto';
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setQuery(e.target.value);
+    e.target.style.height = 'auto';
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
 
   const handleKeyDown = (e) => {
@@ -36,6 +45,14 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
     if (e.key === 'Escape') {
       setShowSlash(false);
       if (loading && onStop) onStop();
+    }
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    if (ref?.current) {
+      ref.current.style.height = 'auto';
+      ref.current.focus();
     }
   };
 
@@ -98,10 +115,17 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
           </span>
         </div>
 
-        <textarea ref={ref} className="prompt-input" placeholder="Ask a question about your sources... (⌘K)"
-          value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} rows={1}
-          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '0.9rem', lineHeight: '1.4', resize: 'none', padding: '4px 0', fontFamily: 'inherit' }}
+        <textarea ref={ref} className="prompt-input" placeholder="Ask a question about your sources... (/ to focus)"
+          value={query} onChange={handleInputChange} onKeyDown={handleKeyDown} rows={1}
+          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '0.9rem', lineHeight: '1.4', resize: 'none', padding: '4px 0', fontFamily: 'inherit', maxHeight: '160px', overflowY: 'auto' }}
         />
+
+        {query && (
+          <button type="button" onClick={handleClear} title="Clear text"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-dim, #71717a)', cursor: 'pointer', padding: '4px', borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+            <X size={14} />
+          </button>
+        )}
         
         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
           {loading ? (

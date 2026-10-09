@@ -74,18 +74,23 @@ export default function CitationPill({ index, source, isActive, onClick }) {
               className="hover-card-footer"
               style={{ 
                 textDecoration: 'none', 
-                color: 'var(--accent-primary)', 
-                transition: 'color 0.15s ease',
+                color: '#60a5fa', 
+                transition: 'all 0.15s ease',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                fontSize: '0.7rem'
+                fontSize: '0.72rem',
+                fontWeight: 500
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#93c5fd';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#60a5fa';
+              }}
             >
-              <ExternalLink size={10} />
-              <span className="hover-card-url" style={{ textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+              <ExternalLink size={11} />
+              <span className="hover-card-url" style={{ textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
                 {source.url}
               </span>
             </a>
