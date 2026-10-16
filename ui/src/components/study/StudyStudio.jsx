@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { generateFlashcards } from '../../services/sourcebookApi';
-import { RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Headphones, FileText, HelpCircle, Layers, Network, MessageSquare, Download, Check } from 'lucide-react';
+import { 
+  RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Download,
+  PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose
+} from 'lucide-react';
 import BriefingView from './BriefingView';
 import AudioOverviewView from './AudioOverviewView';
 import FaqView from './FaqView';
@@ -44,7 +47,17 @@ const MINDMAP_DATA = {
   ]
 };
 
-export default function StudyStudio({ notebookId, sources, activeTab, setActiveTab, setActiveMode }) {
+export default function StudyStudio({
+  notebookId,
+  sources,
+  activeTab,
+  setActiveTab,
+  setActiveMode,
+  isSourcesCollapsed,
+  onToggleSources,
+  isStudioCollapsed,
+  onToggleStudio
+}) {
   const [flashcards, setFlashcards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -139,42 +152,107 @@ export default function StudyStudio({ notebookId, sources, activeTab, setActiveT
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid var(--border-color)',
-          paddingBottom: '16px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          padding: '12px 16px',
           position: 'relative'
         }}
       >
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'var(--font-sans)', color: 'var(--text-main)', margin: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {onToggleSources && (
+            <button
+              type="button"
+              onClick={onToggleSources}
+              title={isSourcesCollapsed ? "Expand Sources Panel (⌘/)" : "Collapse Sources Panel (⌘/)"}
+              aria-label={isSourcesCollapsed ? "Expand Sources Panel" : "Collapse Sources Panel"}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '8px',
+                background: isSourcesCollapsed ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                border: isSourcesCollapsed ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: isSourcesCollapsed ? '#a5b4fc' : '#d4d4d8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.74rem',
+                outline: 'none',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = isSourcesCollapsed ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = isSourcesCollapsed ? '#a5b4fc' : '#d4d4d8';
+              }}
+            >
+              {isSourcesCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+              <span style={{ fontWeight: 500 }}>Sources</span>
+            </button>
+          )}
+
+          <h1 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#f4f4f5', margin: 0, letterSpacing: '-0.015em' }}>
             {displayTitle}
           </h1>
         </div>
 
-        <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
           <button
             onClick={() => setIsExportOpen(!isExportOpen)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--panel)',
-              fontSize: '0.78rem',
-              color: 'var(--text-main)',
+              padding: '5px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'rgba(255, 255, 255, 0.04)',
+              fontSize: '0.74rem',
+              color: '#d4d4d8',
               cursor: 'pointer',
-              boxShadow: 'var(--shadow)',
-              transition: 'transform 0.1s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease',
+              transition: 'all 0.15s ease',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--panel)'; }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)'; e.currentTarget.style.color = '#ffffff'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#d4d4d8'; }}
           >
             <Download size={13} />
             <span>Export Hub</span>
           </button>
+
+          {onToggleStudio && (
+            <button
+              type="button"
+              onClick={onToggleStudio}
+              title={isStudioCollapsed ? "Expand Studio Panel" : "Collapse Studio Panel"}
+              aria-label={isStudioCollapsed ? "Expand Studio Panel" : "Collapse Studio Panel"}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '8px',
+                background: isStudioCollapsed ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                border: isStudioCollapsed ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: isStudioCollapsed ? '#a5b4fc' : '#d4d4d8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.74rem',
+                outline: 'none',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = isStudioCollapsed ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = isStudioCollapsed ? '#a5b4fc' : '#d4d4d8';
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>Studio</span>
+              {isStudioCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
+            </button>
+          )}
 
           {isExportOpen && (
             <div 

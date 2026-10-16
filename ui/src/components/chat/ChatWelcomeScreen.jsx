@@ -1,181 +1,141 @@
 import React, { useState } from 'react';
-import { Sparkles, BookOpen, HelpCircle, Scale, FileText, ListOrdered } from 'lucide-react';
+import { Sparkles, BookOpen, HelpCircle, Scale, FileText, ListOrdered, Plus } from 'lucide-react';
 
-export default function ChatWelcomeScreen({
-  notebookTitle,
-  notebookDescription,
-  sourceCount = 0,
-  onSend
-}) {
+const STARTER_CHIPS = [
+  { icon: <Sparkles size={13} color="#818cf8" />, label: "Summarize sources", query: "Provide a comprehensive, structured summary of the core themes, findings, and key takeaways across all sources." },
+  { icon: <HelpCircle size={13} color="#34d399" />, label: "FAQ & Core concepts", query: "Generate a 5-question FAQ explaining the most important concepts and mechanisms described in these sources." },
+  { icon: <BookOpen size={13} color="#a78bfa" />, label: "Study guide", query: "Create a detailed study guide with key definitions, conceptual frameworks, and review questions based on the sources." },
+  { icon: <Scale size={13} color="#fbbf24" />, label: "Compare perspectives", query: "Analyze agreements, conflicting viewpoints, and differing methodologies presented across the sources." },
+  { icon: <FileText size={13} color="#f472b6" />, label: "Briefing document", query: "Generate an executive briefing document outlining critical findings, practical implications, and future directions." },
+  { icon: <ListOrdered size={13} color="#38bdf8" />, label: "Table of contents", query: "Create a logical table of contents structuring the knowledge covered in all uploaded sources." }
+];
+
+export default function ChatWelcomeScreen({ notebookTitle, notebookDescription, sourceCount = 0, onSend, onOpenAddSources }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isLong = notebookDescription && notebookDescription.length > 140;
 
-  const starterChips = [
-    {
-      icon: <Sparkles size={13} color="#3b82f6" />,
-      label: "Summarize Sources",
-      query: "Provide a comprehensive, structured summary of the core themes, findings, and key takeaways across all sources."
-    },
-    {
-      icon: <HelpCircle size={13} color="#10b981" />,
-      label: "FAQ & Concepts",
-      query: "Generate a 5-question FAQ explaining the most important concepts and mechanisms described in these sources."
-    },
-    {
-      icon: <BookOpen size={13} color="#8b5cf6" />,
-      label: "Study Guide",
-      query: "Create a detailed study guide with key definitions, conceptual frameworks, and review questions based on the sources."
-    },
-    {
-      icon: <Scale size={13} color="#f59e0b" />,
-      label: "Compare Perspectives",
-      query: "Analyze agreements, conflicting viewpoints, and differing methodologies presented across the sources."
-    },
-    {
-      icon: <FileText size={13} color="#ec4899" />,
-      label: "Briefing Doc",
-      query: "Generate an executive briefing document outlining critical findings, practical implications, and future directions."
-    },
-    {
-      icon: <ListOrdered size={13} color="#06b6d4" />,
-      label: "Table of Contents",
-      query: "Create a logical table of contents structuring the knowledge covered in all uploaded sources."
-    }
-  ];
-
   return (
-    <div className="welcome-screen" style={{
-      maxWidth: '680px',
-      margin: '36px auto 20px auto',
-      textAlign: 'center',
-      padding: '0 16px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '20px'
-    }}>
-      {/* Notebook Brand Icon */}
+    <div style={{ maxWidth: '680px', margin: '48px auto 20px', textAlign: 'center', padding: '0 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* Brand Sparkle Icon */}
       <div style={{
-        width: '46px',
-        height: '46px',
-        borderRadius: '14px',
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(139, 92, 246, 0.18))',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        width: '44px',
+        height: '44px',
+        borderRadius: '12px',
+        background: 'rgba(99, 102, 241, 0.12)',
+        border: '1px solid rgba(99, 102, 241, 0.25)',
         display: 'grid',
         placeItems: 'center',
-        color: 'var(--accent-primary, #3b82f6)',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)'
+        color: '#818cf8',
+        marginBottom: '18px'
       }}>
-        <Sparkles size={22} />
+        <Sparkles size={20} />
       </div>
 
-      {/* Header Info */}
-      <div style={{ maxWidth: '600px' }}>
-        <h1 style={{
-          fontSize: '1.6rem',
-          fontWeight: 700,
-          letterSpacing: '-0.025em',
-          color: 'var(--text-main, #f4f4f5)',
-          margin: '0 0 8px 0'
-        }}>
-          {notebookTitle || 'Research Workspace'}
-        </h1>
-        <p style={{
-          fontSize: '0.86rem',
-          color: 'var(--text-muted, #a1a1aa)',
-          lineHeight: '1.5',
-          margin: 0
-        }}>
-          {isLong && !isExpanded 
-            ? `${notebookDescription.slice(0, 140)}...` 
-            : (notebookDescription || 'Grounded intelligence platform. Query all uploaded sources with verified numerical citations.')}
-          {isLong && (
-            <button 
-              type="button" 
-              onClick={() => setIsExpanded(!isExpanded)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--accent-primary, #3b82f6)',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                marginLeft: '6px'
-              }}
-            >
-              {isExpanded ? 'Show less' : 'Read more'}
-            </button>
-          )}
-        </p>
-      </div>
-
-      {/* NotebookLM Style Guide Card */}
-      <div style={{
-        width: '100%',
-        background: 'rgba(255, 255, 255, 0.025)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '16px',
-        padding: '18px 20px',
-        textAlign: 'left',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-        backdropFilter: 'blur(8px)'
+      {/* Notebook Title & Description */}
+      <h1 style={{
+        fontSize: '1.75rem',
+        fontWeight: 600,
+        letterSpacing: '-0.025em',
+        color: '#f4f4f5',
+        margin: '0 0 10px 0',
+        lineHeight: 1.2
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main, #f4f4f5)' }}>
-            <BookOpen size={16} color="var(--accent-primary, #3b82f6)" />
-            <span>Notebook Guide</span>
-          </div>
-          <span style={{
-            fontSize: '0.72rem',
-            fontWeight: 500,
-            background: 'rgba(255, 255, 255, 0.06)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            padding: '2px 10px',
-            borderRadius: '12px',
-            color: 'var(--text-muted, #a1a1aa)'
-          }}>
-            {sourceCount} {sourceCount === 1 ? 'source' : 'sources'} indexed
-          </span>
+        {notebookTitle || 'Research Workspace'}
+      </h1>
+
+      <p style={{
+        fontSize: '0.9rem',
+        color: '#a1a1aa',
+        lineHeight: 1.55,
+        margin: '0 0 28px 0',
+        maxWidth: '560px'
+      }}>
+        {isLong && !isExpanded ? `${notebookDescription.slice(0, 140)}...` : (notebookDescription || 'Grounded intelligence platform. Query your sources with strict numerical citations.')}
+        {isLong && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{ background: 'transparent', border: 'none', color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', marginLeft: '6px' }}
+          >
+            {isExpanded ? 'Show less' : 'Read more'}
+          </button>
+        )}
+      </p>
+
+      {/* Floating Prompt Starter Chips (Open, Unboxed, NotebookLM Style) */}
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+        {sourceCount === 0 && onOpenAddSources && (
+          <button
+            type="button"
+            onClick={onOpenAddSources}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: 'rgba(99, 102, 241, 0.12)',
+              border: '1px solid rgba(99, 102, 241, 0.35)',
+              color: '#c7d2fe',
+              fontSize: '0.78rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              marginBottom: '4px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(99, 102, 241, 0.22)';
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.55)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)';
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.35)';
+            }}
+          >
+            <Plus size={13} strokeWidth={2.5} />
+            <span>Add your first source</span>
+          </button>
+        )}
+
+        <div style={{ fontSize: '0.72rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+          {sourceCount > 0 ? `${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'} indexed • Suggested prompts:` : 'Suggested prompts to explore:'}
         </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a1a1aa)', margin: '0 0 14px 0', lineHeight: '1.45' }}>
-          Synthesize answers strictly grounded in your active documents with clickable citations, or choose a prompt to get started:
-        </p>
 
-        {/* NotebookLM Sleek Floating Pill Chips */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '8px'
-        }}>
-          {starterChips.map((chip, i) => (
-            <button 
-              key={i} 
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', maxWidth: '640px' }}>
+          {STARTER_CHIPS.map((chip, i) => (
+            <button
+              key={i}
               type="button"
               onClick={() => onSend(chip.query)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '7px',
-                padding: '7px 14px',
-                borderRadius: '20px',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '9999px',
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: 'var(--text-main, #e4e4e7)',
-                fontSize: '0.78rem',
+                color: '#e4e4e7',
+                fontSize: '0.8rem',
                 fontWeight: 500,
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                outline: 'none'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.color = '#ffffff';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                e.currentTarget.style.color = '#e4e4e7';
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               {chip.icon}
               <span>{chip.label}</span>

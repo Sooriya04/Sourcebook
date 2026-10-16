@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  fetchSettings, 
-  updateSettings, 
-  fetchModels, 
-  testModelConfig, 
-  updateModelConfig 
+import {
+  fetchSettings,
+  updateSettings,
+  fetchModels,
+  testModelConfig,
+  updateModelConfig
 } from '../services/sourcebookApi';
 import SettingsSidebar from '../components/settings/SettingsSidebar';
 import SettingsHeader from '../components/settings/SettingsHeader';
@@ -12,6 +12,8 @@ import LLMSettingsTab, { DEFAULT_PROVIDER_CONFIGS } from '../components/settings
 import SearchSettingsTab from '../components/settings/SearchSettingsTab';
 import MediaSettingsTab from '../components/settings/MediaSettingsTab';
 import EmbeddingSettingsTab from '../components/settings/EmbeddingSettingsTab';
+import Toast from '../components/ui/Toast';
+import Spinner from '../components/ui/Spinner';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('llm');
@@ -20,17 +22,20 @@ export default function SettingsPage() {
     searqon_url: 'http://127.0.0.1:4001/scrape/batch', youtube_enabled: false, youtube_service_url: 'http://127.0.0.1:6001',
     deep_crawl_enabled: false, embedding_provider: 'local', embedding_url: '', embedding_model: 'nomic-embed-text'
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
-  
+  const [toast, setToast] = useState({ message: '', type: 'info' });
+
   const [provider, setProvider] = useState('openai');
   const [providerConfigs, setProviderConfigs] = useState(() => {
     try {
       const saved = localStorage.getItem('sourcebook_provider_configs');
       if (saved) return JSON.parse(saved);
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
     return { ...DEFAULT_PROVIDER_CONFIGS };
   });
   const [testingKey, setTestingKey] = useState(false);
@@ -45,14 +50,18 @@ export default function SettingsPage() {
       try {
         const local = localStorage.getItem('sourcebook_provider_configs');
         if (local) configs = { ...configs, ...JSON.parse(local) };
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
 
       if (data) {
-        setSettings(prev => ({ ...prev, ...data }));
+        setSettings((prev) => ({ ...prev, ...data }));
         if (data.provider_configs) {
           try {
             configs = { ...configs, ...JSON.parse(data.provider_configs) };
-          } catch (_) {}
+          } catch {
+            // ignore
+          }
         }
         if (data.llm_provider) {
           setProvider(data.llm_provider);
@@ -78,14 +87,14 @@ export default function SettingsPage() {
 
       setProviderConfigs(configs);
     } catch (err) {
-      console.error("Failed to load settings:", err);
+      console.error('Failed to load settings:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfigChange = (pId, field, value) => {
-    setProviderConfigs(prev => {
+    setProviderConfigs((prev) => {
       const updated = {
         ...prev,
         [pId]: {
@@ -95,13 +104,15 @@ export default function SettingsPage() {
       };
       try {
         localStorage.setItem('sourcebook_provider_configs', JSON.stringify(updated));
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
       return updated;
     });
   };
 
   const handleChange = (field, value) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
+    setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleTestConnection = async () => {
@@ -115,10 +126,13 @@ export default function SettingsPage() {
         model: cfg.model,
         apiKey: cfg.apiKey
       });
-      setTestStatus({ valid: true, message: result.message || 'Connected successfully!' });
+      const successMsg = result.message || 'Connected successfully!';
+      setTestStatus({ valid: true, message: successMsg });
+      setToast({ message: successMsg, type: 'success' });
       setTimeout(() => setTestStatus(null), 4000);
     } catch (err) {
       setTestStatus({ valid: false, error: err.message });
+      setToast({ message: `Connection test failed: ${err.message}`, type: 'error' });
       setTimeout(() => setTestStatus(null), 4000);
     } finally {
       setTestingKey(false);
@@ -146,9 +160,12 @@ export default function SettingsPage() {
         apiKey: cfg.apiKey
       });
       setSaveMessage('Settings saved successfully!');
+      setToast({ message: 'Configuration saved to SQLite persistent store', type: 'success' });
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
-      setSaveMessage(`Error saving settings: ${err.message}`);
+      const errMsg = `Error saving settings: ${err.message}`;
+      setSaveMessage(errMsg);
+      setToast({ message: errMsg, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -156,18 +173,40 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--canvas)', color: 'var(--text-main)' }}>
-        <p style={{ fontSize: '0.95rem', letterSpacing: '0.05em' }}>LOADING SETTINGS...</p>
+      <div
+        style={{
+          display: 'flex',
+          height: '100%',
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#09090b',
+          color: '#71717a',
+          gap: '12px'
+        }}
+      >
+        <Spinner size={18} color="#818cf8" />
+        <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>LOADING SETTINGS...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', width: '100%', flex: 1, height: '100%', background: 'var(--canvas)', color: 'var(--text-main)', fontFamily: 'Sora, sans-serif' }}>
+    <div
+      style={{
+        display: 'flex',
+        width: '100%',
+        flex: 1,
+        height: '100%',
+        backgroundColor: '#09090b',
+        color: '#f4f4f5',
+        overflow: 'hidden'
+      }}
+    >
       <SettingsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main style={{ flex: 1, padding: '36px 48px', overflowY: 'auto', width: '100%' }}>
-        <SettingsHeader 
+      <main style={{ flex: 1, padding: '36px clamp(20px, 4vw, 48px)', overflowY: 'auto', width: '100%' }}>
+        <SettingsHeader
           activeTab={activeTab}
           saveMessage={saveMessage}
           saving={saving}
@@ -189,6 +228,17 @@ export default function SettingsPage() {
         {activeTab === 'media' && <MediaSettingsTab settings={settings} onChange={handleChange} />}
         {activeTab === 'embedding' && <EmbeddingSettingsTab settings={settings} onChange={handleChange} />}
       </main>
+
+      {/* Floating feedback toast */}
+      {toast.message && (
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1200 }}>
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast({ message: '', type: 'info' })}
+          />
+        </div>
+      )}
     </div>
   );
 }

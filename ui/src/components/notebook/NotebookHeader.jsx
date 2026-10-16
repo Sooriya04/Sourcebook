@@ -3,27 +3,37 @@ import { ArrowLeft, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SentinelStatus from '../layout/SentinelStatus';
 
-export default function NotebookHeader({ title, notebookId, onClearChat, messageCount, activeMode, setActiveMode, onExport }) {
+export default function NotebookHeader({ 
+  title, 
+  notebookId, 
+  onExport 
+}) {
   return (
-    <div className="notebook-header">
-      <div className="header-left">
-        <Link to="/" className="back-link" title="Back to Notebooks Home">
-          <ArrowLeft size={16} />
+    <header className="notebook-header-tasteful">
+      <div className="header-left-cluster">
+        <Link 
+          to="/" 
+          className="header-back-button" 
+          title="Back to Notebooks Home"
+          aria-label="Back to notebooks"
+        >
+          <ArrowLeft size={15} />
         </Link>
-        <h2 className="current-notebook-title">{title}</h2>
+        <h2 className="header-notebook-title">{title}</h2>
         <SentinelStatus notebookId={notebookId} />
       </div>
 
-      <div className="header-actions">
+      <div className="header-right-actions">
         <button 
-          className="clear-chat-btn" 
+          type="button"
+          className="header-export-btn" 
           onClick={onExport} 
           title="Export entire notebook as Markdown"
-          style={{ background: '#1b1d22', color: '#c4c6cd', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', gap: '6px' }}
         >
-          <Download size={14} /> Export Markdown
+          <Download size={13} />
+          <span>Export Markdown</span>
         </button>
       </div>
-    </div>
+    </header>
   );
 }

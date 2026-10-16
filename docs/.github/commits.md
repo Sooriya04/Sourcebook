@@ -420,12 +420,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Universal Slash (`/`) Focus Shortcut (`useKeyboard.js`, `ChatShortcutsModal.jsx`)**: Implemented the universal `/` keyboard shortcut to immediately focus the bottom prompt bar from anywhere across the page when not actively typing inside an existing form input. Updated the keyboard shortcuts modal accordingly.
 - **Citation Hovercard Link Polish (`CitationPill.jsx`)**: Updated external source URLs inside citation preview cards with a distinct soft blue accent (`#60a5fa`) and hover underlines, ensuring external references stand out clearly against dark card backgrounds.
 
-
-
-
-
-
-
+## Commit 52: Modern Notebook Workspace Redesign & Resilient Flexbox 3-Panel Architecture
+- **Resilient Flexbox 3-Panel Layout (`NotebookPage.jsx`, `index.css`)**: Replaced fragile CSS Grid on `.three-panel-body` with dynamic Flexbox (`display: flex; flex: 1`), resolving the UI collapse bug where closing sidebars crushed the Chat workspace to 0px.
+- **Two-Way Sidebar Controls & Single-Click Inspect (`ChatHeader.jsx`, `StudyStudio.jsx`, `NotebookPage.jsx`)**: Added permanent, accessible Sources/Studio toggle buttons to both Chat and Study headers. Enabled single-click source card inspection directly from the sidebar.
+- **Modern Studio Homepage Redesign (`HomePage.jsx`, `FeaturedTemplates.jsx`, `NotebookCard.jsx`, `CreateNotebookCard.jsx`, `NotebookSearchBar.jsx`)**: Replaced the newspaper serif font with modern Inter typography, dark zinc styling, instant research templates, and sleek notebook tiles with source counts and relative timestamps.
+- **Subsystem Modularization**: Kept all new components strictly modular and under 175 lines per file, compiling cleanly with 0 lint errors.
 
 
 

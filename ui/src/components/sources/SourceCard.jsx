@@ -15,9 +15,8 @@ export default function SourceCard({
 }) {
   const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
-  const [onlineStatus, setOnlineStatus] = useState('checking'); // 'checking', 'online', 'offline', 'local'
+  const [onlineStatus, setOnlineStatus] = useState('checking');
 
-  // Approximate metrics (word count & read time)
   const textBody = source.content || source.snippet || '';
   const wordCount = textBody ? textBody.trim().split(/\s+/).length : 0;
   const readTimeMin = Math.max(1, Math.round(wordCount / 200));
@@ -28,24 +27,13 @@ export default function SourceCard({
       return;
     }
     pingSourceURL(source.url)
-      .then(res => {
-        setOnlineStatus(res.online ? 'online' : 'offline');
-      })
-      .catch(() => {
-        setOnlineStatus('offline');
-      });
+      .then(res => setOnlineStatus(res.online ? 'online' : 'offline'))
+      .catch(() => setOnlineStatus('offline'));
   }, [source.url]);
 
-  const getDomain = (urlStr) => {
-    try {
-      if (!urlStr) return '';
-      return new URL(urlStr).hostname;
-    } catch {
-      return '';
-    }
-  };
-
-  const domain = getDomain(source.url);
+  const domain = (() => {
+    try { return source.url ? new URL(source.url).hostname.replace('www.', '') : ''; } catch { return ''; }
+  })();
 
   const renderIcon = () => {
     if (domain && !iconFailed) {
@@ -53,38 +41,36 @@ export default function SourceCard({
         <img
           src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
           alt=""
-          style={{ width: 14, height: 14, borderRadius: 2, flexShrink: 0, objectFit: 'contain' }}
+          className="source-card-favicon"
           onError={() => setIconFailed(true)}
         />
       );
     }
-    if (source.type === 'pdf' || source.type === 'file') {
-      return <FileText size={14} color="var(--text-main)" />;
+    if (source.type === 'pdf' || source.type === 'file') return <FileText size={13} className="text-zinc-400 shrink-0" />;
+    if (source.type === 'youtube' || source.url?.includes('youtube.com') || source.url?.includes('youtu.be')) {
+      return <Video size={13} className="text-zinc-400 shrink-0" />;
     }
-    if (source.type === 'youtube') {
-      return <Video size={14} color="#ef4444" />;
-    }
-    return <Globe size={14} color="var(--text-main)" />;
+    return <Globe size={13} className="text-zinc-400 shrink-0" />;
   };
 
-  const handleCardClick = (e) => {
-    if (isIndexing) return;
-    if (onClick) onClick(e);
-  };
-
-  const handleCardDoubleClick = (e) => {
-    if (isIndexing) return;
-    if (onDoubleClick) onDoubleClick(e);
-  };
+  const healthColor = onlineStatus === 'online' ? '#10b981' : onlineStatus === 'offline' ? '#f43f5e' : '#f59e0b';
+  const healthTitle = onlineStatus === 'online' ? 'Online' : onlineStatus === 'offline' ? 'Offline' : 'Checking Health...';
 
   return (
     <div
-      className={`source-card ${isActive ? 'active' : ''} ${isIndexing ? 'indexing' : ''}`}
-      onClick={handleCardClick}
-      onDoubleClick={handleCardDoubleClick}
-      style={{ cursor: isIndexing ? 'wait' : 'pointer', opacity: isIndexing ? 0.7 : 1 }}
+      className={`source-card-tasteful ${isActive ? 'active' : ''} ${isIndexing ? 'indexing' : ''}`}
+      onClick={(e) => !isIndexing && onClick?.(e)}
+      onDoubleClick={(e) => !isIndexing && onDoubleClick?.(e)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !isIndexing && onClick) {
+          e.preventDefault();
+          onClick(e);
+        }
+      }}
     >
-      <div className="source-card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className="source-card-top-row">
         {onToggleScope && (
           <input
             type="checkbox"
@@ -94,60 +80,44 @@ export default function SourceCard({
               onToggleScope(source.id || String(source.index));
             }}
             onClick={(e) => e.stopPropagation()}
-            className="source-scope-checkbox"
-            title={isScoped ? "Included in chat context (Click to exclude)" : "Excluded from chat context (Click to include)"}
-            style={{
-              cursor: 'pointer',
-              accentColor: 'var(--accent-primary)',
-              margin: '0 2px 0 0',
-              width: '13px',
-              height: '13px',
-              flexShrink: 0
-            }}
+            className="source-scope-input"
+            title={isScoped ? 'In chat context' : 'Excluded from chat'}
+            aria-label={`Scope source ${source.title || 'Untitled'}`}
           />
         )}
-        {source.index && <span className="source-index">[{source.index}]</span>}
+
+        {source.index && <span className="source-index-badge">[{source.index}]</span>}
+
         {onlineStatus !== 'local' && (
-          <span
-            className={`health-dot ${onlineStatus}`}
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: onlineStatus === 'online' ? '#10b981' : onlineStatus === 'offline' ? '#f43f5e' : '#f59e0b',
-              display: 'inline-block',
-              flexShrink: 0
-            }}
-            title={onlineStatus === 'online' ? 'Source Online' : onlineStatus === 'offline' ? 'Source Offline' : 'Checking Health...'}
-          />
+          <span className="source-health-dot" style={{ backgroundColor: healthColor }} title={healthTitle} />
         )}
-        <span className="source-title" style={{ flex: 1, opacity: isScoped ? 1 : 0.6 }}>{source.title || 'Untitled Source'}</span>
+
+        <span className={`source-title-text ${isScoped ? '' : 'unscoped'}`}>
+          {source.title || 'Untitled Source'}
+        </span>
+
         {isIndexing ? (
-          <div className="source-status-badge">
-            <Loader2 size={12} className="spin" color="var(--amber)" />
+          <div className="source-indexing-badge">
+            <Loader2 size={11} className="spin text-amber-400" />
             <span>Indexing...</span>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="source-card-actions">
             {onInspect && (
               <button
-                className="source-inspect-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onInspect(source);
-                }}
-                title="Inspect source content"
+                type="button"
+                className="source-action-btn"
+                onClick={(e) => { e.stopPropagation(); onInspect(source); }}
+                title="Inspect source"
               >
                 <Eye size={12} />
               </button>
             )}
             {onDelete && (
               <button
-                className="source-delete-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(source.index);
-                }}
+                type="button"
+                className="source-action-btn delete"
+                onClick={(e) => { e.stopPropagation(); onDelete(source.index); }}
                 title="Remove source"
               >
                 <Trash2 size={12} />
@@ -157,18 +127,14 @@ export default function SourceCard({
         )}
       </div>
 
-      <div className="source-url" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+      <div className="source-card-bottom-row">
+        <div className="source-domain-wrapper">
           {renderIcon()}
-          <span style={{ marginLeft: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="source-domain-text">
             {source.url ? truncateUrl(source.url) : source.filename || 'Uploaded Document'}
           </span>
         </div>
-        {wordCount > 0 && (
-          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginLeft: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            {readTimeMin}m read
-          </span>
-        )}
+        {wordCount > 0 && <span className="source-read-badge">{readTimeMin}m read</span>}
       </div>
     </div>
   );

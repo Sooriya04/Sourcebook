@@ -1,206 +1,143 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Search, Eye, Moon, Check, Terminal, UploadCloud } from 'lucide-react';
+import { Moon, Terminal, Check, Eye } from 'lucide-react';
 
 import Sidebar from '../components/layout/Sidebar';
 import ChatStudio from '../components/chat/ChatStudio';
 import StudyStudio from '../components/study/StudyStudio';
 import NotesPanel from '../components/layout/NotesPanel';
 import NotebookHeader from '../components/notebook/NotebookHeader';
-import ErrorBoundary from '../components/ui/ErrorBoundary';
-
+import CommandPaletteModal from '../components/notebook/CommandPaletteModal';
+import DragDropOverlay from '../components/notebook/DragDropOverlay';
 import AddSourceModal from '../components/sources/AddSourceModal';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
 import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript } from '../services/sourcebookApi';
 
-const EMPTY_SOURCES = [];
-const EMPTY_NOTES = [];
-const EMPTY_MESSAGES = [];
+const EMPTY_ARR = [];
 
 export default function NotebookPage({ getNotebook }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const shellNotebook = getNotebook(id);
-
-  const [notebook, setNotebook] = useState(shellNotebook || null);
+  const [notebook, setNotebook] = useState(() => getNotebook?.(id) || null);
   const [loadingNotebook, setLoadingNotebook] = useState(true);
   
-  const [notes, setNotes] = useState(EMPTY_NOTES);
+  const [notes, setNotes] = useState(EMPTY_ARR);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [discoveryTopic, setDiscoveryTopic] = useState(null);
-  const [isScraping, setIsScraping] = useState(false);
   const [activeMode, setActiveMode] = useState('chat');
-
-  // Panel Collapsing State
+  const [studyTab, setStudyTab] = useState('briefing');
   const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
   const [isStudioCollapsed, setIsStudioCollapsed] = useState(false);
-  const [studyTab, setStudyTab] = useState('briefing');
   const [inspectingSource, setInspectingSource] = useState(null);
+
+  // Drag & drop file ingestion
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const dragCounterRef = useRef(0);
 
+  // Command palette
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const syncTimeoutRef = useRef(null);
   const hasLoadedRef = useRef(false);
 
-  // Command Palette States
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [commandQuery, setCommandQuery] = useState('');
-  const paletteInputRef = useRef(null);
+  // Sources & Chat hooks
+  const {
+    sources, setSources,
+    activeCitation, setActiveCitation, scopedSourceIds, setScopedSourceIds,
+    toggleSourceScope, toggleAllSourcesScope, addSource, addMultipleSources,
+    updateMultipleSources, removeSource
+  } = useSources(EMPTY_ARR, id);
 
-  // Keyboard shortcut listener for Cmd/Ctrl+K
+  const {
+    messages, setMessages, loading: chatLoading, streamPhase,
+    maxSources, setMaxSources, sendMessage, stopStream,
+    regenerateMessage, editAndResendMessage, clearChat, chatEndRef
+  } = useChat(EMPTY_ARR, (newSrcs) => addMultipleSources(newSrcs), id);
+
+  // Load notebook data
+  useEffect(() => {
+    let isMounted = true;
+    if (!id || id === 'undefined') {
+      setLoadingNotebook(false);
+      return;
+    }
+    fetchNotebookDetail(id)
+      .then((data) => {
+        if (!isMounted) return;
+        setNotebook(data);
+        setSources(data.sources || EMPTY_ARR);
+        setNotes(data.notes || EMPTY_ARR);
+        setMessages(data.messages || EMPTY_ARR);
+        hasLoadedRef.current = true;
+        setLoadingNotebook(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load notebook:', err);
+        if (isMounted) setLoadingNotebook(false);
+      });
+    return () => { isMounted = false; };
+  }, [id, setSources, setMessages]);
+
+  // Auto-sync debounced
+  useEffect(() => {
+    if (!hasLoadedRef.current || !notebook?.title) return;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(() => {
+      updateNotebookOnServer(id, {
+        title: notebook.title,
+        description: notebook.description,
+        sources, notes, messages
+      }).catch((err) => console.error('Auto-sync failed:', err));
+    }, 1000);
+    return () => clearTimeout(syncTimeoutRef.current);
+  }, [notebook, sources, notes, messages, id]);
+
+  // Global Cmd+K keyboard listener
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsCommandPaletteOpen(prev => !prev);
-      }
-      if (e.key === 'Escape') {
-        setIsCommandPaletteOpen(false);
+        setIsCommandPaletteOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  useEffect(() => {
-    if (isCommandPaletteOpen) {
-      setTimeout(() => {
-        paletteInputRef.current?.focus();
-      }, 50);
-    }
-  }, [isCommandPaletteOpen]);
-
-  const changeTheme = (themeName) => {
-    document.documentElement.setAttribute('data-theme', themeName);
-    localStorage.setItem('sourcebook-theme', themeName);
+  const changeTheme = (theme) => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('sourcebook-theme', theme);
   };
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('sourcebook-theme') || 'obsidian';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  }, []);
-
-  const {
-    sources,
-    setSources,
-    selectedSource,
-    setSelectedSource,
-    activeCitation,
-    setActiveCitation,
-    scopedSourceIds,
-    setScopedSourceIds,
-    toggleSourceScope,
-    toggleAllSourcesScope,
-    addSource,
-    addMultipleSources,
-    updateMultipleSources,
-    removeSource
-  } = useSources(EMPTY_SOURCES, id);
-
-  const handleNewSourcesFromAPI = (newSources) => {
-    addMultipleSources(newSources);
+  // Drag-and-drop file handlers
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.items?.length > 0) setIsDraggingFile(true);
   };
-
-  const {
-    messages,
-    setMessages,
-    loading: chatLoading,
-    streamPhase,
-    maxSources,
-    setMaxSources,
-    sendMessage,
-    stopStream,
-    regenerateMessage,
-    editAndResendMessage,
-    clearChat,
-    chatEndRef
-  } = useChat(EMPTY_MESSAGES, handleNewSourcesFromAPI, id);
-
-  // Fetch full details on mount
-  useEffect(() => {
-    let isMounted = true;
-    setLoadingNotebook(true);
-    hasLoadedRef.current = false;
-
-    if (!id || id === 'undefined') {
-      setLoadingNotebook(false);
-      return;
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      setIsDraggingFile(false);
+      dragCounterRef.current = 0;
     }
-
-    fetchNotebookDetail(id)
-      .then(data => {
-        if (!isMounted) return;
-        setNotebook(data);
-        setSources(data.sources || []);
-        setNotes(data.notes || []);
-        setMessages(data.messages || []);
-        hasLoadedRef.current = true;
-        setLoadingNotebook(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch notebook details:", err);
-        if (isMounted) setLoadingNotebook(false);
-      });
-
-    return () => { isMounted = false; };
-  }, [id, setSources, setMessages]);
-
-  // Auto-sync effect
-  useEffect(() => {
-    if (!hasLoadedRef.current || !notebook || !notebook.title) return;
-
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
-
-    syncTimeoutRef.current = setTimeout(() => {
-      const payload = {
-        title: notebook.title,
-        description: notebook.description,
-        sources: sources,
-        notes: notes,
-        messages: messages
-      };
-
-      updateNotebookOnServer(id, payload).catch(err => {
-        console.error("Failed to auto-sync notebook:", err);
-      });
-    }, 1000);
-
-    return () => {
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-    };
-  }, [notebook, sources, notes, messages, id]);
-
-  if (loadingNotebook) {
-    return (
-      <div className="not-found-container">
-        <h2>Loading Workspace...</h2>
-      </div>
-    );
-  }
-
-  if (!notebook) {
-    return (
-      <div className="not-found-container">
-        <h2>Notebook Not Found</h2>
-        <button onClick={() => navigate('/')}>Return to Notebooks</button>
-      </div>
-    );
-  }
-
-  const handleAddSource = (srcData) => {
-    addSource(srcData);
   };
-
-  const handleUpdateSource = (updatedSource) => {
-    setSources(prev => prev.map(s => (s.url === updatedSource.url || (s.id && s.id === updatedSource.id)) ? updatedSource : s));
-    setSelectedSource(updatedSource);
-    if (inspectingSource && (inspectingSource.url === updatedSource.url || (inspectingSource.id && inspectingSource.id === updatedSource.id))) {
-      setInspectingSource(updatedSource);
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    dragCounterRef.current = 0;
+    const files = Array.from(e.dataTransfer.files || []);
+    for (const file of files) {
+      try {
+        const parsed = await parseFileClientSide(file);
+        addSource(parsed);
+      } catch (err) {
+        console.error('File drop ingest failed:', err);
+      }
     }
   };
 
@@ -212,23 +149,6 @@ export default function NotebookPage({ getNotebook }) {
     }
   };
 
-  const handleDoubleClickSource = (source) => {
-    setInspectingSource(source);
-    setIsSourcesCollapsed(false);
-  };
-
-  const handleSaveNote = (newNote) => {
-    setNotes(prev => [newNote, ...prev]);
-  };
-
-  const handleUpdateNote = (updatedNote) => {
-    setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n));
-  };
-
-  const handleDeleteNote = (noteId) => {
-    setNotes(prev => prev.filter(n => n.id !== noteId));
-  };
-
   const handleExportNotebook = async () => {
     try {
       const markdown = await exportNotebook(id);
@@ -236,281 +156,100 @@ export default function NotebookPage({ getNotebook }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${notebook.title.replace(/\s+/g, '_')}_export.md`;
+      a.download = `${(notebook?.title || 'notebook').replace(/\s+/g, '_')}_export.md`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export failed:", err);
-    }
-  };
-
-  const handleSendMessage = (query, mode = 'notebook', overrideHistory = null) => {
-    sendMessage(query, mode, overrideHistory, Array.from(scopedSourceIds));
-  };
-
-  const handleExplainSource = (src) => {
-    setActiveMode('chat');
-    setSelectedSource(null);
-    setInspectingSource(null);
-    const srcId = src.id || String(src.index);
-    sendMessage(`Explain this source in detail: "${src.title}" [${src.index}]`, 'notebook', null, [srcId]);
-  };
-
-  const handleChatWithSource = (src) => {
-    const srcId = src.id || String(src.index);
-    setScopedSourceIds(new Set([srcId]));
-    setInspectingSource(null);
-  };
-
-  const handleAddUrlDirect = async (url) => {
-    if (!url) return;
-    const isYT = url.includes('youtube.com') || url.includes('youtu.be');
-    if (isYT) {
-      const fallbackObj = parseYouTubeURL(url);
-      addSource({ ...fallbackObj, status: 'Indexing...' });
-      try {
-        const transcriptData = await fetchYouTubeTranscript(url);
-        updateSource({
-          ...fallbackObj,
-          title: transcriptData.title || fallbackObj.title,
-          content: transcriptData.content,
-          status: 'Ready'
-        });
-      } catch (err) {
-        console.warn('YouTube transcript failed, retaining URL entry:', err);
-        updateSource({ ...fallbackObj, status: 'Ready' });
-      }
-    } else {
-      let title = url;
-      try { title = new URL(url).hostname; } catch {}
-      addSource({ title, url, type: 'web' });
-    }
-  };
-
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDraggingFile(true);
-    }
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current -= 1;
-    if (dragCounterRef.current <= 0) {
-      setIsDraggingFile(false);
-      dragCounterRef.current = 0;
-    }
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingFile(false);
-    dragCounterRef.current = 0;
-
-    const files = Array.from(e.dataTransfer.files || []);
-    if (files.length === 0) return;
-
-    for (const file of files) {
-      try {
-        const parsed = await parseFileClientSide(file);
-        addSource(parsed);
-      } catch (err) {
-        console.error("Failed to parse dropped file:", err);
-      }
+      console.error('Export failed:', err);
     }
   };
 
   const handleImportDiscovery = async (imported) => {
-    const urls = imported.map(src => src.url).filter(Boolean);
+    const urls = imported.map((src) => src.url).filter(Boolean);
     if (imported.length === 0) return;
-    
-    setIsScraping(true);
     setDiscoveryTopic(null);
-
-    const pendingSources = imported.map(item => ({
+    const pending = imported.map((item) => ({
       title: item.title || 'Web Source',
       url: item.url || '',
       snippet: item.snippet || '',
       type: 'web',
       status: 'Indexing...'
     }));
-    addMultipleSources(pendingSources);
+    addMultipleSources(pending);
 
     try {
       let scrapedDocsMap = new Map();
       if (urls.length > 0) {
-        const response = await runPipeline({ query: "discovery_import", urls: urls });
-        if (response && Array.isArray(response.data)) {
-          response.data.forEach(doc => {
+        const res = await runPipeline({ query: 'discovery_import', urls });
+        if (res?.data && Array.isArray(res.data)) {
+          res.data.forEach((doc) => {
             const docUrl = (doc.url || doc.URL || '').toLowerCase();
-            const text = doc.content || doc.Content || doc.markdown || doc.Markdown || '';
-            if (docUrl && text) {
-              scrapedDocsMap.set(docUrl, text);
-            }
+            const text = doc.content || doc.Content || doc.markdown || '';
+            if (docUrl && text) scrapedDocsMap.set(docUrl, text);
           });
         }
       }
-
-      const finalSources = pendingSources.map(item => {
-        const itemUrl = (item.url || '').toLowerCase();
-        const scrapedText = scrapedDocsMap.get(itemUrl);
-        return {
-          ...item,
-          content: scrapedText || item.snippet || item.title,
-          status: 'Ready'
-        };
-      });
-
-      updateMultipleSources(finalSources);
-    } catch (err) {
-      console.warn("Backend scraping pipeline offline, falling back to direct import:", err);
-      updateMultipleSources(pendingSources.map(item => ({
+      updateMultipleSources(pending.map((item) => ({
         ...item,
-        content: item.snippet || item.title,
+        content: scrapedDocsMap.get((item.url || '').toLowerCase()) || item.snippet || item.title,
         status: 'Ready'
       })));
-    } finally {
-      setIsScraping(false);
+    } catch {
+      updateMultipleSources(pending.map((item) => ({ ...item, content: item.snippet || item.title, status: 'Ready' })));
     }
   };
 
-  const commandsList = [
-    {
-      label: 'Switch to Midnight Obsidian theme',
-      type: 'Theme',
-      icon: <Moon size={14} />,
-      action: () => changeTheme('obsidian')
-    },
-    {
-      label: 'Switch to Cyberpunk Glass theme',
-      type: 'Theme',
-      icon: <Terminal size={14} />,
-      action: () => changeTheme('cyberpunk')
-    },
-    {
-      label: 'Switch to Clean Corporate theme',
-      type: 'Theme',
-      icon: <Check size={14} />,
-      action: () => changeTheme('corporate')
-    },
-    {
-      label: 'Open Chat Studio',
-      type: 'Navigation',
+  const commands = [
+    { label: 'Switch to Midnight Obsidian theme', type: 'Theme', icon: <Moon size={14} />, action: () => changeTheme('obsidian') },
+    { label: 'Switch to Cyberpunk Glass theme', type: 'Theme', icon: <Terminal size={14} />, action: () => changeTheme('cyberpunk') },
+    { label: 'Switch to Clean Corporate theme', type: 'Theme', icon: <Check size={14} />, action: () => changeTheme('corporate') },
+    { label: 'Open Chat Studio', type: 'Navigation', icon: <Eye size={14} />, action: () => setActiveMode('chat') },
+    { label: 'Study Studio: Briefing Document', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('briefing'); } },
+    { label: 'Study Studio: Audio Overview', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('audio'); } },
+    { label: 'Study Studio: Quizzes', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('quiz'); } },
+    { label: 'Study Studio: Mind Map', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('mindmap'); } },
+    { label: 'Study Studio: Reports', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('reports'); } },
+    ...sources.map((s) => ({
+      label: `Open Source: ${s.title}`,
+      type: 'Source',
       icon: <Eye size={14} />,
-      action: () => setActiveMode('chat')
-    },
-    {
-      label: 'Open Study Studio - Briefing Document',
-      type: 'Study',
-      icon: <Eye size={14} />,
-      action: () => {
-        setActiveMode('study');
-        setStudyTab('briefing');
-      }
-    },
-    {
-      label: 'Open Study Studio - Audio Overview',
-      type: 'Study',
-      icon: <Eye size={14} />,
-      action: () => {
-        setActiveMode('study');
-        setStudyTab('audio');
-      }
-    },
-    {
-      label: 'Open Study Studio - Quizzes',
-      type: 'Study',
-      icon: <Eye size={14} />,
-      action: () => {
-        setActiveMode('study');
-        setStudyTab('quiz');
-      }
-    },
-    {
-      label: 'Open Study Studio - Mind Map',
-      type: 'Study',
-      icon: <Eye size={14} />,
-      action: () => {
-        setActiveMode('study');
-        setStudyTab('mindmap');
-      }
-    },
-    {
-      label: 'Open Study Studio - Reports',
-      type: 'Study',
-      icon: <Eye size={14} />,
-      action: () => {
-        setActiveMode('study');
-        setStudyTab('reports');
-      }
-    }
+      action: () => handleCitationClick(s.index, s)
+    }))
   ];
 
-  const sourceCommands = sources.map(src => ({
-    label: `Open Source: ${src.title}`,
-    type: 'Source',
-    icon: <Eye size={14} />,
-    action: () => handleCitationClick(src.index, src)
-  }));
+  if (loadingNotebook) {
+    return (
+      <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#09090b', color: '#71717a' }}>
+        <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>LOADING WORKSPACE...</p>
+      </div>
+    );
+  }
 
-  const filteredCommands = [...commandsList, ...sourceCommands].filter(cmd => 
-    cmd.label.toLowerCase().includes(commandQuery.toLowerCase()) ||
-    cmd.type.toLowerCase().includes(commandQuery.toLowerCase())
-  );
-
-  const gridColumnsStyle = {
-    gridTemplateColumns: `${isSourcesCollapsed ? '0px' : '310px'} minmax(0, 1fr) ${isStudioCollapsed ? '0px' : '320px'}`,
-    gap: (isSourcesCollapsed && isStudioCollapsed) ? '0px' : '12px'
-  };
+  if (!notebook) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#09090b', color: '#f4f4f5' }}>
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Notebook Not Found</h2>
+        <button onClick={() => navigate('/')} style={{ padding: '8px 16px', backgroundColor: '#27272a', border: '1px solid #3f3f46', borderRadius: '8px', color: '#f4f4f5', cursor: 'pointer' }}>Return to Notebooks</button>
+      </div>
+    );
+  }
 
   return (
-    <div 
+    <div
       className="notebook-workspace-3panel"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
+      onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
-      style={{ position: 'relative' }}
+      style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#09090b' }}
     >
-      {/* Global Drag & Drop Ingestion Overlay */}
-      {isDraggingFile && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background: 'rgba(9, 9, 11, 0.88)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          border: '2px dashed var(--accent-primary, #3b82f6)',
-          margin: '16px',
-          borderRadius: '16px',
-          color: '#fff',
-          pointerEvents: 'none'
-        }}>
-          <UploadCloud size={56} color="var(--accent-primary, #3b82f6)" style={{ marginBottom: '16px' }} />
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 600, margin: '0 0 8px 0' }}>Drop files to ingest into notebook</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #a1a1aa)', margin: 0 }}>Supports PDF, Markdown, Plain Text, and Code</p>
-        </div>
-      )}
+      <DragDropOverlay isDragging={isDraggingFile} />
 
       <NotebookHeader
         title={notebook.title}
-        notebookId={notebook?.id || notebookId}
+        notebookId={notebook.id || id}
         onClearChat={clearChat}
         messageCount={messages.length}
         activeMode={activeMode}
@@ -518,33 +257,61 @@ export default function NotebookPage({ getNotebook }) {
         onExport={handleExportNotebook}
       />
 
-      <div className="three-panel-body" style={gridColumnsStyle}>
-        {/* Slot 1: Left Panel (Sources) */}
-        <ErrorBoundary title="Sources Panel Error">
-          <Sidebar
-            sources={sources}
-            activeCitation={activeCitation}
-            scopedSourceIds={scopedSourceIds}
-            onToggleScope={toggleSourceScope}
-            onToggleAllScope={toggleAllSourcesScope}
-            onSelectSource={(source) => setActiveCitation(source.index)}
-            onDoubleClickSource={handleDoubleClickSource}
-            onDeleteSource={removeSource}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            discoveryTopic={discoveryTopic}
-            setDiscoveryTopic={setDiscoveryTopic}
-            onImportDiscovery={handleImportDiscovery}
-            isCollapsed={isSourcesCollapsed}
-            onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
-            inspectingSource={inspectingSource}
-            setInspectingSource={setInspectingSource}
-            onExplainSource={handleExplainSource}
-            onChatWithSource={handleChatWithSource}
-          />
-        </ErrorBoundary>
+      <div
+        className="three-panel-body"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'row',
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          backgroundColor: '#09090b'
+        }}
+      >
+        {!isSourcesCollapsed && (
+          <ErrorBoundary title="Sources Panel Error">
+            <Sidebar
+              sources={sources}
+              activeCitation={activeCitation}
+              scopedSourceIds={scopedSourceIds}
+              onToggleScope={toggleSourceScope}
+              onToggleAllScope={toggleAllSourcesScope}
+              onSelectSource={(s) => {
+                setActiveCitation(s.index);
+                setInspectingSource(s);
+                setIsSourcesCollapsed(false);
+              }}
+              onDoubleClickSource={(s) => { setInspectingSource(s); setIsSourcesCollapsed(false); }}
+              onDeleteSource={removeSource}
+              onOpenAddModal={() => setIsAddModalOpen(true)}
+              discoveryTopic={discoveryTopic}
+              setDiscoveryTopic={setDiscoveryTopic}
+              onImportDiscovery={handleImportDiscovery}
+              isCollapsed={isSourcesCollapsed}
+              onToggleCollapse={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+              inspectingSource={inspectingSource}
+              setInspectingSource={setInspectingSource}
+              onExplainSource={(s) => { setActiveMode('chat'); sendMessage(`Explain source: "${s.title}"`, 'notebook', null, [s.id || String(s.index)]); }}
+              onChatWithSource={(s) => { setScopedSourceIds(new Set([s.id || String(s.index)])); setInspectingSource(null); }}
+            />
+          </ErrorBoundary>
+        )}
 
-        <div className="center-workspace-wrapper" style={{ gridColumn: 2, minWidth: 0, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <ErrorBoundary title="Chat Studio Error">
+        <div
+          className="center-workspace-wrapper"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#09090b'
+          }}
+        >
+          <ErrorBoundary title="Workspace Error">
             {activeMode === 'chat' ? (
               <ChatStudio
                 messages={messages}
@@ -552,7 +319,7 @@ export default function NotebookPage({ getNotebook }) {
                 streamPhase={streamPhase}
                 maxSources={maxSources}
                 setMaxSources={setMaxSources}
-                onSendMessage={handleSendMessage}
+                onSendMessage={(q, m, h) => sendMessage(q, m, h, Array.from(scopedSourceIds))}
                 onStopStream={stopStream}
                 onRegenerate={regenerateMessage}
                 onEditAndResend={editAndResendMessage}
@@ -561,7 +328,7 @@ export default function NotebookPage({ getNotebook }) {
                 scopedSourceIds={scopedSourceIds}
                 onCitationClick={handleCitationClick}
                 activeCitation={activeCitation}
-                onSaveNote={handleSaveNote}
+                onSaveNote={(note) => setNotes((prev) => [note, ...prev])}
                 chatEndRef={chatEndRef}
                 notebookTitle={notebook.title}
                 notebookDescription={notebook.description}
@@ -569,166 +336,70 @@ export default function NotebookPage({ getNotebook }) {
                 onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
                 isStudioCollapsed={isStudioCollapsed}
                 onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
-                onAddUrl={handleAddUrlDirect}
+                onOpenAddSources={() => setIsAddModalOpen(true)}
+                onAddUrl={async (url) => {
+                  if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    const fallback = parseYouTubeURL(url);
+                    addSource({ ...fallback, status: 'Indexing...' });
+                    try {
+                      const transcript = await fetchYouTubeTranscript(url);
+                      updateMultipleSources([{ ...fallback, title: transcript.title || fallback.title, content: transcript.content, status: 'Ready' }]);
+                    } catch {
+                      updateMultipleSources([{ ...fallback, status: 'Ready' }]);
+                    }
+                  } else {
+                    let title = url;
+                    try { title = new URL(url).hostname; } catch {}
+                    addSource({ title, url, type: 'web' });
+                  }
+                }}
               />
             ) : (
-              <StudyStudio notebookId={id} sources={sources} activeTab={studyTab} setActiveTab={setStudyTab} setActiveMode={setActiveMode} />
+              <StudyStudio
+                notebookId={id}
+                sources={sources}
+                activeTab={studyTab}
+                setActiveTab={setStudyTab}
+                setActiveMode={setActiveMode}
+                isSourcesCollapsed={isSourcesCollapsed}
+                onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+                isStudioCollapsed={isStudioCollapsed}
+                onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
+              />
             )}
           </ErrorBoundary>
         </div>
 
-        {/* Slot 3: Right Panel (Notes & Audio Overview) */}
-        <ErrorBoundary title="Notes Studio Error">
-          <NotesPanel
-            notes={notes}
-            onAddNote={handleSaveNote}
-            onUpdateNote={handleUpdateNote}
-            onDeleteNote={handleDeleteNote}
-            activeMode={activeMode}
-            setActiveMode={setActiveMode}
-            isCollapsed={isStudioCollapsed}
-            onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
-            studyTab={studyTab}
-            setStudyTab={setStudyTab}
-          />
-        </ErrorBoundary>
+        {!isStudioCollapsed && (
+          <ErrorBoundary title="Notes Studio Error">
+            <NotesPanel
+              notes={notes}
+              onAddNote={(n) => setNotes((prev) => [n, ...prev])}
+              onUpdateNote={(n) => setNotes((prev) => prev.map((item) => (item.id === n.id ? n : item)))}
+              onDeleteNote={(nId) => setNotes((prev) => prev.filter((item) => item.id !== nId))}
+              activeMode={activeMode}
+              setActiveMode={setActiveMode}
+              isCollapsed={isStudioCollapsed}
+              onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
+              studyTab={studyTab}
+              setStudyTab={setStudyTab}
+            />
+          </ErrorBoundary>
+        )}
       </div>
 
-      {/* Add Source Modal */}
       <AddSourceModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAddSource={handleAddSource}
+        onAddSource={(src) => addSource(src)}
         onSearchDiscovery={(topic) => setDiscoveryTopic(topic)}
       />
 
-      {/* Scraping Toast */}
-      {isScraping && (
-        <div className="scraping-overlay">
-          <div className="scraping-modal">
-            <div className="spinner"></div>
-            <h3>Scraping sources...</h3>
-          </div>
-        </div>
-      )}
-      {/* Command Palette Modal */}
-      {isCommandPaletteOpen && (
-        <div 
-          className="command-palette-overlay"
-          onClick={() => setIsCommandPaletteOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            justifyContent: 'center',
-            paddingTop: '15vh',
-            zIndex: 1000,
-          }}
-        >
-          <div 
-            className="command-palette glass-card"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: '560px',
-              maxHeight: '400px',
-              display: 'flex',
-              flexDirection: 'column',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--panel)',
-              overflow: 'hidden',
-              boxShadow: 'var(--shadow)',
-            }}
-          >
-            <div 
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '12px 16px',
-                borderBottom: '1px solid var(--border-color)',
-                gap: '12px'
-              }}
-            >
-              <Search size={18} style={{ color: 'var(--text-muted)' }} />
-              <input
-                ref={paletteInputRef}
-                type="text"
-                placeholder="Type a command or search sources..."
-                value={commandQuery}
-                onChange={(e) => setCommandQuery(e.target.value)}
-                style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  color: 'var(--text-main)',
-                  fontSize: '0.94rem',
-                  fontFamily: 'var(--font-sans)',
-                }}
-              />
-              <span 
-                style={{
-                  fontSize: '0.68rem',
-                  background: 'var(--canvas-2)',
-                  color: 'var(--text-muted)',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  fontFamily: 'var(--font-mono)'
-                }}
-              >
-                ESC
-              </span>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-              {filteredCommands.length > 0 ? (
-                filteredCommands.map((cmd, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      cmd.action();
-                      setIsCommandPaletteOpen(false);
-                      setCommandQuery('');
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '0.86rem',
-                      fontFamily: 'var(--font-sans)',
-                      color: 'var(--text-main)',
-                      transition: 'background-color 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {cmd.icon}
-                      <span>{cmd.label}</span>
-                    </div>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                      {cmd.type}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                  No commands or sources found.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        commands={commands}
+      />
     </div>
   );
 }

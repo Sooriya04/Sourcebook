@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Check, Globe, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import DiscoveryResultCard from './DiscoveryResultCard';
 import { searchSources } from '../../services/sourcebookApi';
 
 export default function SourceDiscovery({ query, onImport, onCancel }) {
@@ -23,11 +24,8 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
         setLoading(false);
       })
       .catch(err => {
-        console.error("Search failed:", err);
-        if (isMounted) {
-          setResults([]);
-          setLoading(false);
-        }
+        console.error('Search failed:', err);
+        if (isMounted) { setResults([]); setLoading(false); }
       });
 
     return () => { isMounted = false; };
@@ -44,27 +42,18 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
 
   const toggleSelection = (url) => {
     const next = new Set(selectedUrls);
-    if (next.has(url)) next.delete(url);
-    else next.add(url);
+    if (next.has(url)) next.delete(url); else next.add(url);
     setSelectedUrls(next);
   };
 
   const handleSelectAll = () => {
-    if (selectedUrls.size === results.length) {
-      setSelectedUrls(new Set());
-    } else {
-      setSelectedUrls(new Set(results.map(r => r.url)));
-    }
+    setSelectedUrls(selectedUrls.size === results.length ? new Set() : new Set(results.map(r => r.url)));
   };
 
   const handleImport = () => {
     const sourcesToImport = results
       .filter(r => selectedUrls.has(r.url))
-      .map(r => ({
-        title: r.title,
-        url: r.url,
-        type: isYouTube(r.url, r.source) ? 'youtube' : 'web'
-      }));
+      .map(r => ({ title: r.title, url: r.url, type: isYouTube(r.url, r.source) ? 'youtube' : 'web' }));
     if (sourcesToImport.length > 0) onImport(sourcesToImport);
   };
 
@@ -72,39 +61,35 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
   const webCount = results.length - ytCount;
 
   return (
-    <div className="source-discovery-panel">
-      <div className="discovery-header">
-        <button className="back-to-sources-btn" onClick={onCancel}>
-          <ChevronLeft size={16} /> Back
+    <div className="discovery-panel-tasteful">
+      <div className="discovery-header-row">
+        <button type="button" className="discovery-back-btn" onClick={onCancel}>
+          <ArrowLeft size={13} />
+          <span>Back</span>
         </button>
-        <span className="discovery-header-title">Web Discovery</span>
+        <span className="discovery-header-badge">Web Discovery</span>
       </div>
 
-      <div className="discovery-results-container">
+      <div className="discovery-results-wrapper">
         {loading ? (
-          <div className="discovery-loading">
-            <div className="spinner"></div>
-            <span>Searching the web...</span>
+          <div className="discovery-loading-state">
+            <Loader2 size={24} className="spin text-zinc-400" />
+            <span className="text-zinc-400 text-xs">Discovering relevant sources...</span>
           </div>
         ) : (
           <>
-            <div className="discovery-toolbar">
-              <div className="discovery-toolbar-row">
-                <label className="discovery-select-all-label">
-                  <input
-                    type="checkbox"
-                    checked={selectedUrls.size === results.length && results.length > 0}
-                    onChange={handleSelectAll}
-                    style={{ accentColor: 'var(--accent)', cursor: 'pointer', margin: 0 }}
-                  />
-                  <span>Select all ({selectedUrls.size}/{results.length})</span>
-                </label>
-                <button type="button" onClick={handleSelectAll} className="btn-select-all">
-                  {selectedUrls.size === results.length ? 'Clear all' : 'Select all'}
-                </button>
-              </div>
+            <div className="discovery-filter-toolbar">
+              <label className="discovery-select-all-label">
+                <input
+                  type="checkbox"
+                  checked={selectedUrls.size === results.length && results.length > 0}
+                  onChange={handleSelectAll}
+                  className="discovery-checkbox-input"
+                />
+                <span>Select all ({selectedUrls.size}/{results.length})</span>
+              </label>
 
-              <div className="discovery-pills">
+              <div className="discovery-pills-row">
                 {['all', 'web', 'youtube'].map(type => {
                   if (type === 'web' && webCount === 0) return null;
                   if (type === 'youtube' && ytCount === 0) return null;
@@ -113,7 +98,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
                     <button
                       key={type}
                       type="button"
-                      className={`discovery-pill ${filterType === type ? 'active' : ''}`}
+                      className={`discovery-pill-btn ${filterType === type ? 'active' : ''}`}
                       onClick={() => setFilterType(type)}
                     >
                       {label}
@@ -123,45 +108,32 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
               </div>
             </div>
 
-            <div className="discovery-list">
-              {filteredResults.map((res, i) => {
-                const isYT = isYouTube(res.url, res.source);
-                const isSelected = selectedUrls.has(res.url);
-                return (
-                  <div
-                    key={i}
-                    className={`discovery-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() => toggleSelection(res.url)}
-                  >
-                    <div className="discovery-item-icon">
-                      {isYT ? <PlayCircle size={15} color="#ef4444" /> : <Globe size={15} />}
-                    </div>
-                    <div className="discovery-item-content">
-                      <div className="discovery-item-title">{res.title || 'Untitled Source'}</div>
-                      {res.snippet && <div className="discovery-item-snippet">{res.snippet}</div>}
-                    </div>
-                    <div className="discovery-checkbox">
-                      {isSelected && <Check size={12} className="check-mark" />}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="discovery-cards-list">
+              {filteredResults.map((res, i) => (
+                <DiscoveryResultCard
+                  key={res.url || i}
+                  result={res}
+                  isSelected={selectedUrls.has(res.url)}
+                  onToggle={toggleSelection}
+                  isYouTube={isYouTube}
+                />
+              ))}
             </div>
           </>
         )}
       </div>
 
-      <div className="discovery-footer">
-        <div className="selected-count">{selectedUrls.size} of {results.length} selected</div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" onClick={onCancel} className="btn-discovery-cancel">Cancel</button>
+      <div className="discovery-footer-row">
+        <span className="discovery-count-text">{selectedUrls.size} of {results.length} selected</span>
+        <div className="discovery-footer-btns">
+          <button type="button" onClick={onCancel} className="discovery-btn-cancel">Cancel</button>
           <button
             type="button"
             disabled={selectedUrls.size === 0 || loading}
             onClick={handleImport}
-            className={`btn-discovery-import ${selectedUrls.size > 0 ? 'active' : ''}`}
+            className={`discovery-btn-import ${selectedUrls.size > 0 ? 'active' : ''}`}
           >
-            Import
+            Import Sources
           </button>
         </div>
       </div>
