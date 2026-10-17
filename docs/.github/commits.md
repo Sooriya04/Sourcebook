@@ -423,8 +423,10 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 ## Commit 52: Modern Notebook Workspace Redesign & Resilient Flexbox 3-Panel Architecture
 - **Resilient Flexbox 3-Panel Layout (`NotebookPage.jsx`, `index.css`)**: Replaced fragile CSS Grid on `.three-panel-body` with dynamic Flexbox (`display: flex; flex: 1`), resolving the UI collapse bug where closing sidebars crushed the Chat workspace to 0px.
 - **Two-Way Sidebar Controls & Single-Click Inspect (`ChatHeader.jsx`, `StudyStudio.jsx`, `NotebookPage.jsx`)**: Added permanent, accessible Sources/Studio toggle buttons to both Chat and Study headers. Enabled single-click source card inspection directly from the sidebar.
-- **Modern Studio Homepage Redesign (`HomePage.jsx`, `FeaturedTemplates.jsx`, `NotebookCard.jsx`, `CreateNotebookCard.jsx`, `NotebookSearchBar.jsx`)**: Replaced the newspaper serif font with modern Inter typography, dark zinc styling, instant research templates, and sleek notebook tiles with source counts and relative timestamps.
+- **Modern Minimalist Homepage (`HomePage.jsx`, `NotebookCard.jsx`, `CreateNotebookCard.jsx`, `NotebookSearchBar.jsx`)**: Eliminated the awkward floating middle-of-screen scrollbar and unwanted template cards, delivering a clean, uncluttered dashboard with search and notebook cards.
 - **Subsystem Modularization**: Kept all new components strictly modular and under 175 lines per file, compiling cleanly with 0 lint errors.
 
-
-
+## Commit 53: Settings Workstation Redesign & Subsystem Modularization
+- **Centered Workstation Layout (`SettingsPage.jsx`, `SettingsHeader.jsx`)**: Replaced unbounded layout with a clean 880px centered container, aligning the Save button with settings card boundaries and eliminating empty right-side dead space.
+- **Subsystem Modularization (`ProviderCardSelector.jsx`, `ProviderInputFields.jsx`, `TestConnectionBar.jsx`, `useSettingsConfig.js`)**: Decomposed monolithic settings components into modular subcomponents and extracted custom hook `useSettingsConfig`, keeping all files strictly under 185 lines.
+- **Restrained Zinc Styling & Input Polish (`LLMSettingsTab.jsx`, `MediaSettingsTab.jsx`, `ToggleSwitch.jsx`)**: Standardized monospace typography for endpoints, model names, and API keys with show/hide eye toggle, accompanied by tactile toggle switches and cohesive zinc navigation states.

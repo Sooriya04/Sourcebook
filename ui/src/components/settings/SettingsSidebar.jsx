@@ -2,22 +2,22 @@ import React from 'react';
 import { ArrowLeft, Cpu, Search, Globe, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const TABS = [
+  { id: 'llm', label: 'AI & Model Provider', icon: <Cpu size={16} /> },
+  { id: 'search', label: 'Search Engine', icon: <Search size={16} /> },
+  { id: 'media', label: 'Crawling & Media', icon: <Globe size={16} /> },
+  { id: 'embedding', label: 'Vector & Embeddings', icon: <Layers size={16} /> }
+];
+
 export default function SettingsSidebar({ activeTab, setActiveTab }) {
   const navigate = useNavigate();
-
-  const tabs = [
-    { id: 'llm', label: 'AI & Model Provider', icon: <Cpu size={16} /> },
-    { id: 'search', label: 'Search Engine', icon: <Search size={16} /> },
-    { id: 'media', label: 'Crawling & Media', icon: <Globe size={16} /> },
-    { id: 'embedding', label: 'Vector & Embeddings', icon: <Layers size={16} /> }
-  ];
 
   return (
     <aside
       style={{
         width: '240px',
-        backgroundColor: '#18181b', // zinc-900
-        borderRight: '1px solid #27272a', // zinc-800
+        backgroundColor: '#18181b',
+        borderRight: '1px solid #27272a',
         padding: '24px 16px',
         display: 'flex',
         flexDirection: 'column',
@@ -35,10 +35,11 @@ export default function SettingsSidebar({ activeTab, setActiveTab }) {
           padding: '8px 12px',
           background: 'transparent',
           border: '1px solid transparent',
-          borderRadius: '7px',
-          color: '#a1a1aa', // zinc-400
+          borderRadius: '8px',
+          color: '#a1a1aa',
           cursor: 'pointer',
           fontSize: '0.82rem',
+          fontWeight: 500,
           marginBottom: '16px',
           transition: 'all 0.15s ease'
         }}
@@ -64,14 +65,14 @@ export default function SettingsSidebar({ activeTab, setActiveTab }) {
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
-          color: '#71717a', // zinc-500
+          color: '#71717a',
           padding: '0 12px 6px 12px'
         }}
       >
         Workspace Settings
       </div>
 
-      {tabs.map((tab) => {
+      {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
           <button
@@ -84,19 +85,19 @@ export default function SettingsSidebar({ activeTab, setActiveTab }) {
               gap: '10px',
               padding: '9px 12px',
               borderRadius: '8px',
-              border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+              border: isActive ? '1px solid #3f3f46' : '1px solid transparent',
               cursor: 'pointer',
               textAlign: 'left',
               fontSize: '0.84rem',
               fontWeight: isActive ? 600 : 500,
-              backgroundColor: isActive ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+              backgroundColor: isActive ? '#27272a' : 'transparent',
               color: isActive ? '#f4f4f5' : '#a1a1aa',
               transition: 'all 0.15s ease',
               outline: 'none'
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
-                e.currentTarget.style.backgroundColor = '#27272a';
+                e.currentTarget.style.backgroundColor = '#202024';
                 e.currentTarget.style.color = '#f4f4f5';
               }
             }}

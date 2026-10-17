@@ -1,5 +1,6 @@
 import React from 'react';
 import { Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import Spinner from '../ui/Spinner';
 
 export default function SettingsHeader({ activeTab, saveMessage, saving, onSave }) {
   const titles = {
@@ -24,8 +25,7 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '28px',
-        paddingBottom: '18px',
+        paddingBottom: '20px',
         borderBottom: '1px solid #27272a',
         flexWrap: 'wrap',
         gap: '16px'
@@ -34,16 +34,16 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
       <div>
         <h1
           style={{
-            fontSize: '1.25rem',
+            fontSize: '1.35rem',
             fontWeight: 600,
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.025em',
             color: '#f4f4f5',
             margin: '0 0 4px 0'
           }}
         >
           {titles[activeTab] || 'Settings'}
         </h1>
-        <p style={{ fontSize: '0.8rem', color: '#71717a', margin: 0 }}>
+        <p style={{ fontSize: '0.82rem', color: '#71717a', margin: 0 }}>
           {descriptions[activeTab] || 'Configure persistent workspace properties.'}
         </p>
       </div>
@@ -55,8 +55,8 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              fontSize: '0.76rem',
-              padding: '4px 10px',
+              fontSize: '0.78rem',
+              padding: '6px 12px',
               borderRadius: '6px',
               backgroundColor: isError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
               border: isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
@@ -65,7 +65,7 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
               fontWeight: 500
             }}
           >
-            {isError ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+            {isError ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
             <span>{saveMessage}</span>
           </div>
         )}
@@ -77,13 +77,13 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '7px',
             padding: '8px 18px',
-            backgroundColor: '#4f46e5', // restrained indigo
+            backgroundColor: '#4f46e5',
             color: '#ffffff',
             border: '1px solid #6366f1',
             borderRadius: '8px',
-            fontWeight: 600,
+            fontWeight: 500,
             cursor: saving ? 'not-allowed' : 'pointer',
             fontSize: '0.82rem',
             transition: 'all 0.15s ease',
@@ -96,7 +96,7 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
             if (!saving) e.currentTarget.style.backgroundColor = '#4f46e5';
           }}
         >
-          <Save size={14} />
+          {saving ? <Spinner size={14} color="#ffffff" /> : <Save size={14} />}
           <span>{saving ? 'Saving...' : 'Save Settings'}</span>
         </button>
       </div>
