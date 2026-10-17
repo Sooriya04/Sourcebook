@@ -4,6 +4,7 @@
 # Launches both the Go SourceBook Server (Port 5000) and YouTube Microservice (Port 6001)
 fuser -k 5000/tcp
 fuser -k 6001/tcp
+fuser -k 6003/tcp
 fuser -k 8010/tcp
 fuser -k 8020/tcp
 fuser -k 4002/tcp
@@ -51,6 +52,11 @@ if [ -d "services/youtube" ]; then
   (cd services/youtube && uvicorn main:app --port 6001 --host 0.0.0.0) &
 else
   echo "⚠️ YouTube service directory not found, skipping..."
+fi
+
+if [ -d "services/audio" ]; then
+  echo "🎙️ Starting Kokoro TTS Audio Microservice on port 6003..."
+  (cd services/audio && uvicorn main:app --port 6003 --host 0.0.0.0) &
 fi
 
 if [ -d "services/search" ]; then

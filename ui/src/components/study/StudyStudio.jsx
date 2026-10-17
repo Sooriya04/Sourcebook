@@ -305,7 +305,7 @@ export default function StudyStudio({
       <div className="studio-tab-content">
         {activeTab === 'briefing' && <BriefingView sources={sources} />}
         
-        {activeTab === 'audio' && <AudioOverviewView />}
+        {activeTab === 'audio' && <AudioOverviewView notebookId={notebookId} sources={sources} />}
         
         {activeTab === 'faq' && <FaqView />}
 

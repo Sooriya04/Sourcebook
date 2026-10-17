@@ -127,6 +127,21 @@ export async function generateFlashcards(notebookId) {
   return await response.json();
 }
 
+export async function generatePodcast(notebookId) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Failed to generate podcast: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export async function chatQueryStream({ query, notebookId, maxSources = 5, scopedSourceIds = [], mode = 'web', history = [], onChunk, onMetadata, onError, abortSignal }) {
   try {
     const response = await fetch(`${API_BASE}/api/sourcebook/v1/chat/stream`, {

@@ -1,14 +1,15 @@
 services:
   sourcebook:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: sourcebook-app
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - PORT=5000
+      - DB_PATH=/app/data/sourcebook.db
       - SEARXNG_URL=http://searxng:8080
       - YOUTUBE_SERVICE_URL=http://youtube-service:6001
       - LLM_PROVIDER=ollama
@@ -39,7 +40,7 @@ services:
 
   youtube-service:
     build:
-      context: ./services/youtube
+      context: ../services/youtube
       dockerfile: Dockerfile
     container_name: sourcebook-youtube
     restart: unless-stopped

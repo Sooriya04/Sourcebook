@@ -24,7 +24,7 @@ It serves as a unified intelligence platform that queries multiple internet sour
 | **Text Cleaning** | Auto Sanitization | `utils.CleanText()` (Whitespace/Newline Normalization) | ✅ Implemented |
 | **Notebook Store** | Cloud Storage | Local SQLite + Vector Storage | 🚧 In Progress |
 | **File Ingestion** | Google Drive / PDFs | Local PDF, Markdown, Text, YouTube transcripts | 🚧 In Progress |
-| **Audio Overview** | Deep Dive Podcast (2 Hosts) | Local TTS (Kokoro / Piper / Bark) Audio Synthesis | 🔮 Planned |
+| **Audio Overview** | Deep Dive Podcast (2 Hosts) | Local TTS (Kokoro-82M ONNX) Audio Synthesis | ✅ Implemented |
 
 ---
 

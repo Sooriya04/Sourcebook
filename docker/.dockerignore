@@ -1,0 +1,26 @@
+# Git & docs
+.git
+.github
+docs
+others
+artifacts
+logs
+*.log
+
+# Dependencies & build output
+node_modules
+ui/node_modules
+.venv
+venv
+bin
+dist
+ui/dist
+server
+sourcebook-server
+
+# Local database
+database/*.db*
+database/*.sqlite*
+
+# Local environment
+.env

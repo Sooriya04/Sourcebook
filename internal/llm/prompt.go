@@ -77,3 +77,36 @@ Rules:
 		{Role: "user", Content: userPrompt},
 	}
 }
+
+// BuildPodcastPrompt constructs a prompt to generate a 2-host podcast conversation.
+func BuildPodcastPrompt(docs []DocumentContext) []Message {
+	var contextBuilder strings.Builder
+
+	for _, doc := range docs {
+		contextBuilder.WriteString(fmt.Sprintf("Source: %s\nContent:\n%s\n\n---\n\n", doc.Title, doc.Content))
+	}
+
+	systemPrompt := `You are an expert audio producer creating a conversational "Deep Dive" podcast overview.
+Two co-hosts, Austin and Taylor, are having an engaging, natural, and insightful discussion exploring the user's workspace notes and documents.
+
+Rules:
+1. Format your response strictly as a JSON array of conversational turns.
+2. The co-hosts have distinct personalities:
+   - "Austin" (Host 1): Enthusiastic, curious, frames the big picture, asks insightful questions.
+   - "Taylor" (Host 2): Analytical, detail-oriented, dives into nuances, examples, and surprising takeaways.
+3. Make the dialogue sound natural: use natural transitions, back-and-forth reactions ("Right!", "That's wild", "Exactly"), and clear explanations of the source concepts.
+4. Output ONLY valid JSON without any markdown formatting or code blocks:
+[
+  {"speaker": "austin", "name": "Austin", "text": "Welcome back! Today we are digging into..."},
+  {"speaker": "taylor", "name": "Taylor", "text": "Yeah, and what immediately stood out to me was..."}
+]
+5. Generate between 4 to 8 high-impact dialogue turns that synthesize the main themes.`
+
+	userPrompt := fmt.Sprintf("Source Materials:\n%s\nGenerate the JSON podcast dialogue.", contextBuilder.String())
+
+	return []Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+}
+

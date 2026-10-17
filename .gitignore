@@ -24,3 +24,5 @@ agent-reach
 git.sh
 others
 artifacts
+database/audio/
+services/audio/models/
