@@ -55,6 +55,11 @@ Query: %q`, query)
 		trimmed = strings.TrimSuffix(trimmed, "```")
 	}
 	trimmed = strings.TrimSpace(trimmed)
+	if first := strings.Index(trimmed, "["); first != -1 {
+		if last := strings.LastIndex(trimmed, "]"); last > first {
+			trimmed = trimmed[first : last+1]
+		}
+	}
 
 	var subQueries []string
 	if err := json.Unmarshal([]byte(trimmed), &subQueries); err != nil {
@@ -78,3 +83,73 @@ Query: %q`, query)
 	log.Printf("[QueryPlanner] Decomposed %q -> %v", query, cleaned)
 	return cleaned, nil
 }
+
+// ResolveQuery contextualizes follow-up queries using recent conversation history turns.
+func (qp *QueryPlanner) ResolveQuery(ctx context.Context, query string, history []llm.Message) (string, error) {
+	if qp.llmClient == nil || len(history) == 0 {
+		return query, nil
+	}
+
+	trimmed := strings.TrimSpace(query)
+	lower := strings.ToLower(trimmed)
+	words := strings.Fields(lower)
+	hasPronouns := false
+	pronounTriggers := []string{"it", "its", "they", "them", "their", "this", "that", "these", "those", "former", "latter", "first", "second", "why", "how", "what about", "compare", "more"}
+	for _, w := range words {
+		for _, trig := range pronounTriggers {
+			if w == trig {
+				hasPronouns = true
+				break
+			}
+		}
+		if hasPronouns {
+			break
+		}
+	}
+
+	if len(words) > 12 && !hasPronouns {
+		return query, nil
+	}
+
+	startIdx := 0
+	if len(history) > 4 {
+		startIdx = len(history) - 4
+	}
+	var histBuilder strings.Builder
+	for i := startIdx; i < len(history); i++ {
+		msg := history[i]
+		role := "User"
+		if msg.Role == "assistant" {
+			role = "Assistant"
+		}
+		content := msg.Content
+		if len(content) > 250 {
+			content = content[:250] + "..."
+		}
+		histBuilder.WriteString(fmt.Sprintf("%s: %s\n", role, content))
+	}
+
+	prompt := fmt.Sprintf(`Given the recent conversation turns and the user's latest query, rewrite the latest query into a single standalone, self-contained search query that resolves all pronouns and context.
+Do NOT answer the question. Return ONLY the rewritten query text. If already standalone, return it unchanged.
+
+Conversation:
+%s
+Latest Query: %q
+Standalone Query:`, histBuilder.String(), trimmed)
+
+	rawRes, err := qp.llmClient.Generate(ctx, []llm.Message{{Role: "user", Content: prompt}})
+	if err != nil {
+		log.Printf("[QueryPlanner] Error resolving query context: %v. Using original query.", err)
+		return query, nil
+	}
+
+	resolved := strings.TrimSpace(rawRes)
+	resolved = strings.Trim(resolved, `"'`+"`")
+	if resolved == "" {
+		return query, nil
+	}
+
+	log.Printf("[QueryPlanner] Contextualized query %q -> %q", query, resolved)
+	return resolved, nil
+}
+

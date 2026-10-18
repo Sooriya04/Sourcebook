@@ -3,16 +3,11 @@ package chat
 import (
 	"context"
 	"log"
-	"strings"
 	"sync"
-	"time"
 
 	"sourcebook/internal/database"
 	"sourcebook/internal/llm"
-	"sourcebook/internal/models"
 	"sourcebook/internal/vector"
-
-	"github.com/google/uuid"
 )
 
 type Controller struct {
@@ -45,26 +40,42 @@ func NewController(
 	}
 }
 
-// RetrieveAndRerank executes query planning, sub-query retrieval, and hybrid reranking
+// RetrieveAndRerank executes multi-turn resolution, query planning, sub-query retrieval, and hybrid reranking.
 func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onStatus func(string)) ([]Document, string, error) {
-	var subQueries []string
-	var err error
+	// 1. Resolve multi-turn context using recent conversation history
+	historyMessages := req.History
+	if len(historyMessages) == 0 && c.repo != nil && req.NotebookID != "" {
+		if dbMsgs, err := c.repo.GetMessagesByNotebook(req.NotebookID); err == nil {
+			for _, m := range dbMsgs {
+				historyMessages = append(historyMessages, llm.Message{Role: m.Role, Content: m.Content})
+			}
+		}
+	}
 
+	resolvedQuery := req.Query
+	if c.planner != nil && len(historyMessages) > 0 {
+		if onStatus != nil {
+			onStatus("Resolving conversational context...")
+		}
+		if rewritten, err := c.planner.ResolveQuery(ctx, req.Query, historyMessages); err == nil && rewritten != "" {
+			resolvedQuery = rewritten
+		}
+	}
+
+	// 2. Decompose resolved query into focused sub-queries
+	var subQueries []string
 	if c.planner != nil {
 		if onStatus != nil {
 			onStatus("Planning research strategy (decomposing query)...")
 		}
-		subQueries, err = c.planner.Decompose(ctx, req.Query)
+		var err error
+		subQueries, err = c.planner.Decompose(ctx, resolvedQuery)
 		if err != nil || len(subQueries) == 0 {
-			subQueries = []string{req.Query}
+			subQueries = []string{resolvedQuery}
 		}
 	} else {
-		subQueries = []string{req.Query}
+		subQueries = []string{resolvedQuery}
 	}
-
-	var allDocs []Document
-	var mu sync.Mutex
-	var wg sync.WaitGroup
 
 	contextMeta := "Web Search"
 	switch req.Mode {
@@ -79,32 +90,46 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 		maxSources = 5
 	}
 
-	for _, subQ := range subQueries {
-		wg.Add(1)
-		go func(q string) {
-			defer wg.Done()
-			var docs []Document
-			switch req.Mode {
-			case "notebook":
-				if req.NotebookID != "" {
-					docs, _ = c.retriever.RetrieveNotebook(ctx, req.NotebookID, req.ScopedSourceIDs)
-				}
-			case "hybrid":
-				if req.NotebookID != "" {
-					docs, _ = c.retriever.RetrieveHybrid(ctx, req.NotebookID, q, maxSources, req.ScopedSourceIDs)
-				}
-			default:
-				docs, _ = c.retriever.RetrieveWeb(ctx, q, maxSources)
-			}
-			mu.Lock()
-			allDocs = append(allDocs, docs...)
-			mu.Unlock()
-		}(subQ)
-	}
-	wg.Wait()
+	// 3. Dispatch retrieval
+	var allDocs []Document
+	if req.Mode == "notebook" {
+		if req.NotebookID != "" {
+			allDocs, _ = c.retriever.RetrieveNotebook(ctx, req.NotebookID, req.ScopedSourceIDs)
+		}
+	} else {
+		var mu sync.Mutex
+		var wg sync.WaitGroup
 
+		if req.Mode == "hybrid" && req.NotebookID != "" {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				nbDocs, _ := c.retriever.RetrieveNotebook(ctx, req.NotebookID, req.ScopedSourceIDs)
+				mu.Lock()
+				allDocs = append(allDocs, nbDocs...)
+				mu.Unlock()
+			}()
+		}
+
+		for _, subQ := range subQueries {
+			wg.Add(1)
+			go func(q string) {
+				defer wg.Done()
+				webDocs, _ := c.retriever.RetrieveWeb(ctx, q, maxSources)
+				mu.Lock()
+				allDocs = append(allDocs, webDocs...)
+				mu.Unlock()
+			}(subQ)
+		}
+		wg.Wait()
+	}
+
+	// 4. Execute hybrid vector & BM25 reranking using Reciprocal Rank Fusion
+	if onStatus != nil {
+		onStatus("Executing hybrid vector & BM25 reranking...")
+	}
 	deduped := Deduplicate(allDocs)
-	reranked, err := c.reranker.Rerank(ctx, req.Query, deduped, maxSources)
+	reranked, err := c.reranker.Rerank(ctx, resolvedQuery, deduped, maxSources)
 	if err != nil {
 		log.Printf("[ChatController] Reranking failed: %v. Using un-reranked docs.", err)
 		if len(deduped) > maxSources {
@@ -114,81 +139,4 @@ func (c *Controller) RetrieveAndRerank(ctx context.Context, req ChatRequest, onS
 	}
 
 	return reranked, contextMeta, nil
-}
-
-// PersistNewSources checks for newly discovered web/arxiv documents and adds them to the notebook database.
-func (c *Controller) PersistNewSources(ctx context.Context, notebookID string, docs []Document) []models.SourceRecord {
-	if notebookID == "" || c.repo == nil || c.vectorClient == nil {
-		return nil
-	}
-
-	existingSources, err := c.repo.GetSourcesByNotebook(notebookID)
-	if err != nil {
-		return nil
-	}
-
-	existingURLs := make(map[string]bool)
-	for _, s := range existingSources {
-		existingURLs[strings.ToLower(strings.TrimSpace(s.URL))] = true
-		existingURLs[strings.ToLower(strings.TrimSpace(s.CanonicalURL))] = true
-	}
-
-	var newSources []models.SourceRecord
-	for _, d := range docs {
-		if d.SourceType == "Notebook" {
-			continue
-		}
-		urlKey := strings.ToLower(strings.TrimSpace(d.URL))
-		if urlKey == "" || existingURLs[urlKey] {
-			continue
-		}
-
-		src := models.SourceRecord{
-			ID:           uuid.NewString(),
-			NotebookID:   notebookID,
-			Title:        d.Title,
-			URL:          d.URL,
-			CanonicalURL: d.URL,
-			Content:      d.Content,
-			Provider:     d.SourceType,
-			Type:         d.SourceType,
-		}
-
-		if err := c.repo.AddSource(&src); err != nil {
-			continue
-		}
-		newSources = append(newSources, src)
-		existingURLs[urlKey] = true
-	}
-
-	if len(newSources) > 0 {
-		go func(sources []models.SourceRecord) {
-			bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-			defer cancel()
-
-			var allChunks []models.DocumentChunk
-			for _, src := range sources {
-				pythonChunks, err := c.vectorClient.GenerateEmbeddings(bgCtx, src.Content)
-				if err != nil {
-					continue
-				}
-
-				for i, pc := range pythonChunks {
-					allChunks = append(allChunks, models.DocumentChunk{
-						ID:         uuid.NewString(),
-						NotebookID: notebookID,
-						SourceID:   src.ID,
-						ChunkIndex: i,
-						Content:    pc.Chunk,
-						Embedding:  pc.Embedding,
-					})
-				}
-			}
-
-			if len(allChunks) > 0 {
-				_ = c.repo.SaveChunks(notebookID, allChunks)
-			}
-		}(newSources)
-	}
-	return newSources
 }

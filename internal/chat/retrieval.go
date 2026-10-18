@@ -16,6 +16,7 @@ type Document struct {
 	Content    string
 	SourceType string // "Notebook", "Web", "YouTube", "Arxiv"
 	Index      int    // Optional custom citation index
+	Embedding  []float32
 }
 
 type Retriever struct {
@@ -99,6 +100,7 @@ func (r *Retriever) RetrieveNotebook(ctx context.Context, notebookID string, sco
 			URL:        url,
 			Content:    c.Content,
 			SourceType: "Notebook",
+			Embedding:  c.Embedding,
 		})
 	}
 	return docs, nil
@@ -144,27 +146,35 @@ func (r *Retriever) RetrieveHybrid(ctx context.Context, notebookID string, query
 	return Deduplicate(combined), nil
 }
 
-// Deduplicate removes documents with duplicate URLs or identical titles
+// Deduplicate removes duplicate documents while preserving multiple distinct chunks from the same source.
 func Deduplicate(docs []Document) []Document {
-	seenURL := make(map[string]bool)
-	seenTitle := make(map[string]bool)
+	seenContent := make(map[string]bool)
+	seenWebURL := make(map[string]bool)
 	var deduped []Document
 
 	for _, d := range docs {
+		trimmedContent := strings.TrimSpace(d.Content)
+		if trimmedContent == "" {
+			continue
+		}
+
 		urlKey := strings.ToLower(strings.TrimSpace(d.URL))
-		titleKey := strings.ToLower(strings.TrimSpace(d.Title))
-		if urlKey != "" && seenURL[urlKey] {
+		if d.SourceType == "Web" && urlKey != "" {
+			if seenWebURL[urlKey] {
+				continue
+			}
+			seenWebURL[urlKey] = true
+		}
+
+		contentKey := trimmedContent
+		if len(contentKey) > 120 {
+			contentKey = contentKey[:120]
+		}
+		if seenContent[contentKey] {
 			continue
 		}
-		if titleKey != "" && seenTitle[titleKey] {
-			continue
-		}
-		if urlKey != "" {
-			seenURL[urlKey] = true
-		}
-		if titleKey != "" {
-			seenTitle[titleKey] = true
-		}
+		seenContent[contentKey] = true
+
 		deduped = append(deduped, d)
 	}
 	return deduped

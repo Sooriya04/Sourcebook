@@ -41,15 +41,7 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		}, nil
 	}
 
-	historyMessages := req.History
-	if len(historyMessages) == 0 && c.repo != nil && req.NotebookID != "" {
-		dbMsgs, err := c.repo.GetMessagesByNotebook(req.NotebookID)
-		if err == nil {
-			for _, m := range dbMsgs {
-				historyMessages = append(historyMessages, llm.Message{Role: m.Role, Content: m.Content})
-			}
-		}
-	}
+	historyMessages := c.getConversationHistory(req)
 
 	var semanticHistory []llm.Message
 	if c.memoryRetriever != nil && req.NotebookID != "" {
@@ -140,15 +132,7 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 		onStatus("Synthesizing final grounded response...")
 	}
 
-	historyMessages := req.History
-	if len(historyMessages) == 0 && c.repo != nil && req.NotebookID != "" {
-		dbMsgs, err := c.repo.GetMessagesByNotebook(req.NotebookID)
-		if err == nil {
-			for _, m := range dbMsgs {
-				historyMessages = append(historyMessages, llm.Message{Role: m.Role, Content: m.Content})
-			}
-		}
-	}
+	historyMessages := c.getConversationHistory(req)
 
 	var semanticHistory []llm.Message
 	if c.memoryRetriever != nil && req.NotebookID != "" {
@@ -187,4 +171,16 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 	}
 
 	return citations, newSources, contextMeta, nil
+}
+
+func (c *Controller) getConversationHistory(req ChatRequest) []llm.Message {
+	historyMessages := req.History
+	if len(historyMessages) == 0 && c.repo != nil && req.NotebookID != "" {
+		if dbMsgs, err := c.repo.GetMessagesByNotebook(req.NotebookID); err == nil {
+			for _, m := range dbMsgs {
+				historyMessages = append(historyMessages, llm.Message{Role: m.Role, Content: m.Content})
+			}
+		}
+	}
+	return historyMessages
 }

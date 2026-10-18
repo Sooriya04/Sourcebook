@@ -115,8 +115,8 @@ All endpoints are versioned under `/api/sourcebook/v1/`.
 - [x] **Phase 1: Search & Web Ingestion Pipeline** (SearXNG discovery + Searqon batch scraping)
 - [x] **Phase 2: Grounded RAG Engine & Text Cleaner** (Stripping bloat + LLM synthesis + `[1]`, `[2]` citations)
 - [x] **Phase 3: Local Notebooks & Document Ingestion** (SQLite persistence + PDF, Markdown, YouTube URL ingestion)
-- [ ] **Phase 4: Agentic RAG** (Query decomposition, BM25/Vector re-ranking, multi-turn chat memory)
-- [ ] **Phase 5: Audio Overview / Podcast Synthesis** (Generating 2-host summary dialogues + Local TTS)
+- [x] **Phase 4: Agentic RAG** (Query decomposition, BM25/Vector re-ranking, multi-turn chat memory)
+- [x] **Phase 5: Audio Overview / Podcast Synthesis** (Generating 2-host summary dialogues + Local TTS)
 - [ ] **Phase 6: Google Workspace Integration (Version 2)** (Google Drive file, Sheets, and Gmail ingestion using local `gws` client)
 
 ---

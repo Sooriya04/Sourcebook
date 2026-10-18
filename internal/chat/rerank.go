@@ -24,63 +24,86 @@ type scoredDocument struct {
 	score float32
 }
 
-// Rerank performs hybrid vector semantic + BM25 keyword reranking
+// Rerank performs hybrid vector semantic + BM25 keyword reranking using Reciprocal Rank Fusion (RRF)
 func (r *Reranker) Rerank(ctx context.Context, query string, docs []Document, limit int) ([]Document, error) {
 	if len(docs) == 0 {
 		return []Document{}, nil
 	}
 
-	// 1. Calculate Okapi BM25 keyword scores for all candidate docs
 	bm25Scores := CalculateBM25(query, docs)
 
-	// 2. Get query embedding
-	queryEmb, err := r.vectorClient.GenerateQueryEmbedding(ctx, query)
-	if err != nil {
-		log.Printf("[Rerank] Semantic embedding failed: %v. Falling back to BM25-only reranking.", err)
+	var queryEmb []float32
+	var err error
+	if r.vectorClient != nil {
+		queryEmb, err = r.vectorClient.GenerateQueryEmbedding(ctx, query)
+	}
+	if err != nil || len(queryEmb) == 0 {
+		log.Printf("[Rerank] Vector query embedding unavailable: %v. Falling back to BM25-only.", err)
 		return r.rerankBM25Only(docs, bm25Scores, limit), nil
 	}
 
-	// 3. Compute hybrid scores (65% vector similarity + 35% BM25 keyword score) in parallel
-	var mu sync.Mutex
-	var scoredList []scoredDocument
+	vecScores := make([]float32, len(docs))
 	var wg sync.WaitGroup
-
 	for i, doc := range docs {
 		wg.Add(1)
 		go func(idx int, d Document) {
 			defer wg.Done()
-
-			docEmb, err := r.vectorClient.GenerateQueryEmbedding(ctx, d.Content)
-			var vecScore float32 = 0.0
-			if err == nil {
-				vecScore = vector.CosineSimilarity(queryEmb, docEmb)
+			if len(d.Embedding) > 0 {
+				vecScores[idx] = vector.CosineSimilarity(queryEmb, d.Embedding)
+				return
 			}
-
-			bm25Score := bm25Scores[idx]
-			hybridScore := (0.65 * vecScore) + (0.35 * bm25Score)
-
-			mu.Lock()
-			scoredList = append(scoredList, scoredDocument{doc: d, score: hybridScore})
-			mu.Unlock()
+			if r.vectorClient != nil {
+				docEmb, err := r.vectorClient.GenerateQueryEmbedding(ctx, d.Content)
+				if err == nil && len(docEmb) > 0 {
+					vecScores[idx] = vector.CosineSimilarity(queryEmb, docEmb)
+				}
+			}
 		}(i, doc)
 	}
-
 	wg.Wait()
 
-	// 4. Sort by score descending
+	type rankPair struct {
+		idx   int
+		score float32
+	}
+
+	bm25Order := make([]rankPair, len(docs))
+	vecOrder := make([]rankPair, len(docs))
+	for i := range docs {
+		bm25Order[i] = rankPair{idx: i, score: bm25Scores[i]}
+		vecOrder[i] = rankPair{idx: i, score: vecScores[i]}
+	}
+
+	sort.Slice(bm25Order, func(i, j int) bool { return bm25Order[i].score > bm25Order[j].score })
+	sort.Slice(vecOrder, func(i, j int) bool { return vecOrder[i].score > vecOrder[j].score })
+
+	bm25Ranks := make([]int, len(docs))
+	vecRanks := make([]int, len(docs))
+	for rk, p := range bm25Order {
+		bm25Ranks[p.idx] = rk + 1
+	}
+	for rk, p := range vecOrder {
+		vecRanks[p.idx] = rk + 1
+	}
+
+	scoredList := make([]scoredDocument, len(docs))
+	for i, doc := range docs {
+		rrf := (0.65 / (60.0 + float32(vecRanks[i]))) + (0.35 / (60.0 + float32(bm25Ranks[i])))
+		scoredList[i] = scoredDocument{doc: doc, score: rrf}
+	}
+
 	sort.Slice(scoredList, func(i, j int) bool {
 		return scoredList[i].score > scoredList[j].score
 	})
 
-	// 5. Select top limit
 	retLimit := limit
 	if len(scoredList) < retLimit {
 		retLimit = len(scoredList)
 	}
 
-	var results []Document
+	results := make([]Document, retLimit)
 	for i := 0; i < retLimit; i++ {
-		results = append(results, scoredList[i].doc)
+		results[i] = scoredList[i].doc
 	}
 
 	return results, nil
