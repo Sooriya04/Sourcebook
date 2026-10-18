@@ -56,6 +56,20 @@ def synthesize_podcast(req: SynthesizeRequest):
     turns_data = [t.model_dump() for t in req.turns]
     meta = synth.synthesize_podcast(turns_data, output_path, speed=req.speed)
 
+    meta_path = os.path.join(output_dir, f"{req.notebook_id}.json")
+    try:
+        import json
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "success": True,
+                "notebook_id": req.notebook_id,
+                "audio_url": f"/api/sourcebook/v1/study/audio/{req.notebook_id}",
+                "duration": meta["duration"],
+                "turns": meta["turns"]
+            }, f, indent=2)
+    except Exception:
+        pass
+
     return {
         "success": True,
         "notebook_id": req.notebook_id,
@@ -63,6 +77,19 @@ def synthesize_podcast(req: SynthesizeRequest):
         "duration": meta["duration"],
         "turns": meta["turns"]
     }
+
+@app.get("/meta/{notebook_id}")
+def get_audio_meta(notebook_id: str):
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    meta_path = os.path.join(base_dir, "database", "audio", f"{notebook_id}.json")
+    if os.path.exists(meta_path):
+        import json
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    raise HTTPException(status_code=404, detail="Audio metadata not found")
 
 @app.get("/audio/{notebook_id}")
 def serve_audio(notebook_id: str):

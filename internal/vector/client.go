@@ -58,7 +58,7 @@ func NewClient() *Client {
 		serviceURL: url,
 		model:      model,
 		httpClient: &http.Client{
-			Timeout:   5 * time.Second,
+			Timeout:   45 * time.Second,
 			Transport: transport,
 		},
 	}
@@ -76,9 +76,9 @@ func (c *Client) SetConfig(url, model string) {
 	}
 }
 
-// GenerateEmbeddings chunks raw text and generates dense vector embeddings.
+// GenerateEmbeddings chunks raw text and generates dense vector embeddings using bounded chunking.
 func (c *Client) GenerateEmbeddings(ctx context.Context, text string) ([]ChunkResponse, error) {
-	chunks := ChunkText(text, 500)
+	chunks := ChunkTextBounded(text, DefaultChunkSize, MaxChunksPerDoc)
 	if len(chunks) == 0 {
 		return nil, nil
 	}

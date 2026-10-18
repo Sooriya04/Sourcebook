@@ -44,10 +44,18 @@ class AudioSynthesizer:
         self.model_path = model_path or os.path.join(base_dir, 'models', 'kokoro-v1.0.int8.onnx')
         self.voices_path = voices_path or os.path.join(base_dir, 'models', 'voices-v1.0.bin')
         self.kokoro = Kokoro(self.model_path, self.voices_path)
+        self._voice_cache = {}
+        for voice_name in ['am_adam', 'af_bella']:
+            if voice_name in self.kokoro.voices:
+                self._voice_cache[voice_name] = self.kokoro.get_voice_style(voice_name)
 
     def synthesize_turn(self, text: str, voice_name: str, speed: float = 1.0) -> np.ndarray:
         voice_id = self.DEFAULT_VOICES.get(voice_name.lower(), voice_name)
-        samples, _ = self.kokoro.create(text, voice=voice_id, speed=speed)
+        voice_style = self._voice_cache.get(voice_id)
+        if voice_style is None:
+            voice_style = self.kokoro.get_voice_style(voice_id)
+            self._voice_cache[voice_id] = voice_style
+        samples, _ = self.kokoro.create(text, voice=voice_style, speed=speed)
         return samples
 
     def synthesize_podcast(self, turns: list[dict], output_path: str, speed: float = 1.0) -> dict:

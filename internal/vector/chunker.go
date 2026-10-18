@@ -4,8 +4,18 @@ import (
 	"strings"
 )
 
+// DefaultChunkSize is the optimized target character size per chunk (~200 words).
+const DefaultChunkSize = 1200
+
+// MaxChunksPerDoc is the maximum number of chunks generated per document to prevent memory/CPU spikes.
+const MaxChunksPerDoc = 35
+
 // ChunkText splits text into paragraphs and sentences to approximate chunkSize characters.
+// If chunkSize <= 0, DefaultChunkSize is used.
 func ChunkText(text string, chunkSize int) []string {
+	if chunkSize <= 0 {
+		chunkSize = DefaultChunkSize
+	}
 	paragraphs := strings.Split(text, "\n\n")
 	var chunks []string
 	currentChunk := ""
@@ -50,4 +60,33 @@ func ChunkText(text string, chunkSize int) []string {
 		chunks = append(chunks, currentChunk)
 	}
 	return chunks
+}
+
+// ChunkTextBounded splits text into chunks of at most chunkSize characters, capped at maxChunks.
+// If the document produces more chunks than maxChunks, it prioritizes critical sections:
+// the beginning (context and introduction) and end (conclusions and summary).
+func ChunkTextBounded(text string, chunkSize int, maxChunks int) []string {
+	if chunkSize <= 0 {
+		chunkSize = DefaultChunkSize
+	}
+	if maxChunks <= 0 {
+		maxChunks = MaxChunksPerDoc
+	}
+
+	chunks := ChunkText(text, chunkSize)
+	if len(chunks) <= maxChunks {
+		return chunks
+	}
+
+	// Prioritize critical sections: head (context & overview) and tail (conclusions & results)
+	tail := (maxChunks * 3) / 10
+	if tail < 1 && maxChunks > 1 {
+		tail = 1
+	}
+	head := maxChunks - tail
+
+	bounded := make([]string, 0, maxChunks)
+	bounded = append(bounded, chunks[:head]...)
+	bounded = append(bounded, chunks[len(chunks)-tail:]...)
+	return bounded
 }

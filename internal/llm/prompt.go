@@ -100,7 +100,7 @@ Rules:
   {"speaker": "austin", "name": "Austin", "text": "Welcome back! Today we are digging into..."},
   {"speaker": "taylor", "name": "Taylor", "text": "Yeah, and what immediately stood out to me was..."}
 ]
-5. Generate between 4 to 8 high-impact dialogue turns that synthesize the main themes.`
+5. Generate between 4 to 6 concise, punchy dialogue turns (1-2 spoken sentences each, 15-30 words per turn) synthesizing the core themes.`
 
 	userPrompt := fmt.Sprintf("Source Materials:\n%s\nGenerate the JSON podcast dialogue.", contextBuilder.String())
 

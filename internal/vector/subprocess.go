@@ -14,7 +14,7 @@ import (
 
 // Subprocess concurrency limiter: prevent spawning too many python processes at once
 var (
-	subprocSem    = make(chan struct{}, 4)
+	subprocSem    = make(chan struct{}, 1)
 	subprocInitMu sync.Mutex
 	cachedPyBin   string
 	cachedScript  string
@@ -62,7 +62,7 @@ func RunEmbeddingSubprocess(ctx context.Context, texts []string) ([][]float32, e
 		return nil, nil
 	}
 
-	// Acquire concurrency slot (max 4 concurrent python processes)
+	// Acquire concurrency slot (max 1 concurrent python process to prevent CPU/memory spikes)
 	select {
 	case subprocSem <- struct{}{}:
 		defer func() { <-subprocSem }()

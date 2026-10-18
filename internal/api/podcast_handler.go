@@ -64,6 +64,22 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if already synthesized and not forcing re-generation
+	if r.URL.Query().Get("force") != "true" {
+		audioPath := filepath.Join("database", "audio", fmt.Sprintf("%s.wav", req.NotebookID))
+		metaPath := filepath.Join("database", "audio", fmt.Sprintf("%s.json", req.NotebookID))
+		if _, err := os.Stat(audioPath); err == nil {
+			if data, err := os.ReadFile(metaPath); err == nil {
+				var cachedResp PodcastResponse
+				if err := json.Unmarshal(data, &cachedResp); err == nil {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(cachedResp)
+					return
+				}
+			}
+		}
+	}
+
 	rawJSON, err := a.synthesizer.GeneratePodcastDialogue(r.Context(), docs)
 	if err != nil {
 		log.Printf("[Podcast] Failed to generate dialogue: %v", err)
@@ -88,8 +104,17 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 		audioURL = "http://127.0.0.1:6003"
 	}
 
-	client := &http.Client{Timeout: 90 * time.Second}
-	resp, err := client.Post(audioURL+"/synthesize", "application/json", bytes.NewBuffer(synthPayload))
+	// 5-minute timeout for multi-turn CPU TTS synthesis
+	client := &http.Client{Timeout: 300 * time.Second}
+	reqURL := fmt.Sprintf("%s/synthesize", strings.TrimRight(audioURL, "/"))
+	httpReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, reqURL, bytes.NewBuffer(synthPayload))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		log.Printf("[Podcast] Kokoro TTS synthesis service failed: %v", err)
 		http.Error(w, fmt.Sprintf("Kokoro audio synthesis failed: %v", err), http.StatusBadGateway)
@@ -122,6 +147,18 @@ func (a *API) HandleGetPodcastAudio(w http.ResponseWriter, r *http.Request) {
 	}
 	notebookID := parts[len(parts)-1]
 	notebookID = strings.TrimSuffix(notebookID, ".wav")
+	notebookID = strings.TrimSuffix(notebookID, ".json")
+
+	if r.URL.Query().Get("meta") == "true" || strings.HasSuffix(r.URL.Path, ".json") {
+		metaPath := filepath.Join("database", "audio", fmt.Sprintf("%s.json", notebookID))
+		if data, err := os.ReadFile(metaPath); err == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
+			return
+		}
+		http.NotFound(w, r)
+		return
+	}
 
 	audioPath := filepath.Join("database", "audio", fmt.Sprintf("%s.wav", notebookID))
 	if _, err := os.Stat(audioPath); os.IsNotExist(err) {

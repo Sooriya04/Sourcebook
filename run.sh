@@ -1,24 +1,16 @@
 #!/usr/bin/env bash
 
 # SourceBook Unified Microservice Runner Script
-# Launches both the Go SourceBook Server (Port 5000) and YouTube Microservice (Port 6001)
-fuser -k 5000/tcp
-fuser -k 6001/tcp
-fuser -k 6003/tcp
-fuser -k 8010/tcp
-fuser -k 8020/tcp
-fuser -k 4002/tcp
-fuser -k 4003/tcp
-fuser -k 4004/tcp
-fuser -k 4005/tcp
+# Cleans stale processes, launches essential services (6001, 6002, 6003), and runs SourceBook Server (5000)
 
+echo "🧹 Freeing up stale ports and stopping orphan processes..."
+fuser -k 5000/tcp 6001/tcp 6002/tcp 6003/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 8010/tcp 2>/dev/null || true
+pkill -9 -f "embed.py" 2>/dev/null || true
+sleep 0.5
 
 set -e
 
 echo "🚀 Launching SourceBook Unified Microservices..."
-
-#Kill Process Using Port 5000
-
 
 # Load environment variables from .env
 if [ -f .env ]; then
@@ -28,14 +20,16 @@ fi
 # Function to handle shutdown
 cleanup() {
   echo ""
-  echo "🛑 Stopping services..."
+  echo "🛑 Stopping all services..."
   kill $(jobs -p) 2>/dev/null || true
+  fuser -k 5000/tcp 6001/tcp 6002/tcp 6003/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 8010/tcp 2>/dev/null || true
+  pkill -9 -f "embed.py" 2>/dev/null || true
   exit 0
 }
 
 trap cleanup SIGINT SIGTERM EXIT
 
-# 1. Activate Virtual Environment (.venv) & Start YouTube Microservice
+# 1. Activate Virtual Environment (.venv)
 if [ -d ".venv" ]; then
   echo "🐍 Activating root Python virtual environment (.venv)..."
   source .venv/bin/activate
@@ -47,64 +41,29 @@ elif [ -d "services/youtube/.venv" ]; then
   source services/youtube/.venv/bin/activate
 fi
 
+# 2. Launch Essential Python Microservices
+# Port 6001: YouTube Transcript Microservice
 if [ -d "services/youtube" ]; then
   echo "📺 Starting YouTube Transcript Microservice on port 6001..."
   (cd services/youtube && uvicorn main:app --port 6001 --host 0.0.0.0) &
-else
-  echo "⚠️ YouTube service directory not found, skipping..."
 fi
 
+# Port 6002: Local Embedding Microservice
+if [ -d "services/embedding" ]; then
+  echo "🧠 Starting Local Embedding Microservice on port 6002..."
+  (cd services/embedding && uvicorn main:app --port 6002 --host 0.0.0.0) &
+fi
+
+# Port 6003: Kokoro Audio Microservice
 if [ -d "services/audio" ]; then
   echo "🎙️ Starting Kokoro TTS Audio Microservice on port 6003..."
   (cd services/audio && uvicorn main:app --port 6003 --host 0.0.0.0) &
 fi
 
-if [ -d "services/search" ]; then
-  echo "🔍 Starting Search Microservice on port 8010..."
-  (cd services/search && uvicorn main:create_app --factory --port 8010 --host 0.0.0.0) &
-else
-  echo "⚠️ Search service directory not found, skipping..."
-fi
-
-
-
-if [ -f "bin/document-service" ]; then
-  echo "📄 Starting Go Document Ingestion Microservice on port 4002..."
-  PORT=4002 ./bin/document-service &
-else
-  echo "⚠️ Document service binary not found, falling back to source..."
-  (cd services/document && PORT=4002 go run main.go) &
-fi
-
-if [ -f "bin/jina-service" ]; then
-  echo "🌐 Starting Go Jina Ingestion Microservice on port 4003..."
-  PORT=4003 ./bin/jina-service &
-else
-  echo "⚠️ Jina service binary not found, falling back to source..."
-  (cd services/jina && PORT=4003 go run main.go) &
-fi
-
-if [ -f "bin/reddit-service" ]; then
-  echo "🤖 Starting Go Reddit Ingestion Microservice on port 4004..."
-  PORT=4004 ./bin/reddit-service &
-else
-  echo "⚠️ Reddit service binary not found, falling back to source..."
-  (cd services/reddit && PORT=4004 go run main.go) &
-fi
-
-if [ -f "bin/social-service" ]; then
-  echo "📡 Starting Go Social Ingestion Microservice on port 4005..."
-  PORT=4005 ./bin/social-service &
-else
-  echo "⚠️ Social service binary not found, falling back to source..."
-  (cd services/social && PORT=4005 go run main.go rss.go media.go) &
-fi
-
-
-# 2. Build and Start Go SourceBook Backend Server
-echo "⚡ Building and starting Go SourceBook Backend Server on port ${PORT:-5000}..."
+# 3. Build and Start Go SourceBook Server (serves UI, Search, RAG, and Document Parsing)
+echo "⚡ Building and starting Go SourceBook Server on port ${PORT:-5000}..."
 go build -o bin/sourcebook-server ./cmd/server/main.go
 ./bin/sourcebook-server &
 
-# Wait for background jobs
+# Wait for all background services
 wait

@@ -19,9 +19,10 @@ class MiniLMEmbedder:
         if not os.path.exists(model_path) or not os.path.exists(tok_path):
             raise FileNotFoundError(f"Model or tokenizer not found in {self.model_dir}")
 
-        # Optimize ONNX Runtime options for fast CPU multi-threaded inference
+        # Optimize ONNX Runtime options for bounded CPU & memory footprint
         opts = ort.SessionOptions()
-        opts.intra_op_num_threads = min(4, os.cpu_count() or 1)
+        opts.intra_op_num_threads = 2
+        opts.inter_op_num_threads = 1
         opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
@@ -42,31 +43,36 @@ class MiniLMEmbedder:
         if not texts:
             return []
 
-        # Enable dynamic padding for this batch
-        self.tokenizer.enable_padding(direction="right", pad_id=0, pad_token="[PAD]")
-        encodings = self.tokenizer.encode_batch(texts)
+        BATCH_SIZE = 16
+        all_embeddings = []
 
-        input_ids = np.array([e.ids for e in encodings], dtype=np.int64)
-        attention_mask = np.array([e.attention_mask for e in encodings], dtype=np.int64)
-        token_type_ids = np.array([e.type_ids for e in encodings], dtype=np.int64)
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i:i + BATCH_SIZE]
+            self.tokenizer.enable_padding(direction="right", pad_id=0, pad_token="[PAD]")
+            encodings = self.tokenizer.encode_batch(batch)
 
-        with self.inference_lock:
-            outputs = self.session.run(None, {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "token_type_ids": token_type_ids
-            })
+            input_ids = np.array([e.ids for e in encodings], dtype=np.int64)
+            attention_mask = np.array([e.attention_mask for e in encodings], dtype=np.int64)
+            token_type_ids = np.array([e.type_ids for e in encodings], dtype=np.int64)
 
-        # Mean pooling: sum embeddings masked by attention_mask, divide by count
-        token_embeddings = outputs[0]  # shape: (batch_size, seq_len, 384)
-        mask_expanded = np.expand_dims(attention_mask, -1)
-        sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
-        sum_mask = np.clip(mask_expanded.sum(axis=1), a_min=1e-9, a_max=None)
-        mean_pooled = sum_embeddings / sum_mask
+            with self.inference_lock:
+                outputs = self.session.run(None, {
+                    "input_ids": input_ids,
+                    "attention_mask": attention_mask,
+                    "token_type_ids": token_type_ids
+                })
 
-        # Normalize (L2 norm)
-        norms = np.linalg.norm(mean_pooled, axis=1, keepdims=True)
-        norms = np.clip(norms, a_min=1e-9, a_max=None)
-        normalized = mean_pooled / norms
+            # Mean pooling: sum embeddings masked by attention_mask, divide by count
+            token_embeddings = outputs[0]  # shape: (batch_size, seq_len, 384)
+            mask_expanded = np.expand_dims(attention_mask, -1)
+            sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
+            sum_mask = np.clip(mask_expanded.sum(axis=1), a_min=1e-9, a_max=None)
+            mean_pooled = sum_embeddings / sum_mask
 
-        return normalized.astype(float).tolist()
+            # Normalize (L2 norm)
+            norms = np.linalg.norm(mean_pooled, axis=1, keepdims=True)
+            norms = np.clip(norms, a_min=1e-9, a_max=None)
+            normalized = mean_pooled / norms
+            all_embeddings.extend(normalized.astype(float).tolist())
+
+        return all_embeddings

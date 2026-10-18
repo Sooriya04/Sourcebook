@@ -1,21 +1,14 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"sourcebook/internal/models"
-	"sourcebook/internal/utils"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
+	"sourcebook/internal/models"
 )
 
+// HandleNotebooks routes requests for /notebooks and /notebooks/:id.
 func (a *API) HandleNotebooks(w http.ResponseWriter, r *http.Request) {
 	// Strip prefix to see if an ID is present
 	id := strings.TrimPrefix(r.URL.Path, "/api/sourcebook/v1/notebooks")
@@ -31,297 +24,64 @@ func (a *API) HandleNotebooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodGet {
-		notebooks, err := a.repo.GetNotebooks()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if notebooks == nil {
-			notebooks = []models.Notebook{}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(notebooks)
+	switch r.Method {
+	case http.MethodGet:
+		a.handleNotebookList(w, r)
+	case http.MethodPost:
+		a.handleNotebookCreate(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *API) handleNotebookList(w http.ResponseWriter, r *http.Request) {
+	notebooks, err := a.repo.GetNotebooks()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if notebooks == nil {
+		notebooks = []models.Notebook{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notebooks)
+}
+
+func (a *API) handleNotebookCreate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		var req struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		nb, err := a.repo.CreateNotebook(req.Title, req.Description)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(nb)
+	nb, err := a.repo.CreateNotebook(req.Title, req.Description)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(nb)
 }
 
 func (a *API) handleNotebookDetail(w http.ResponseWriter, r *http.Request, id string) {
-	if r.Method == http.MethodGet {
-		nb, err := a.repo.GetNotebook(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if nb == nil {
-			http.Error(w, "Notebook not found", http.StatusNotFound)
-			return
-		}
-
-		sources, err := a.repo.GetSourcesByNotebook(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if sources == nil {
-			sources = []models.SourceRecord{}
-		}
-
-		notes, err := a.repo.GetNotesByNotebook(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if notes == nil {
-			notes = []models.Note{}
-		}
-
-		messages, err := a.repo.GetMessagesByNotebook(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if messages == nil {
-			messages = []models.ChatMessage{}
-		}
-
-		payload := map[string]interface{}{
-			"id":          nb.ID,
-			"title":       nb.Title,
-			"description": nb.Description,
-			"created_at":  nb.CreatedAt,
-			"updated_at":  nb.UpdatedAt,
-			"sources":     sources,
-			"notes":       notes,
-			"messages":    messages,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(payload)
-		return
+	switch r.Method {
+	case http.MethodGet:
+		a.handleNotebookGet(w, r, id)
+	case http.MethodPut:
+		a.handleNotebookUpdate(w, r, id)
+	case http.MethodDelete:
+		a.handleNotebookDelete(w, r, id)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
-
-	if r.Method == http.MethodPut {
-		var req struct {
-			Title       string                `json:"title"`
-			Description string                `json:"description"`
-			Sources     []models.SourceRecord `json:"sources"`
-			Notes       []models.Note         `json:"notes"`
-			Messages    []models.ChatMessage  `json:"messages"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		title := req.Title
-		desc := req.Description
-		if title == "" {
-			existing, err := a.repo.GetNotebook(id)
-			if err == nil && existing != nil {
-				title = existing.Title
-				if desc == "" {
-					desc = existing.Description
-				}
-			}
-		}
-
-		if title != "" {
-			if err := a.repo.UpdateNotebook(id, title, desc); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		// Load existing sources to identify new ones
-		existingSources, err := a.repo.GetSourcesByNotebook(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		existingIDs := make(map[string]bool)
-		for _, src := range existingSources {
-			existingIDs[src.ID] = true
-		}
-
-		// Agentic Ingestion settings from environment variables
-		maxResults := 2
-		if maxStr := os.Getenv("AGENTIC_INGESTION_MAX_RESULTS"); maxStr != "" {
-			if parsed, err := strconv.Atoi(maxStr); err == nil && parsed > 0 {
-				maxResults = parsed
-			}
-		}
-
-		threshold := 50
-		if threshStr := os.Getenv("AGENTIC_INGESTION_TEXT_THRESHOLD"); threshStr != "" {
-			if parsed, err := strconv.Atoi(threshStr); err == nil && parsed > 0 {
-				threshold = parsed
-			}
-		}
-
-		searchServiceURL := os.Getenv("SEARCH_SERVICE_URL")
-
-		var enrichedSources []models.SourceRecord
-		for _, src := range req.Sources {
-			isNew := src.ID == "" || !existingIDs[src.ID]
-
-			if src.ID == "" {
-				src.ID = uuid.NewString()
-			}
-			enrichedSources = append(enrichedSources, src)
-
-			// Trigger agentic ingestion only if it is a new text source, and satisfies the length threshold
-			if isNew && (src.Type == "text" || src.Provider == "text") && len(src.Content) >= threshold && searchServiceURL != "" {
-				log.Printf("[AgenticIngestion] New text source detected: %q (len=%d). Triggering agentic search planning...", src.Title, len(src.Content))
-
-				plan, err := utils.CallSearchServicePlanner(r.Context(), src.Content)
-				if err != nil {
-					log.Printf("[AgenticIngestion] Search planner error: %v", err)
-				} else if plan != nil && len(plan.Queries) > 0 {
-					log.Printf("[AgenticIngestion] Planner returned %d subqueries.", len(plan.Queries))
-					for _, pq := range plan.Queries {
-						if pq.Query == "" {
-							continue
-						}
-						log.Printf("[AgenticIngestion] Executing Search & Scrape via Searqon for subquery: %q", pq.Query)
-						docs, _, err := a.fetchPipelineSources(r.Context(), pq.Query, maxResults, nil, "")
-						if err != nil {
-							log.Printf("[AgenticIngestion] Search/Scrape failed for %q: %v", pq.Query, err)
-							continue
-						}
-						for _, doc := range docs {
-							newSrc := models.SourceRecord{
-								ID:           uuid.NewString(),
-								NotebookID:   id,
-								Title:        doc.Title,
-								URL:          doc.URL,
-								CanonicalURL: doc.URL,
-								Content:      doc.Content,
-								Provider:     "web",
-								Type:         "web",
-							}
-							enrichedSources = append(enrichedSources, newSrc)
-							log.Printf("[AgenticIngestion] Successfully ingested web source: %q (%s)", doc.Title, doc.URL)
-						}
-					}
-				}
-			}
-		}
-		req.Sources = enrichedSources
-
-		if err := a.repo.SyncNotebookSources(id, req.Sources); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Generate and save vector chunks asynchronously to prevent HTTP 502 proxy timeouts
-		existingChunks, _ := a.repo.GetChunksByNotebook(id)
-		chunksBySource := make(map[string][]models.DocumentChunk)
-		for _, ch := range existingChunks {
-			chunksBySource[ch.SourceID] = append(chunksBySource[ch.SourceID], ch)
-		}
-
-		go func(notebookID string, sourcesToEmbed []models.SourceRecord, existingChunksMap map[string][]models.DocumentChunk) {
-			bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-			defer cancel()
-
-			var allChunks []models.DocumentChunk
-			for _, src := range sourcesToEmbed {
-				if strings.TrimSpace(src.Content) == "" {
-					continue
-				}
-
-				if existing, ok := existingChunksMap[src.ID]; ok && len(existing) > 0 {
-					allChunks = append(allChunks, existing...)
-					continue
-				}
-
-				log.Printf("[Embeddings] Chunking and embedding new source: %q (id=%s)...", src.Title, src.ID)
-				pythonChunks, err := a.vectorClient.GenerateEmbeddings(bgCtx, src.Content)
-				if err != nil {
-					log.Printf("[Embeddings] Failed to generate embeddings for source %s: %v", src.ID, err)
-					continue
-				}
-
-				log.Printf("[Embeddings] Generated %d chunks for source %q", len(pythonChunks), src.Title)
-				for i, pc := range pythonChunks {
-					allChunks = append(allChunks, models.DocumentChunk{
-						ID:         uuid.NewString(),
-						NotebookID: notebookID,
-						SourceID:   src.ID,
-						ChunkIndex: i,
-						Content:    pc.Chunk,
-						Embedding:  pc.Embedding,
-					})
-				}
-			}
-
-			if len(allChunks) > 0 {
-				if err := a.repo.SaveChunks(notebookID, allChunks); err != nil {
-					log.Printf("[Embeddings] Failed to save chunks to database: %v", err)
-				} else {
-					log.Printf("[Embeddings] Successfully saved %d chunks for notebook %s", len(allChunks), notebookID)
-				}
-			}
-		}(id, req.Sources, chunksBySource)
-
-		if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if err := a.repo.SyncNotebookMessages(id, req.Messages); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	if r.Method == http.MethodDelete {
-		if err := a.repo.DeleteNotebook(id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
-func (a *API) handleNotebookExport(w http.ResponseWriter, r *http.Request, id string) {
-	if strings.TrimSpace(id) == "" {
-		http.Error(w, "Notebook ID required", http.StatusBadRequest)
-		return
-	}
-
+func (a *API) handleNotebookGet(w http.ResponseWriter, r *http.Request, id string) {
 	nb, err := a.repo.GetNotebook(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -337,50 +97,47 @@ func (a *API) handleNotebookExport(w http.ResponseWriter, r *http.Request, id st
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if sources == nil {
+		sources = []models.SourceRecord{}
+	}
 
 	notes, err := a.repo.GetNotesByNotebook(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	var sb strings.Builder
-	sb.WriteString("# Notebook: " + nb.Title + "\n\n")
-	if nb.Description != "" {
-		sb.WriteString(nb.Description + "\n\n")
+	if notes == nil {
+		notes = []models.Note{}
 	}
 
-	sb.WriteString("## Ingested Sources\n\n")
-	if len(sources) == 0 {
-		sb.WriteString("*No sources ingested yet.*\n\n")
-	} else {
-		for i, src := range sources {
-			sb.WriteString(fmt.Sprintf("### [%d] %s\n", i+1, src.Title))
-			if src.URL != "" {
-				sb.WriteString(fmt.Sprintf("- **URL**: %s\n", src.URL))
-			}
-			sb.WriteString(fmt.Sprintf("- **Type**: %s\n\n", src.Type))
-			if src.Content != "" {
-				sb.WriteString("#### Content Summary\n\n")
-				sb.WriteString(src.Content + "\n\n")
-			}
-			sb.WriteString("---\n\n")
-		}
+	messages, err := a.repo.GetMessagesByNotebook(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if messages == nil {
+		messages = []models.ChatMessage{}
 	}
 
-	sb.WriteString("## Saved Notes & Synthesis Briefs\n\n")
-	if len(notes) == 0 {
-		sb.WriteString("*No notes added yet.*\n\n")
-	} else {
-		for i, note := range notes {
-			sb.WriteString(fmt.Sprintf("### Note #%d (Created: %s)\n\n", i+1, note.CreatedAt.Format("2006-01-02 15:04:05")))
-			sb.WriteString(note.Content + "\n\n")
-			sb.WriteString("---\n\n")
-		}
+	payload := map[string]interface{}{
+		"id":          nb.ID,
+		"title":       nb.Title,
+		"description": nb.Description,
+		"created_at":  nb.CreatedAt,
+		"updated_at":  nb.UpdatedAt,
+		"sources":     sources,
+		"notes":       notes,
+		"messages":    messages,
 	}
 
-	filename := strings.ReplaceAll(nb.Title, " ", "_") + "_export.md"
-	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	w.Write([]byte(sb.String()))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(payload)
+}
+
+func (a *API) handleNotebookDelete(w http.ResponseWriter, r *http.Request, id string) {
+	if err := a.repo.DeleteNotebook(id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

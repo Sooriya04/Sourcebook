@@ -15,6 +15,19 @@ export default function AudioOverviewView({ notebookId, sources = [] }) {
 
   const audioRef = useRef(null);
 
+  React.useEffect(() => {
+    if (!notebookId) return;
+    fetch(`/api/sourcebook/v1/study/audio/${notebookId}?meta=true`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.turns) {
+          setTurns(data.turns);
+          if (data.duration) setDuration(data.duration);
+        }
+      })
+      .catch(() => {});
+  }, [notebookId]);
+
   const handleGenerate = async () => {
     if (!notebookId || loading) return;
     setLoading(true);

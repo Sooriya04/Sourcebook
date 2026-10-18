@@ -11,6 +11,8 @@ services:
       - PORT=5000
       - DB_PATH=/app/data/sourcebook.db
       - SEARXNG_URL=http://searxng:8080
+      - SEARQON_URL=http://searqon:4001
+      - SEARQON_SCRAPE_URL=http://searqon:4001/scrape/batch
       - YOUTUBE_SERVICE_URL=http://youtube-service:6001
       - LLM_PROVIDER=ollama
       - LLM_URL=http://host.docker.internal:11434
@@ -19,9 +21,22 @@ services:
       - sourcebook_data:/app/data
     depends_on:
       - searxng
+      - searqon
       - youtube-service
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  searqon:
+    image: sooriya04/searqon:1.1.2
+    container_name: sourcebook-searqon
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - SEARXNG_URL=http://searxng:8080
+    depends_on:
+      - searxng
 
   searxng:
     image: searxng/searxng:latest
