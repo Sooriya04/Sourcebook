@@ -8,38 +8,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"sourcebook/internal/synthesis"
+	"sourcebook/internal/llm"
 	"strings"
 	"time"
 )
-
-type PodcastGenerateRequest struct {
-	NotebookID string `json:"notebook_id"`
-}
-
-type PodcastTurn struct {
-	Speaker   string  `json:"speaker"`
-	Name      string  `json:"name"`
-	Text      string  `json:"text"`
-	Voice     string  `json:"voice,omitempty"`
-	StartTime float64 `json:"start_time,omitempty"`
-	EndTime   float64 `json:"end_time,omitempty"`
-	Duration  float64 `json:"duration,omitempty"`
-}
-
-type PodcastSynthesisRequest struct {
-	NotebookID string        `json:"notebook_id"`
-	Turns      []PodcastTurn `json:"turns"`
-}
-
-type PodcastResponse struct {
-	Success    bool          `json:"success"`
-	NotebookID string        `json:"notebook_id"`
-	AudioURL   string        `json:"audio_url"`
-	Duration   float64       `json:"duration"`
-	Turns      []PodcastTurn `json:"turns"`
-}
 
 func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -64,39 +36,48 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if already synthesized and not forcing re-generation
-	if r.URL.Query().Get("force") != "true" {
-		audioPath := filepath.Join("database", "audio", fmt.Sprintf("%s.wav", req.NotebookID))
-		metaPath := filepath.Join("database", "audio", fmt.Sprintf("%s.json", req.NotebookID))
-		if _, err := os.Stat(audioPath); err == nil {
-			if data, err := os.ReadFile(metaPath); err == nil {
-				var cachedResp PodcastResponse
-				if err := json.Unmarshal(data, &cachedResp); err == nil {
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(cachedResp)
-					return
-				}
-			}
-		}
+	promptOpts := llm.PodcastOptions{
+		Length:      req.Length,
+		Format:      req.Format,
+		FocusSource: req.FocusSource,
 	}
-
-	rawJSON, err := a.synthesizer.GeneratePodcastDialogue(r.Context(), docs)
+	rawJSON, err := a.synthesizer.GeneratePodcastDialogueWithOptions(r.Context(), docs, promptOpts)
 	if err != nil {
 		log.Printf("[Podcast] Failed to generate dialogue: %v", err)
 		http.Error(w, "Failed to generate podcast dialogue", http.StatusInternalServerError)
 		return
 	}
 
+	var envelope struct {
+		Summary   string        `json:"summary"`
+		Takeaways []string      `json:"takeaways"`
+		Turns     []PodcastTurn `json:"turns"`
+	}
 	var turns []PodcastTurn
-	if err := json.Unmarshal([]byte(rawJSON), &turns); err != nil {
+	var summary string
+	var takeaways []string
+
+	if err := json.Unmarshal([]byte(rawJSON), &envelope); err == nil && len(envelope.Turns) > 0 {
+		turns = envelope.Turns
+		summary = envelope.Summary
+		takeaways = envelope.Takeaways
+	} else if err := json.Unmarshal([]byte(rawJSON), &turns); err != nil {
 		log.Printf("[Podcast] Failed to parse JSON: %v. Raw: %s", err, rawJSON)
 		http.Error(w, "Failed to parse dialogue format from LLM", http.StatusInternalServerError)
 		return
 	}
 
+	a.normalizePodcastTurns(turns, req.VoiceHost1, req.VoiceHost2)
+
+	episodeID := fmt.Sprintf("ep_%d", time.Now().Unix())
 	synthPayload, _ := json.Marshal(PodcastSynthesisRequest{
 		NotebookID: req.NotebookID,
 		Turns:      turns,
+		Summary:    summary,
+		Takeaways:  takeaways,
+		EpisodeID:  episodeID,
+		Length:     req.Length,
+		Format:     req.Format,
 	})
 
 	audioURL := os.Getenv("AUDIO_SERVICE_URL")
@@ -104,9 +85,8 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 		audioURL = "http://127.0.0.1:6003"
 	}
 
-	// 5-minute timeout for multi-turn CPU TTS synthesis
-	client := &http.Client{Timeout: 300 * time.Second}
-	reqURL := fmt.Sprintf("%s/synthesize", strings.TrimRight(audioURL, "/"))
+	client := &http.Client{Timeout: 900 * time.Second}
+	reqURL := fmt.Sprintf("%s/synthesize/stream", strings.TrimRight(audioURL, "/"))
 	httpReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, reqURL, bytes.NewBuffer(synthPayload))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
@@ -116,77 +96,75 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		log.Printf("[Podcast] Kokoro TTS synthesis service failed: %v", err)
 		http.Error(w, fmt.Sprintf("Kokoro audio synthesis failed: %v", err), http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		log.Printf("[Podcast] Synthesis service error %d: %s", resp.StatusCode, string(body))
-		http.Error(w, "Audio synthesis failed", http.StatusBadGateway)
-		return
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"id":         episodeID,
+		"notebook_id": req.NotebookID,
+		"audio_url":  fmt.Sprintf("/api/sourcebook/v1/study/audio/%s?episode=%s", req.NotebookID, episodeID),
+		"summary":    summary,
+		"takeaways":  takeaways,
+		"turns":      turns,
+	})
+}
+
+func (a *API) HandleListEpisodes(w http.ResponseWriter, r *http.Request) {
+	notebookID := r.URL.Query().Get("notebook_id")
+	if notebookID == "" {
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) > 0 {
+			notebookID = parts[len(parts)-1]
+		}
 	}
 
-	var synthResp PodcastResponse
-	if err := json.NewDecoder(resp.Body).Decode(&synthResp); err != nil {
-		http.Error(w, "Failed to parse synthesis response", http.StatusInternalServerError)
+	audioURL := os.Getenv("AUDIO_SERVICE_URL")
+	if audioURL == "" {
+		audioURL = "http://127.0.0.1:6003"
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("%s/episodes/%s", strings.TrimRight(audioURL, "/"), notebookID))
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+		io.Copy(w, resp.Body)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(synthResp)
+	json.NewEncoder(w).Encode(map[string]interface{}{"episodes": []interface{}{}})
 }
 
-func (a *API) HandleGetPodcastAudio(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) == 0 {
-		http.NotFound(w, r)
-		return
+func (a *API) HandleListVoices(w http.ResponseWriter, r *http.Request) {
+	audioURL := os.Getenv("AUDIO_SERVICE_URL")
+	if audioURL == "" {
+		audioURL = "http://127.0.0.1:6003"
 	}
-	notebookID := parts[len(parts)-1]
-	notebookID = strings.TrimSuffix(notebookID, ".wav")
-	notebookID = strings.TrimSuffix(notebookID, ".json")
 
-	if r.URL.Query().Get("meta") == "true" || strings.HasSuffix(r.URL.Path, ".json") {
-		metaPath := filepath.Join("database", "audio", fmt.Sprintf("%s.json", notebookID))
-		if data, err := os.ReadFile(metaPath); err == nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(data)
-			return
-		}
-		http.NotFound(w, r)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("%s/voices", strings.TrimRight(audioURL, "/")))
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+		io.Copy(w, resp.Body)
 		return
 	}
 
-	audioPath := filepath.Join("database", "audio", fmt.Sprintf("%s.wav", notebookID))
-	if _, err := os.Stat(audioPath); os.IsNotExist(err) {
-		http.NotFound(w, r)
-		return
+	fallback := VoicesResponse{
+		Voices: []VoiceProfile{
+			{ID: "am_adam", Name: "Adam", Gender: "male", Accent: "American", Style: "Warm & dynamic"},
+			{ID: "am_michael", Name: "Michael", Gender: "male", Accent: "American", Style: "Authoritative & clear"},
+			{ID: "bm_george", Name: "George", Gender: "male", Accent: "British", Style: "Refined & articulate"},
+			{ID: "af_bella", Name: "Bella", Gender: "female", Accent: "American", Style: "Expressive & conversational"},
+			{ID: "af_sarah", Name: "Sarah", Gender: "female", Accent: "American", Style: "Thoughtful & measured"},
+			{ID: "bf_alice", Name: "Alice", Gender: "female", Accent: "British", Style: "Engaging & witty"},
+		},
 	}
-
-	w.Header().Set("Content-Type", "audio/wav")
-	http.ServeFile(w, r, audioPath)
-}
-
-func (a *API) gatherNotebookDocs(notebookID string) ([]synthesis.ScrapedDoc, error) {
-	sources, err := a.repo.GetSourcesByNotebook(notebookID)
-	if err != nil {
-		return nil, err
-	}
-
-	var docs []synthesis.ScrapedDoc
-	for _, src := range sources {
-		if strings.TrimSpace(src.Content) != "" {
-			docs = append(docs, synthesis.ScrapedDoc{
-				Title:   src.Title,
-				Content: src.Content,
-			})
-			if len(docs) >= 8 {
-				break
-			}
-		}
-	}
-	return docs, nil
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(fallback)
 }

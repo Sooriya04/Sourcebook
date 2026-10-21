@@ -158,7 +158,7 @@ export default function StudyStudio({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {onToggleSources && (
+          {onToggleSources && activeTab !== 'audio' && (
             <button
               type="button"
               onClick={onToggleSources}
@@ -220,7 +220,7 @@ export default function StudyStudio({
             <span>Export Hub</span>
           </button>
 
-          {onToggleStudio && (
+          {onToggleStudio && activeTab !== 'audio' && (
             <button
               type="button"
               onClick={onToggleStudio}

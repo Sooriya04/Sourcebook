@@ -1,9 +1,13 @@
+import json
 import os
+import shutil
+import time
+from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
-from synthesizer import AudioSynthesizer
+from synthesizer import AVAILABLE_VOICES, AudioSynthesizer
 
 app = FastAPI(title="SourceBook Kokoro TTS Audio Service")
 
@@ -40,69 +44,146 @@ class SynthesizeRequest(BaseModel):
     notebook_id: str
     turns: list[Turn]
     speed: float = 1.0
+    summary: str = ""
+    takeaways: list[str] = []
+    episode_id: str | None = None
+    length: str | None = "standard"
+    format: str | None = "banter"
 
 @app.get("/health")
 def health_check():
-    synth = get_synthesizer()
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    model_exists = os.path.exists(os.path.join(base_dir, "models", "kokoro-v1.0.int8.onnx"))
     return {
         "status": "ok",
         "service": "audio-tts",
-        "model_loaded": synth is not None
+        "model_available": model_exists,
+        "model_loaded": synthesizer is not None
     }
 
-@app.post("/synthesize")
-def synthesize_podcast(req: SynthesizeRequest):
+@app.get("/voices")
+def list_voices():
+    return {"voices": AVAILABLE_VOICES}
+
+def _save_episode_meta(output_dir: str, notebook_id: str, episode_id: str, meta: dict, summary: str = "", takeaways: list = None, length: str = "standard", fmt: str = "banter"):
+    nb_dir = os.path.join(output_dir, notebook_id)
+    os.makedirs(nb_dir, exist_ok=True)
+
+    # Archive previous root episode into nb_dir so it remains in playlist
+    legacy_json_path = os.path.join(output_dir, f"{notebook_id}.json")
+    legacy_wav_path = os.path.join(output_dir, f"{notebook_id}.wav")
+    if os.path.exists(legacy_json_path):
+        try:
+            with open(legacy_json_path, "r", encoding="utf-8") as fp:
+                old_data = json.load(fp)
+            old_id = old_data.get("id") or f"ep_prev_{int(os.path.getmtime(legacy_json_path))}"
+            old_ep_json = os.path.join(nb_dir, f"{old_id}.json")
+            if not os.path.exists(old_ep_json) and old_id != episode_id:
+                old_data["id"] = old_id
+                old_data["audio_url"] = f"/api/sourcebook/v1/study/audio/{notebook_id}?episode={old_id}"
+                with open(old_ep_json, "w", encoding="utf-8") as fp:
+                    json.dump(old_data, fp, indent=2)
+                if os.path.exists(legacy_wav_path):
+                    shutil.copyfile(legacy_wav_path, os.path.join(nb_dir, f"{old_id}.wav"))
+        except Exception:
+            pass
+
+    ep_data = {
+        "success": True,
+        "id": episode_id,
+        "notebook_id": notebook_id,
+        "audio_url": f"/api/sourcebook/v1/study/audio/{notebook_id}?episode={episode_id}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "duration": meta["duration"],
+        "length": length or meta.get("length", "standard"),
+        "format": fmt or meta.get("format", "banter"),
+        "summary": summary or meta.get("summary", ""),
+        "takeaways": takeaways or meta.get("takeaways", []),
+        "turns": meta["turns"]
+    }
+    with open(os.path.join(nb_dir, f"{episode_id}.json"), "w", encoding="utf-8") as f:
+        json.dump(ep_data, f, indent=2)
+    # Also write default latest
+    with open(os.path.join(output_dir, f"{notebook_id}.json"), "w", encoding="utf-8") as f:
+        json.dump(ep_data, f, indent=2)
+    return ep_data
+
+@app.post("/synthesize/stream")
+def synthesize_podcast_stream(req: SynthesizeRequest):
     if not req.turns:
         raise HTTPException(status_code=400, detail="Turns cannot be empty")
 
     output_dir = get_output_dir()
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{req.notebook_id}.wav")
+    episode_id = req.episode_id or f"ep_{int(time.time())}"
+    nb_dir = os.path.join(output_dir, req.notebook_id)
+    os.makedirs(nb_dir, exist_ok=True)
+    ep_output_path = os.path.join(nb_dir, f"{episode_id}.wav")
+    latest_output_path = os.path.join(output_dir, f"{req.notebook_id}.wav")
 
     synth = get_synthesizer()
     turns_data = [t.model_dump() for t in req.turns]
-    meta = synth.synthesize_podcast(turns_data, output_path, speed=req.speed)
 
-    meta_path = os.path.join(output_dir, f"{req.notebook_id}.json")
-    try:
-        import json
-        with open(meta_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "success": True,
-                "notebook_id": req.notebook_id,
-                "audio_url": f"/api/sourcebook/v1/study/audio/{req.notebook_id}",
-                "duration": meta["duration"],
-                "turns": meta["turns"]
-            }, f, indent=2)
-    except Exception:
-        pass
+    def event_stream():
+        for event in synth.synthesize_podcast_streaming(turns_data, ep_output_path, speed=req.speed):
+            if event['step'] == 'complete':
+                try:
+                    shutil.copyfile(ep_output_path, latest_output_path)
+                except Exception:
+                    pass
+                ep_data = _save_episode_meta(output_dir, req.notebook_id, episode_id, event, summary=req.summary, takeaways=req.takeaways, length=req.length, fmt=req.format)
+                yield f"data: {json.dumps({'step': 'complete', **ep_data})}\n\n"
+            else:
+                yield f"data: {json.dumps(event)}\n\n"
 
-    return {
-        "success": True,
-        "notebook_id": req.notebook_id,
-        "audio_url": f"/api/sourcebook/v1/study/audio/{req.notebook_id}",
-        "duration": meta["duration"],
-        "turns": meta["turns"]
-    }
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-@app.get("/meta/{notebook_id}")
-def get_audio_meta(notebook_id: str):
-    meta_path = os.path.join(get_output_dir(), f"{notebook_id}.json")
-    if os.path.exists(meta_path):
-        import json
+@app.get("/episodes/{notebook_id}")
+def list_episodes(notebook_id: str):
+    output_dir = get_output_dir()
+    nb_dir = os.path.join(output_dir, notebook_id)
+    episodes = []
+    seen_ids = set()
+    if os.path.exists(nb_dir):
+        for f in os.listdir(nb_dir):
+            if f.endswith(".json"):
+                try:
+                    with open(os.path.join(nb_dir, f), "r", encoding="utf-8") as fp:
+                        data = json.load(fp)
+                        eid = data.get("id") or f.replace(".json", "")
+                        data["id"] = eid
+                        seen_ids.add(eid)
+                        episodes.append(data)
+                except Exception:
+                    pass
+    
+    # Also include previously generated root episode if present and not yet tracked
+    legacy_json = os.path.join(output_dir, f"{notebook_id}.json")
+    if os.path.exists(legacy_json):
         try:
-            with open(meta_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(legacy_json, "r", encoding="utf-8") as fp:
+                data = json.load(fp)
+                eid = data.get("id") or "legacy_1"
+                data.setdefault("id", eid)
+                data.setdefault("audio_url", f"/api/sourcebook/v1/study/audio/{notebook_id}")
+                if eid not in seen_ids:
+                    episodes.append(data)
         except Exception:
             pass
-    raise HTTPException(status_code=404, detail="Audio metadata not found")
+    # Sort descending by creation date (Newest First / LIFO)
+    episodes.sort(key=lambda x: x.get("created_at", x.get("id", "")), reverse=True)
+    return {"episodes": episodes}
 
 @app.get("/audio/{notebook_id}")
-def serve_audio(notebook_id: str):
-    audio_path = os.path.join(get_output_dir(), f"{notebook_id}.wav")
-    if not os.path.exists(audio_path):
-        raise HTTPException(status_code=404, detail="Audio overview not found")
-    return FileResponse(audio_path, media_type="audio/wav")
+def serve_audio(notebook_id: str, episode: str | None = None):
+    output_dir = get_output_dir()
+    if episode:
+        path = os.path.join(output_dir, notebook_id, f"{episode}.wav")
+        if os.path.exists(path):
+            return FileResponse(path, media_type="audio/wav")
+    path = os.path.join(output_dir, f"{notebook_id}.wav")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="audio/wav")
+    raise HTTPException(status_code=404, detail="Audio overview not found")
 
 if __name__ == "__main__":
     import uvicorn

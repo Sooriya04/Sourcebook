@@ -127,11 +127,37 @@ export async function generateFlashcards(notebookId) {
   return await response.json();
 }
 
-export async function generatePodcast(notebookId) {
+export async function getPodcastVoices() {
+  try {
+    const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/voices`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.voices || [];
+    }
+  } catch (e) {
+    console.warn('Failed to fetch voices:', e);
+  }
+  return [];
+}
+
+export async function getPodcastEpisodes(notebookId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/episodes?notebook_id=${notebookId}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.episodes || [];
+    }
+  } catch (e) {
+    console.warn('Failed to fetch episodes:', e);
+  }
+  return [];
+}
+
+export async function generatePodcast(notebookId, options = {}) {
   const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ notebook_id: notebookId }),
+    body: JSON.stringify({ notebook_id: notebookId, ...options }),
   });
 
   if (!response.ok) {
@@ -140,6 +166,72 @@ export async function generatePodcast(notebookId) {
   }
 
   return await response.json();
+}
+
+export async function streamPodcastGeneration({ notebookId, options = {}, onStatus, onOverview, onDialogue, onProgress, onComplete, onError, signal }) {
+  try {
+    const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notebook_id: notebookId, ...options }),
+      signal
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Failed to stream podcast: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split('\n\n');
+      buffer = blocks.pop() || '';
+
+      for (const block of blocks) {
+        if (!block.trim()) continue;
+        let eventType = 'message';
+        const dataLines = [];
+
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            dataLines.push(line.slice(6));
+          } else if (line.startsWith('data:')) {
+            dataLines.push(line.slice(5));
+          }
+        }
+
+        const dataStr = dataLines.join('\n').trim();
+        if (!dataStr) continue;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (eventType === 'status') onStatus?.(parsed);
+          else if (eventType === 'overview') {
+            onOverview?.(parsed);
+            if (parsed.turns) onDialogue?.(parsed.turns);
+          }
+          else if (eventType === 'dialogue') onDialogue?.(parsed.turns || []);
+          else if (eventType === 'progress') onProgress?.(parsed);
+          else if (eventType === 'complete') onComplete?.(parsed);
+          else if (eventType === 'error') onError?.(new Error(parsed.error || 'Generation error'));
+        } catch (err) {
+          console.warn('[SSE Parse Error]', err, dataStr);
+        }
+      }
+    }
+  } catch (err) {
+    if (signal?.aborted) return;
+    onError?.(err);
+  }
 }
 
 export async function chatQueryStream({ query, notebookId, maxSources = 5, scopedSourceIds = [], mode = 'web', history = [], onChunk, onMetadata, onError, abortSignal }) {
