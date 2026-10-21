@@ -17,6 +17,13 @@ app.add_middleware(
 
 synthesizer = None
 
+def get_output_dir():
+    custom_dir = os.getenv("AUDIO_OUTPUT_DIR")
+    if custom_dir:
+        return custom_dir
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base_dir, "database", "audio")
+
 def get_synthesizer():
     global synthesizer
     if synthesizer is None:
@@ -48,8 +55,8 @@ def synthesize_podcast(req: SynthesizeRequest):
     if not req.turns:
         raise HTTPException(status_code=400, detail="Turns cannot be empty")
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    output_dir = os.path.join(base_dir, "database", "audio")
+    output_dir = get_output_dir()
+    os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{req.notebook_id}.wav")
 
     synth = get_synthesizer()
@@ -80,8 +87,7 @@ def synthesize_podcast(req: SynthesizeRequest):
 
 @app.get("/meta/{notebook_id}")
 def get_audio_meta(notebook_id: str):
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    meta_path = os.path.join(base_dir, "database", "audio", f"{notebook_id}.json")
+    meta_path = os.path.join(get_output_dir(), f"{notebook_id}.json")
     if os.path.exists(meta_path):
         import json
         try:
@@ -93,8 +99,7 @@ def get_audio_meta(notebook_id: str):
 
 @app.get("/audio/{notebook_id}")
 def serve_audio(notebook_id: str):
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    audio_path = os.path.join(base_dir, "database", "audio", f"{notebook_id}.wav")
+    audio_path = os.path.join(get_output_dir(), f"{notebook_id}.wav")
     if not os.path.exists(audio_path):
         raise HTTPException(status_code=404, detail="Audio overview not found")
     return FileResponse(audio_path, media_type="audio/wav")

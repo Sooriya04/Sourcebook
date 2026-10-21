@@ -14,15 +14,18 @@ services:
       - SEARQON_URL=http://searqon:4001
       - SEARQON_SCRAPE_URL=http://searqon:4001/scrape/batch
       - YOUTUBE_SERVICE_URL=http://youtube-service:6001
+      - AUDIO_SERVICE_URL=http://audio-service:6003
       - LLM_PROVIDER=ollama
       - LLM_URL=http://host.docker.internal:11434
       - LLM_MODEL=gemma2
     volumes:
       - sourcebook_data:/app/data
+      - audio_data:/app/database/audio
     depends_on:
       - searxng
       - searqon
       - youtube-service
+      - audio-service
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -62,5 +65,19 @@ services:
     ports:
       - "6001:6001"
 
+  audio-service:
+    build:
+      context: ../services/audio
+      dockerfile: Dockerfile
+    container_name: sourcebook-audio
+    restart: unless-stopped
+    ports:
+      - "6003:6003"
+    environment:
+      - AUDIO_OUTPUT_DIR=/app/database/audio
+    volumes:
+      - audio_data:/app/database/audio
+
 volumes:
   sourcebook_data:
+  audio_data:
