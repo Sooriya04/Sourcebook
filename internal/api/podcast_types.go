@@ -30,40 +30,46 @@ type PodcastTurn struct {
 
 // PodcastSynthesisRequest is dispatched to the Python Kokoro TTS service.
 type PodcastSynthesisRequest struct {
-	NotebookID string        `json:"notebook_id"`
-	Turns      []PodcastTurn `json:"turns"`
-	Speed      float64       `json:"speed,omitempty"`
-	Summary    string        `json:"summary,omitempty"`
-	Takeaways  []string      `json:"takeaways,omitempty"`
-	EpisodeID  string        `json:"episode_id,omitempty"`
-	Length     string        `json:"length,omitempty"`
-	Format     string        `json:"format,omitempty"`
+	NotebookID   string        `json:"notebook_id"`
+	Turns        []PodcastTurn `json:"turns"`
+	Speed        float64       `json:"speed,omitempty"`
+	Title        string        `json:"title,omitempty"`
+	Summary      string        `json:"summary,omitempty"`
+	Takeaways    []string      `json:"takeaways,omitempty"`
+	EpisodeID    string        `json:"episode_id,omitempty"`
+	Length       string        `json:"length,omitempty"`
+	Format       string        `json:"format,omitempty"`
+	SourcesCount int           `json:"sources_count,omitempty"`
 }
 
 // PodcastResponse returns final synthesized overview details.
 type PodcastResponse struct {
-	Success    bool          `json:"success"`
-	ID         string        `json:"id,omitempty"`
-	NotebookID string        `json:"notebook_id"`
-	AudioURL   string        `json:"audio_url"`
-	Duration   float64       `json:"duration"`
-	Summary    string        `json:"summary,omitempty"`
-	Takeaways  []string      `json:"takeaways,omitempty"`
-	Turns      []PodcastTurn `json:"turns"`
+	Success      bool          `json:"success"`
+	ID           string        `json:"id,omitempty"`
+	NotebookID   string        `json:"notebook_id"`
+	Title        string        `json:"title,omitempty"`
+	AudioURL     string        `json:"audio_url"`
+	Duration     float64       `json:"duration"`
+	Summary      string        `json:"summary,omitempty"`
+	Takeaways    []string      `json:"takeaways,omitempty"`
+	Turns        []PodcastTurn `json:"turns"`
+	SourcesCount int           `json:"sources_count,omitempty"`
 }
 
 // PodcastEpisode represents an episode in the notebook audio playlist.
 type PodcastEpisode struct {
-	ID         string        `json:"id"`
-	NotebookID string        `json:"notebook_id"`
-	CreatedAt  string        `json:"created_at,omitempty"`
-	Duration   float64       `json:"duration"`
-	Format     string        `json:"format,omitempty"`
-	Length     string        `json:"length,omitempty"`
-	Summary    string        `json:"summary,omitempty"`
-	Takeaways  []string      `json:"takeaways,omitempty"`
-	AudioURL   string        `json:"audio_url"`
-	Turns      []PodcastTurn `json:"turns,omitempty"`
+	ID           string        `json:"id"`
+	NotebookID   string        `json:"notebook_id"`
+	Title        string        `json:"title,omitempty"`
+	CreatedAt    string        `json:"created_at,omitempty"`
+	Duration     float64       `json:"duration"`
+	Format       string        `json:"format,omitempty"`
+	Length       string        `json:"length,omitempty"`
+	Summary      string        `json:"summary,omitempty"`
+	Takeaways    []string      `json:"takeaways,omitempty"`
+	AudioURL     string        `json:"audio_url"`
+	Turns        []PodcastTurn `json:"turns,omitempty"`
+	SourcesCount int           `json:"sources_count,omitempty"`
 }
 
 // EpisodesResponse wraps descending episode history.

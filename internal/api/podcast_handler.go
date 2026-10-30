@@ -49,16 +49,19 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var envelope struct {
+		Title     string        `json:"title"`
 		Summary   string        `json:"summary"`
 		Takeaways []string      `json:"takeaways"`
 		Turns     []PodcastTurn `json:"turns"`
 	}
 	var turns []PodcastTurn
+	var title string
 	var summary string
 	var takeaways []string
 
 	if err := json.Unmarshal([]byte(rawJSON), &envelope); err == nil && len(envelope.Turns) > 0 {
 		turns = envelope.Turns
+		title = envelope.Title
 		summary = envelope.Summary
 		takeaways = envelope.Takeaways
 	} else if err := json.Unmarshal([]byte(rawJSON), &turns); err != nil {
@@ -71,13 +74,15 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 
 	episodeID := fmt.Sprintf("ep_%d", time.Now().Unix())
 	synthPayload, _ := json.Marshal(PodcastSynthesisRequest{
-		NotebookID: req.NotebookID,
-		Turns:      turns,
-		Summary:    summary,
-		Takeaways:  takeaways,
-		EpisodeID:  episodeID,
-		Length:     req.Length,
-		Format:     req.Format,
+		NotebookID:   req.NotebookID,
+		Turns:        turns,
+		Title:        title,
+		Summary:      summary,
+		Takeaways:    takeaways,
+		EpisodeID:    episodeID,
+		Length:       req.Length,
+		Format:       req.Format,
+		SourcesCount: len(docs),
 	})
 
 	audioURL := os.Getenv("AUDIO_SERVICE_URL")

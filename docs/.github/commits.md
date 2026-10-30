@@ -478,12 +478,33 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Tactile UI Controls & Real-Time Progress Tracker (`PodcastConfigBar.jsx`, `PodcastProgressTracker.jsx`, `AudioOverviewView.jsx`, `sourcebookApi.js`)**: Designed a restrained zinc configuration bar for selecting host voices, styles, and lengths, paired with a live percentage and speaker progress tracker.
 - **Strict Architectural Compliance**: Verified all updated Go, Python, and React source files strictly adhere to the sub-200-line ceiling rule with 100% passing tests.
 
-## Commit 60: NotebookLM-Style Audio Overview Suite, LIFO Multi-Episode Playlist Archiving, SSE Streaming & Robust Synthesis Engine
-- **NotebookLM Authentic Overview Studio (`NotebookLMAudioStudio.jsx`, `PodcastPlayerCard.jsx`, `AudioOverviewView.jsx`)**: Designed an authentic NotebookLM layout featuring an Executive Episode Brief, high-yield Core Takeaways bullet card, interactive clickable chapter moments, consulted source badges, and tactile player controls. Replaced transcription walls and visualizer bloat with a clean, high-density study interface.
-- **Header De-Cluttering & Audio Studio Polish (`StudyStudio.jsx`)**: Cleanly suppressed duplicate `[Sources]` and `[Studio]` sidebar toggle buttons in the study header when viewing the Audio Overview tab for maximum focus.
-- **Persistent Multi-Episode Archiving & LIFO Playlist (`services/audio/main.py`, `internal/api/podcast_types.go`, `internal/api/podcast_handler.go`, `PodcastEpisodeList.jsx`)**: Implemented multi-track episode persistence storing discrete `{episode_id}.wav` and `{episode_id}.json` records under `database/audio/{notebook_id}/`. Ensured prior episodes and legacy tracks are automatically preserved on regeneration rather than overwritten. Implemented `GET /api/sourcebook/v1/study/podcast/episodes` returning episodes sorted descending by creation time (LIFO / newest-first) with dynamic tier badges (`Deep Dive`, `Standard`, `Quick`).
-- **Turn-by-Turn Server-Sent Events (SSE) Streaming & Timeout Extension (`internal/api/podcast_stream.go`, `services/audio/main.py`, `ui/src/services/sourcebookApi.js`)**: Built end-to-end SSE streaming (`/synthesize/stream`) delivering real-time progress events (`status`, `overview`, `turn_done`, `complete`). Extended proxy client timeout to 900s and destructured `onOverview` in `sourcebookApi.js` to eliminate premature `10/11` timeout halts and runtime parsing exceptions.
-- **Calibrated Multi-Tier Dialogue Prompts (`internal/llm/podcast_prompt.go`, `internal/synthesis/podcast.go`)**: Calibrated dialogue generation across all length tiers: Quick (3–4 turns, ~1 min), Standard (5–7 turns, ~2.5 mins), and Deep Dive (8–10 in-depth turns, ~4–5 mins) deeply exploring core concepts, architectures, and trade-offs.
-- **ONNX Inference Acceleration & Per-Turn Progress Logging (`services/audio/synthesizer.py`)**: Optimized ONNX Runtime to 4 threads (`intra_op_num_threads = 4`), cutting CPU turn generation time in half (~10–12s per turn) without high memory spikes or CPU freezing. Added detailed stdout logs per synthesized turn.
-- **Cache-Busting URL Sanitization (`AudioOverviewView.jsx`, `internal/api/podcast_audio.go`)**: Fixed URL parameter corruption where appending `?t=...` to `?episode=...` produced double question marks, ensuring episode tracks load with pristine cache-busting headers (`Cache-Control: no-cache`).
-- **Subsystem Modularization & Strict Architectural Compliance (`AGENTS.md`)**: Extracted `PodcastPlayerCard.jsx` and `podcast_audio.go` to keep all modified Go, Python, and React source files strictly under 200 lines each.
+## Commit 62: Deep Dive Audio Overview Suite, Studio Sidebar Parity, Multi-Episode LIFO Playlist, Chat Navigation & Anti-Hardcoding Overhaul
+- **Authentic Flat Row Studio Layout (`StudioToolsGrid.jsx`, `NotesPanel.jsx`, `SavedNotesList.jsx`, `StudioAudioItem.jsx`, `StudioNoteItem.jsx`)**:
+  - Completely eliminated bulky card containers, heavy 1px borders, and background boxes. Aligned both audio and note items into sleek flat list rows featuring subtle hover highlights (`rgba(255, 255, 255, 0.05)`).
+  - Designed an authentic pixel-perfect SVG `[M↓]` Markdown badge (`MarkdownBadge.jsx`) in vivid blue with a 3-dots action menu (`Edit`, `Copy`, `Download .md`, `Delete`).
+  - Added signature rounded pill button (`[ 🗎 Add note ]`) with the triple-horizontal-stripe note icon at the bottom of the Studio panel.
+  - Replaced the bulky circular button container with a clean, borderless Play/Pause glyph (`▷` / `⏸`), animated wave bars with sparkle (`llı ✦`), and a blue status indicator dot (`•`).
+- **Two-Way Chat Studio Navigation (`StudioToolsGrid.jsx`, `StudyStudio.jsx`)**:
+  - Restored `Chat Studio` as the primary tool chip in the Studio sidebar grid, enabling users to switch back to Chat mode instantly from Study mode or any section.
+  - Added a secondary tactile `[💬 Chat Studio]` return button in the `StudyStudio` workspace header so users never get locked in study views.
+- **Persistent Multi-Episode Archiving & LIFO Playlist (`services/audio/main.py`, `internal/api/podcast_types.go`, `internal/api/podcast_handler.go`, `PodcastEpisodeList.jsx`)**:
+  - Implemented multi-track episode persistence storing discrete `{episode_id}.wav` and `{episode_id}.json` records under `database/audio/{notebook_id}/`.
+  - Past episodes and legacy tracks are automatically preserved on regeneration rather than overwritten.
+  - Implemented `GET /api/sourcebook/v1/study/podcast/episodes` returning episodes sorted descending by creation time (LIFO / newest-first) with dynamic tier badges (`Deep Dive`, `Standard`, `Quick`).
+- **Turn-by-Turn Server-Sent Events (SSE) Streaming & Timeout Extension (`internal/api/podcast_stream.go`, `services/audio/main.py`, `ui/src/services/sourcebookApi.js`)**:
+  - Built end-to-end SSE streaming (`/synthesize/stream`) delivering real-time progress events (`status`, `overview`, `turn_done`, `complete`).
+  - Extended proxy client timeout to 900s and destructured `onOverview` in `sourcebookApi.js` to eliminate premature `10/11` timeout halts and runtime parsing exceptions.
+- **Calibrated Multi-Tier Dialogue Prompts & Dynamic Titles (`internal/llm/podcast_prompt.go`, `internal/synthesis/podcast.go`, `internal/api/podcast_stream.go`)**:
+  - Calibrated dialogue generation across all length tiers: Quick (3–4 turns, ~1 min), Standard (5–7 turns, ~2.5 mins), and Deep Dive (8–10 in-depth turns, ~4–5 mins) deeply exploring core concepts, architectures, and trade-offs.
+  - LLM dynamically generates distinct, catchy 4–7 word episode titles (e.g., *"Unlocking AI with Knowledge Graphs"*) persisted in episode metadata, eliminating duplicate or fallback placeholder titles.
+- **ONNX Inference Acceleration & Per-Turn Progress Logging (`services/audio/synthesizer.py`)**:
+  - Optimized ONNX Runtime to 4 threads (`intra_op_num_threads = 4`), cutting CPU turn generation time in half (~10–12s per turn) without high memory spikes or CPU freezing.
+  - Added detailed stdout logs per synthesized turn for full terminal and backend observability.
+- **Shared Audio Controller (`useAudioPlayer.js`, `AudioOverviewView.jsx`, `StudioAudioItem.jsx`)**:
+  - Implemented a centralized audio hook managing playback, progress tracking, and scrub synchronization across both the Studio sidebar item and the full `AudioOverviewView`.
+- **Zero-Hardcoding Compliance (`StudioAudioItem.jsx`, `StudioNoteItem.jsx`, `NotebookPage.jsx`)**:
+  - Removed synthetic script note injection (`overview-script.md`), fake relative timestamps (`8d ago`), and hardcoded fallback titles.
+  - Dynamically formats real episode titles, true elapsed audio durations, real source counts, and genuine relative timestamps (`formatTimeAgo`).
+- **Subsystem Modularization & Strict Architectural Compliance (`AGENTS.md`)**:
+  - Maintained all Go, Python, and React source files strictly under 200 lines each.
+

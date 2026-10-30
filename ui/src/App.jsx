@@ -229,7 +229,7 @@ export default function App() {
               {[
                 "Who is the CEO of Google?",
                 "What are the latest features in Go 1.22?",
-                "Explain the architecture of NotebookLM",
+                "Explain the architecture of multi-agent AI systems",
               ].map((sample, idx) => (
                 <button key={idx} className="prompt-chip" onClick={() => handleSubmit(sample)}>
                   {sample}

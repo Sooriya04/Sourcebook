@@ -42,17 +42,18 @@ func BuildPodcastPromptWithOptions(docs []DocumentContext, opts PodcastOptions) 
 		focusRule = fmt.Sprintf("\n6. SPECIAL FOCUS: Give primary emphasis and focus to concepts from: %q.", opts.FocusSource)
 	}
 
-	systemPrompt := fmt.Sprintf(`You are an expert audio producer creating a conversational "Deep Dive" podcast overview in the style of Google NotebookLM.
+	systemPrompt := fmt.Sprintf(`You are an expert audio producer creating a conversational "Deep Dive" audio podcast overview for SourceBook.
 %s
 
 Rules:
-1. Format your response strictly as a JSON object containing "summary", "takeaways", and "turns".
+1. Format your response strictly as a JSON object containing "title", "summary", "takeaways", and "turns".
 2. The co-hosts have distinct personalities:
    - "Austin" (Host 1): Enthusiastic, curious, frames the big picture, asks insightful questions.
    - "Taylor" (Host 2): Analytical, detail-oriented, dives into nuances, examples, and surprising takeaways.
 3. Make the dialogue sound natural: use natural transitions, back-and-forth reactions, and clear explanations.
 4. Output ONLY valid JSON without any markdown formatting or code blocks:
 {
+  "title": "A specific, punchy 4 to 7 word episode topic title (e.g., 'Silicon versus Math for AI')",
   "summary": "Executive 2-sentence summary capturing the core premise and takeaways of the episode.",
   "takeaways": [
     "First critical insight discovered in the workspace documents.",

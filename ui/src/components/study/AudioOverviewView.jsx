@@ -1,23 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getPodcastVoices, getPodcastEpisodes, streamPodcastGeneration } from '../../services/sourcebookApi';
 import PodcastConfigBar from './PodcastConfigBar';
 import PodcastPlayerCard from './PodcastPlayerCard';
 import PodcastEpisodeList from './PodcastEpisodeList';
-import NotebookLMAudioStudio from './NotebookLMAudioStudio';
+import OverviewStudioDetail from './OverviewStudioDetail';
 
-export default function AudioOverviewView({ notebookId, sources = [] }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [speed, setSpeed] = useState(1.0);
+export default function AudioOverviewView({ 
+  notebookId, 
+  sources = [],
+  audioPlayer,
+  parentEpisodes,
+  onEpisodesChange
+}) {
   const [loading, setLoading] = useState(false);
   const [statusInfo, setStatusInfo] = useState(null);
   const [error, setError] = useState(null);
-  const [audioUrl, setAudioUrl] = useState(() => `/api/sourcebook/v1/study/audio/${notebookId}`);
   const [turns, setTurns] = useState([]);
   const [summary, setSummary] = useState('');
   const [takeaways, setTakeaways] = useState([]);
-  const [episodes, setEpisodes] = useState([]);
+  const [episodes, setEpisodes] = useState(() => parentEpisodes || []);
   const [activeEpId, setActiveEpId] = useState('');
   const [voices, setVoices] = useState([]);
   const [options, setOptions] = useState({
@@ -28,47 +29,35 @@ export default function AudioOverviewView({ notebookId, sources = [] }) {
     focus_source: ''
   });
 
-  const audioRef = useRef(null);
+  useEffect(() => {
+    if (parentEpisodes && parentEpisodes.length > 0) {
+      setEpisodes(parentEpisodes);
+      if (!activeEpId) applyEpisode(parentEpisodes[0]);
+    }
+  }, [parentEpisodes]);
 
   useEffect(() => {
     if (!notebookId) return;
-    getPodcastEpisodes(notebookId).then((list) => {
-      if (list && list.length > 0) {
-        setEpisodes(list);
-        applyEpisode(list[0]);
-      }
-    });
+    if (!parentEpisodes || parentEpisodes.length === 0) {
+      getPodcastEpisodes(notebookId).then((list) => {
+        if (list && list.length > 0) {
+          setEpisodes(list);
+          onEpisodesChange?.(list);
+          applyEpisode(list[0]);
+        }
+      });
+    }
     getPodcastVoices().then(setVoices);
   }, [notebookId]);
-
-  const buildAudioUrl = (ep) => {
-    if (!ep) return `/api/sourcebook/v1/study/audio/${notebookId}?t=${Date.now()}`;
-    let base = ep.audio_url;
-    if (!base) {
-      base = ep.id ? `/api/sourcebook/v1/study/audio/${notebookId}?episode=${ep.id}` : `/api/sourcebook/v1/study/audio/${notebookId}`;
-    }
-    base = base.replace(/[?&]t=\d+/g, '');
-    const joiner = base.includes('?') ? '&' : '?';
-    return `${base}${joiner}t=${Date.now()}`;
-  };
 
   const applyEpisode = (ep) => {
     if (!ep) return;
     setActiveEpId(ep.id);
-    const freshUrl = buildAudioUrl(ep);
-    setAudioUrl(freshUrl);
-    setDuration(ep.duration || 0);
     if (ep.turns) setTurns(ep.turns);
     if (ep.summary) setSummary(ep.summary);
     if (ep.takeaways) setTakeaways(ep.takeaways);
     setStatusInfo(null);
     setLoading(false);
-    setIsPlaying(false);
-    if (audioRef.current) {
-      audioRef.current.src = freshUrl;
-      audioRef.current.load();
-      audioRef.current.currentTime = 0;
-    }
   };
 
   const handleGenerate = async () => {
@@ -114,65 +103,59 @@ export default function AudioOverviewView({ notebookId, sources = [] }) {
       audio_url: cleanUrl,
       created_at: data.created_at || new Date().toISOString()
     };
-    // Prepend to front: newest first (LIFO)
-    setEpisodes((prev) => [newEp, ...prev.filter((e) => e.id !== epId)]);
+    const updated = [newEp, ...episodes.filter((e) => e.id !== epId)];
+    setEpisodes(updated);
+    onEpisodesChange?.(updated);
     applyEpisode(newEp);
+    if (audioPlayer) audioPlayer.playEpisode(newEp);
   };
 
+  const activeEp = episodes.find((e) => e.id === activeEpId) || episodes[0] || {};
+  const isCurrentActive = audioPlayer?.currentEpisode?.id === activeEp.id;
+  const isPlaying = isCurrentActive && audioPlayer.isPlaying;
+  const currentTime = isCurrentActive ? audioPlayer.currentTime : 0;
+  const duration = isCurrentActive && audioPlayer.duration ? audioPlayer.duration : (activeEp.duration || 0);
+
   const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) audioRef.current.pause();
-    else audioRef.current.play().catch(() => {});
+    if (activeEp.id) audioPlayer?.togglePlayEpisode(activeEp);
   };
 
   const handleSeek = (e) => {
-    if (!audioRef.current || !duration) return;
+    if (!duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    audioRef.current.currentTime = percent * duration;
+    audioPlayer?.seek(percent * duration);
   };
 
   const handleSpeedChange = () => {
-    const nextSpeed = speed >= 2.0 ? 1.0 : speed + 0.25;
-    setSpeed(nextSpeed);
-    if (audioRef.current) audioRef.current.playbackRate = nextSpeed;
+    const nextSpeed = (audioPlayer?.speed || 1.0) >= 2.0 ? 1.0 : (audioPlayer?.speed || 1.0) + 0.25;
+    audioPlayer?.setPlaybackSpeed(nextSpeed);
   };
 
   const jumpToTime = (timestamp) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = timestamp;
-      audioRef.current.play().catch(() => {});
-      setIsPlaying(true);
+    if (activeEp.id) {
+      audioPlayer?.playEpisode(activeEp);
+      audioPlayer?.seek(timestamp);
     }
   };
 
   const formatTime = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
+    const m = Math.floor((secs || 0) / 60);
+    const s = Math.floor((secs || 0) % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   return (
     <div className="audio-overview-view" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <audio
-        ref={audioRef}
-        src={audioUrl}
-        onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-      />
-
       <PodcastConfigBar options={options} setOptions={setOptions} voices={voices} sources={sources} disabled={loading} />
 
       <PodcastPlayerCard
         notebookId={notebookId}
-        audioUrl={audioUrl}
+        audioUrl={activeEp.audio_url || `/api/sourcebook/v1/study/audio/${notebookId}`}
         duration={duration}
         currentTime={currentTime}
         isPlaying={isPlaying}
-        speed={speed}
+        speed={audioPlayer?.speed || 1.0}
         loading={loading}
         sources={sources}
         statusInfo={statusInfo}
@@ -186,7 +169,7 @@ export default function AudioOverviewView({ notebookId, sources = [] }) {
 
       <PodcastEpisodeList episodes={episodes} activeEpisodeId={activeEpId} onSelectEpisode={applyEpisode} formatTime={formatTime} />
 
-      <NotebookLMAudioStudio summary={summary} takeaways={takeaways} turns={turns} sources={sources} onJumpToTime={jumpToTime} formatTime={formatTime} />
+      <OverviewStudioDetail summary={summary} takeaways={takeaways} turns={turns} sources={sources} onJumpToTime={jumpToTime} formatTime={formatTime} />
     </div>
   );
 }

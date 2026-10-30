@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { generateFlashcards } from '../../services/sourcebookApi';
 import { 
-  RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Download,
+  RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Download, MessageSquare,
   PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose
 } from 'lucide-react';
 import BriefingView from './BriefingView';
@@ -56,7 +56,11 @@ export default function StudyStudio({
   isSourcesCollapsed,
   onToggleSources,
   isStudioCollapsed,
-  onToggleStudio
+  onToggleStudio,
+  audioPlayer,
+  episodes,
+  onEpisodesChange,
+  onAddNote
 }) {
   const [flashcards, setFlashcards] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -192,6 +196,38 @@ export default function StudyStudio({
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={() => setActiveMode?.('chat')}
+            title="Return to Chat Studio"
+            style={{
+              padding: '4px 10px',
+              borderRadius: '8px',
+              background: 'rgba(99, 102, 241, 0.12)',
+              border: '1px solid rgba(99, 102, 241, 0.35)',
+              color: '#c7d2fe',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.74rem',
+              fontWeight: 500,
+              outline: 'none',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.35)';
+              e.currentTarget.style.color = '#c7d2fe';
+            }}
+          >
+            <MessageSquare size={13} />
+            <span>Chat Studio</span>
+          </button>
+
           <h1 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#f4f4f5', margin: 0, letterSpacing: '-0.015em' }}>
             {displayTitle}
           </h1>
@@ -305,7 +341,16 @@ export default function StudyStudio({
       <div className="studio-tab-content">
         {activeTab === 'briefing' && <BriefingView sources={sources} />}
         
-        {activeTab === 'audio' && <AudioOverviewView notebookId={notebookId} sources={sources} />}
+        {activeTab === 'audio' && (
+          <AudioOverviewView
+            notebookId={notebookId}
+            sources={sources}
+            audioPlayer={audioPlayer}
+            parentEpisodes={episodes}
+            onEpisodesChange={onEpisodesChange}
+            onAddNote={onAddNote}
+          />
+        )}
         
         {activeTab === 'faq' && <FaqView />}
 

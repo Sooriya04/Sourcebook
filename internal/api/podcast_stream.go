@@ -74,16 +74,19 @@ func (a *API) HandleStreamPodcast(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var envelope struct {
+		Title     string        `json:"title"`
 		Summary   string        `json:"summary"`
 		Takeaways []string      `json:"takeaways"`
 		Turns     []PodcastTurn `json:"turns"`
 	}
 	var turns []PodcastTurn
+	var title string
 	var summary string
 	var takeaways []string
 
 	if err := json.Unmarshal([]byte(rawJSON), &envelope); err == nil && len(envelope.Turns) > 0 {
 		turns = envelope.Turns
+		title = envelope.Title
 		summary = envelope.Summary
 		takeaways = envelope.Takeaways
 	} else if err := json.Unmarshal([]byte(rawJSON), &turns); err != nil {
@@ -95,6 +98,7 @@ func (a *API) HandleStreamPodcast(w http.ResponseWriter, r *http.Request) {
 	a.normalizePodcastTurns(turns, req.VoiceHost1, req.VoiceHost2)
 
 	overviewJSON, _ := json.Marshal(map[string]interface{}{
+		"title":     title,
 		"summary":   summary,
 		"takeaways": takeaways,
 		"turns":     turns,
@@ -106,23 +110,25 @@ func (a *API) HandleStreamPodcast(w http.ResponseWriter, r *http.Request) {
 		episodeID = fmt.Sprintf("ep_%d", time.Now().Unix())
 	}
 
-	a.streamSynthesis(w, r, flusher, req.NotebookID, episodeID, turns, summary, takeaways, req.Length, req.Format)
+	a.streamSynthesis(w, r, flusher, req.NotebookID, episodeID, turns, title, summary, takeaways, req.Length, req.Format, len(docs))
 }
 
-func (a *API) streamSynthesis(w http.ResponseWriter, r *http.Request, flusher http.Flusher, notebookID string, episodeID string, turns []PodcastTurn, summary string, takeaways []string, length string, format string) {
+func (a *API) streamSynthesis(w http.ResponseWriter, r *http.Request, flusher http.Flusher, notebookID string, episodeID string, turns []PodcastTurn, title string, summary string, takeaways []string, length string, format string, sourcesCount int) {
 	audioURL := os.Getenv("AUDIO_SERVICE_URL")
 	if audioURL == "" {
 		audioURL = "http://127.0.0.1:6003"
 	}
 
 	synthPayload, _ := json.Marshal(PodcastSynthesisRequest{
-		NotebookID: notebookID,
-		Turns:      turns,
-		Summary:    summary,
-		Takeaways:  takeaways,
-		EpisodeID:  episodeID,
-		Length:     length,
-		Format:     format,
+		NotebookID:   notebookID,
+		Turns:        turns,
+		Title:        title,
+		Summary:      summary,
+		Takeaways:    takeaways,
+		EpisodeID:    episodeID,
+		Length:       length,
+		Format:       format,
+		SourcesCount: sourcesCount,
 	})
 
 	client := &http.Client{Timeout: 900 * time.Second}

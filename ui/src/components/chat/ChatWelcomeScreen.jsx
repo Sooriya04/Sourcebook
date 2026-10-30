@@ -62,7 +62,7 @@ export default function ChatWelcomeScreen({ notebookTitle, notebookDescription, 
         )}
       </p>
 
-      {/* Floating Prompt Starter Chips (Open, Unboxed, NotebookLM Style) */}
+      {/* Floating Prompt Starter Chips (Open, Unboxed Style) */}
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
         {sourceCount === 0 && onOpenAddSources && (
           <button

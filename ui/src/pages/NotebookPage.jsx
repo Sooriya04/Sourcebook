@@ -14,8 +14,9 @@ import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
-import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes } from '../services/sourcebookApi';
 
 const EMPTY_ARR = [];
 
@@ -26,6 +27,8 @@ export default function NotebookPage({ getNotebook }) {
   const [loadingNotebook, setLoadingNotebook] = useState(true);
   
   const [notes, setNotes] = useState(EMPTY_ARR);
+  const [episodes, setEpisodes] = useState(EMPTY_ARR);
+  const audioPlayer = useAudioPlayer(id);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [discoveryTopic, setDiscoveryTopic] = useState(null);
   const [activeMode, setActiveMode] = useState('chat');
@@ -69,7 +72,8 @@ export default function NotebookPage({ getNotebook }) {
         if (!isMounted) return;
         setNotebook(data);
         setSources(data.sources || EMPTY_ARR);
-        setNotes(data.notes || EMPTY_ARR);
+        const userNotes = (data.notes || EMPTY_ARR).filter((n) => !n.id?.startsWith('note_script_') && n.title !== 'overview-script.md');
+        setNotes(userNotes);
         setMessages(data.messages || EMPTY_ARR);
         hasLoadedRef.current = true;
         setLoadingNotebook(false);
@@ -80,6 +84,16 @@ export default function NotebookPage({ getNotebook }) {
       });
     return () => { isMounted = false; };
   }, [id, setSources, setMessages]);
+
+  // Load podcast episodes for this notebook
+  useEffect(() => {
+    if (!id) return;
+    getPodcastEpisodes(id).then((eps) => {
+      if (eps && eps.length > 0) {
+        setEpisodes(eps);
+      }
+    }).catch(() => {});
+  }, [id]);
 
   // Auto-sync debounced
   useEffect(() => {
@@ -365,6 +379,10 @@ export default function NotebookPage({ getNotebook }) {
                 onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
                 isStudioCollapsed={isStudioCollapsed}
                 onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
+                audioPlayer={audioPlayer}
+                episodes={episodes}
+                onEpisodesChange={setEpisodes}
+                onAddNote={(n) => setNotes((prev) => [n, ...prev])}
               />
             )}
           </ErrorBoundary>
@@ -374,6 +392,10 @@ export default function NotebookPage({ getNotebook }) {
           <ErrorBoundary title="Notes Studio Error">
             <NotesPanel
               notes={notes}
+              episodes={episodes}
+              notebookTitle={notebook?.title || ''}
+              sourcesCount={sources?.length || 0}
+              audioPlayer={audioPlayer}
               onAddNote={(n) => setNotes((prev) => [n, ...prev])}
               onUpdateNote={(n) => setNotes((prev) => prev.map((item) => (item.id === n.id ? n : item)))}
               onDeleteNote={(nId) => setNotes((prev) => prev.filter((item) => item.id !== nId))}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sparkles, FileText, CheckCircle2, Clock } from 'lucide-react';
 
-export default function NotebookLMAudioStudio({
+export default function OverviewStudioDetail({
   summary = '',
   takeaways = [],
   turns = [],
@@ -12,7 +12,7 @@ export default function NotebookLMAudioStudio({
   // Generate chapter timestamps from turns if available
   const chapters = turns
     .filter((_, idx) => idx === 0 || idx % 3 === 0)
-    .map((turn, i) => ({
+    .map((turn) => ({
       title: turn.text.length > 55 ? `${turn.text.slice(0, 52)}...` : turn.text,
       time: turn.start_time || 0,
       host: turn.name || (turn.speaker === 'austin' ? 'Austin' : 'Taylor')
@@ -25,7 +25,7 @@ export default function NotebookLMAudioStudio({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <Sparkles size={15} color="#818cf8" />
           <h5 style={{ margin: 0, fontSize: '0.84rem', fontWeight: 600, color: '#f4f4f5', letterSpacing: '-0.01em' }}>
-            NotebookLM Episode Brief
+            Episode Brief
           </h5>
         </div>
         <p style={{ margin: 0, fontSize: '0.8rem', color: '#d4d4d8', lineHeight: 1.55 }}>

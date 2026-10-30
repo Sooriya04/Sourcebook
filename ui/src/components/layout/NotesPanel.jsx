@@ -6,6 +6,10 @@ import SavedNotesList from './SavedNotesList';
 
 export default function NotesPanel({ 
   notes = [], 
+  episodes = [],
+  notebookTitle = '',
+  sourcesCount = 0,
+  audioPlayer = {},
   onAddNote,
   onUpdateNote,
   onDeleteNote, 
@@ -30,27 +34,98 @@ export default function NotesPanel({
     setEditorNote(null);
   };
 
-  if (isCollapsed) {
-    return null;
-  }
+  const handleOpenOverview = (ep) => {
+    setActiveMode?.('study');
+    setStudyTab?.('audio');
+    if (ep && audioPlayer?.setCurrentEpisode) {
+      audioPlayer.setCurrentEpisode(ep);
+    }
+  };
+
+  const handleOpenScript = (ep) => {
+    const slug = (notebookTitle || 'overview').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const existing = notes.find((n) => n.id === `note_script_${ep.id}` || n.title === `${slug}-script.md`);
+    if (existing) {
+      setEditorNote(existing);
+      return;
+    }
+    let content = `# ${notebookTitle || 'Workspace'} — Audio Overview Script\n\n`;
+    if (ep.summary) content += `## Executive Brief\n${ep.summary}\n\n`;
+    if (ep.takeaways && ep.takeaways.length > 0) {
+      content += `## Core Takeaways\n`;
+      ep.takeaways.forEach((t) => { content += `- ${t}\n`; });
+      content += `\n`;
+    }
+    if (ep.turns && ep.turns.length > 0) {
+      content += `## Spoken Dialogue\n\n`;
+      ep.turns.forEach((turn) => {
+        const spk = turn.name || (turn.speaker === 'austin' ? 'Austin' : 'Taylor');
+        content += `**${spk}**: ${turn.text}\n\n`;
+      });
+    }
+    const newScriptNote = {
+      id: `note_script_${ep.id}`,
+      title: `${slug}-script.md`,
+      content,
+      isScript: true,
+      sourcesCount: sourcesCount || 0,
+      created_at: ep.created_at || new Date().toISOString()
+    };
+    onAddNote?.(newScriptNote);
+    setEditorNote(newScriptNote);
+  };
+
+  if (isCollapsed) return null;
 
   return (
-    <aside className="notes-panel-tasteful" style={{ width: '320px', flexShrink: 0, height: '100%' }}>
-      {/* Studio Header */}
-      <div className="notes-panel-header">
-        <h3 className="notes-panel-heading">Studio</h3>
+    <aside 
+      className="notes-panel-tasteful" 
+      style={{ 
+        width: '320px', 
+        flexShrink: 0, 
+        height: '100%',
+        backgroundColor: '#16181d',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.06)'
+      }}
+    >
+      {/* Studio Header (Clean Typography) */}
+      <div 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 16px 10px 16px',
+          flexShrink: 0
+        }}
+      >
+        <h3 style={{ fontSize: '0.92rem', fontWeight: 500, color: '#f4f4f5', margin: 0, letterSpacing: '-0.01em' }}>
+          Studio
+        </h3>
         <button 
           type="button"
-          className="notes-panel-collapse-btn" 
           onClick={onToggleCollapse} 
           title="Minimize Studio Panel"
           aria-label="Minimize studio panel"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#9aa0a6',
+            padding: '4px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'color 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#9aa0a6'; }}
         >
-          <PanelRightClose size={15} />
+          <PanelRightClose size={16} />
         </button>
       </div>
 
-      <div className="notes-panel-scrollable">
+      <div className="notes-panel-scrollable" style={{ padding: '0 14px 14px 14px', flex: 1, overflowY: 'auto' }}>
         {editorNote ? (
           <NoteEditor
             note={editorNote}
@@ -67,10 +142,16 @@ export default function NotesPanel({
             />
 
             <SavedNotesList
+              episodes={episodes}
               notes={notes}
+              notebookTitle={notebookTitle}
+              sourcesCount={sourcesCount}
+              audioPlayer={audioPlayer}
               onSelectNote={handleOpenEditNote}
               onAddNote={handleOpenNewNote}
               onDeleteNote={onDeleteNote}
+              onOpenOverview={handleOpenOverview}
+              onOpenScript={handleOpenScript}
             />
           </>
         )}

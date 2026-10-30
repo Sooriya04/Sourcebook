@@ -44,11 +44,13 @@ class SynthesizeRequest(BaseModel):
     notebook_id: str
     turns: list[Turn]
     speed: float = 1.0
+    title: str = ""
     summary: str = ""
     takeaways: list[str] = []
     episode_id: str | None = None
     length: str | None = "standard"
     format: str | None = "banter"
+    sources_count: int | None = 0
 
 @app.get("/health")
 def health_check():
@@ -65,7 +67,7 @@ def health_check():
 def list_voices():
     return {"voices": AVAILABLE_VOICES}
 
-def _save_episode_meta(output_dir: str, notebook_id: str, episode_id: str, meta: dict, summary: str = "", takeaways: list = None, length: str = "standard", fmt: str = "banter"):
+def _save_episode_meta(output_dir: str, notebook_id: str, episode_id: str, meta: dict, title: str = "", summary: str = "", takeaways: list = None, length: str = "standard", fmt: str = "banter", sources_count: int = 0):
     nb_dir = os.path.join(output_dir, notebook_id)
     os.makedirs(nb_dir, exist_ok=True)
 
@@ -92,11 +94,13 @@ def _save_episode_meta(output_dir: str, notebook_id: str, episode_id: str, meta:
         "success": True,
         "id": episode_id,
         "notebook_id": notebook_id,
+        "title": title or meta.get("title", ""),
         "audio_url": f"/api/sourcebook/v1/study/audio/{notebook_id}?episode={episode_id}",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "duration": meta["duration"],
         "length": length or meta.get("length", "standard"),
         "format": fmt or meta.get("format", "banter"),
+        "sources_count": sources_count or meta.get("sources_count", 0),
         "summary": summary or meta.get("summary", ""),
         "takeaways": takeaways or meta.get("takeaways", []),
         "turns": meta["turns"]
@@ -130,7 +134,7 @@ def synthesize_podcast_stream(req: SynthesizeRequest):
                     shutil.copyfile(ep_output_path, latest_output_path)
                 except Exception:
                     pass
-                ep_data = _save_episode_meta(output_dir, req.notebook_id, episode_id, event, summary=req.summary, takeaways=req.takeaways, length=req.length, fmt=req.format)
+                ep_data = _save_episode_meta(output_dir, req.notebook_id, episode_id, event, title=req.title, summary=req.summary, takeaways=req.takeaways, length=req.length, fmt=req.format, sources_count=req.sources_count)
                 yield f"data: {json.dumps({'step': 'complete', **ep_data})}\n\n"
             else:
                 yield f"data: {json.dumps(event)}\n\n"

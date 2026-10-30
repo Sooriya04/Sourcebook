@@ -1,85 +1,105 @@
 import React from 'react';
-import { Bookmark, Plus, Trash2 } from 'lucide-react';
-import { parseCitations } from '../../utils/citationParser';
+import StudioAudioItem from './StudioAudioItem';
+import StudioNoteItem from './StudioNoteItem';
 
-export default function SavedNotesList({ notes = [], onSelectNote, onAddNote, onDeleteNote }) {
-  const cleanTitle = (rawTitle) => {
-    if (!rawTitle) return 'Untitled Note';
-    return rawTitle
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/\([^)]*https?:\/\/[^)]*\)/g, '')
-      .replace(/^#+\s*/g, '')
-      .trim() || 'Untitled Note';
-  };
+export default function SavedNotesList({
+  episodes = [],
+  notes = [],
+  notebookTitle = '',
+  sourcesCount = 0,
+  audioPlayer = {},
+  onSelectNote,
+  onAddNote,
+  onDeleteNote,
+  onOpenOverview,
+  onOpenScript
+}) {
+  const { currentEpisode, isPlaying, currentTime, duration, togglePlayEpisode } = audioPlayer;
+  const hasItems = episodes.length > 0 || notes.length > 0;
 
   return (
-    <div className="saved-notes-section">
-      <div className="saved-notes-header-row">
-        <div className="saved-notes-title-group">
-          <Bookmark size={13} className="text-zinc-400" />
-          <span className="saved-notes-title-text">
-            Studio Notes ({notes.length})
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onAddNote}
-          className="saved-notes-add-btn"
-        >
-          <Plus size={12} strokeWidth={2.5} />
-          <span>Add Note</span>
-        </button>
-      </div>
-
-      {notes.length === 0 ? (
-        <div className="saved-notes-empty">
-          <p className="saved-notes-empty-title">Studio notes appear here</p>
-          <p className="saved-notes-empty-sub">
-            Save answers from chat queries or click "Add Note" to write research memos.
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minHeight: 0 }}>
+      {!hasItems ? (
+        <div style={{ textAlign: 'center', padding: '24px 12px', color: '#71717a' }}>
+          <p style={{ fontSize: '0.78rem', color: '#a1a1aa', margin: '0 0 4px 0', fontWeight: 500 }}>
+            Studio artifacts appear here
+          </p>
+          <p style={{ fontSize: '0.7rem', margin: 0, lineHeight: 1.4 }}>
+            Generate an Audio Overview or click "Add note" to capture research notes.
           </p>
         </div>
       ) : (
-        <div className="saved-notes-cards-stack">
-          {notes.map((note) => (
-            <div
-              key={note.id}
-              className="saved-note-card"
-              onClick={() => onSelectNote(note)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelectNote(note);
-                }
-              }}
-            >
-              <div className="saved-note-top">
-                <span className="saved-note-title">
-                  {cleanTitle(note.title)}
-                </span>
-                <button
-                  type="button"
-                  className="saved-note-delete-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteNote?.(note.id);
-                  }}
-                  title="Delete note"
-                  aria-label="Delete note"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {/* Audio Overview Items */}
+          {episodes.map((ep) => {
+            const isCurr = currentEpisode?.id === ep.id;
+            return (
+              <StudioAudioItem
+                key={ep.id}
+                episode={ep}
+                notebookTitle={notebookTitle}
+                sourcesCount={sourcesCount}
+                isCurrentPlaying={isCurr}
+                isPlaying={isCurr && isPlaying}
+                currentTime={currentTime}
+                duration={ep.duration || duration}
+                onTogglePlay={togglePlayEpisode}
+                onOpenOverview={onOpenOverview}
+                onOpenScript={onOpenScript}
+              />
+            );
+          })}
 
-              <div className="saved-note-snippet">
-                {parseCitations(note.content)}
-              </div>
-            </div>
+          {/* Markdown Notes Items */}
+          {notes.map((note) => (
+            <StudioNoteItem
+              key={note.id}
+              note={note}
+              sourcesCount={sourcesCount}
+              onSelectNote={onSelectNote}
+              onDeleteNote={onDeleteNote}
+            />
           ))}
         </div>
       )}
+
+      {/* Floating / Sticky Add Note Button */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px', marginBottom: '8px', position: 'sticky', bottom: '8px', zIndex: 10 }}>
+        <button
+          type="button"
+          onClick={onAddNote}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '7px 20px',
+            borderRadius: '9999px',
+            backgroundColor: '#202227',
+            border: 'none',
+            color: '#e3e3e8',
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+            transition: 'background-color 0.15s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#2c2e35';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#202227';
+          }}
+        >
+          {/* Note Icon with 3 Stripes */}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <rect x="3" y="3" width="18" height="18" rx="4" />
+            <line x1="7" y1="8" x2="17" y2="8" />
+            <line x1="7" y1="12" x2="17" y2="12" />
+            <line x1="7" y1="16" x2="13" y2="16" />
+          </svg>
+          <span>Add note</span>
+        </button>
+      </div>
     </div>
   );
 }
