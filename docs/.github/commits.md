@@ -508,3 +508,8 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Subsystem Modularization & Strict Architectural Compliance (`AGENTS.md`)**:
   - Maintained all Go, Python, and React source files strictly under 200 lines each.
 
+## Commit 63: Fix Notebook Chunk Data Loss on Chat Ingestion
+- **Targeted Chunk Cleanup (`internal/database/chunk_repo.go`, `internal/database/db_test.go`)**: Switched `SaveChunks` from notebook-wide deletion to source-scoped cleanup (`WHERE notebook_id = ? AND source_id = ?`), preventing new web sources from wiping out existing document chunks and embeddings.
+- **System Audit (`artifacts/audit.md`)**: Cataloged 20 repository findings prioritized by safety, performance, and scale.
+
+

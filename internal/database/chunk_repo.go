@@ -10,16 +10,39 @@ import (
 )
 
 // SaveChunks persists a list of document chunks to the database.
+// It cleans up old chunks only for the specific sources being updated,
+// preserving all other sources' chunks in the notebook.
 func (r *Repository) SaveChunks(notebookID string, chunks []models.DocumentChunk) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	// Clean up all old chunks for this notebook to prevent orphans and duplicates
-	if _, err := tx.Exec(`DELETE FROM document_chunks WHERE notebook_id = ?`, notebookID); err != nil {
-		return fmt.Errorf("failed to clean up old chunks for notebook %s: %w", notebookID, err)
+	// Delete old chunks only for the sources present in this chunk batch
+	sourceIDs := make(map[string]bool)
+	for _, chunk := range chunks {
+		if chunk.SourceID != "" {
+			sourceIDs[chunk.SourceID] = true
+		}
+	}
+
+	if len(sourceIDs) > 0 {
+		delStmt, err := tx.Prepare(`DELETE FROM document_chunks WHERE notebook_id = ? AND source_id = ?`)
+		if err != nil {
+			return fmt.Errorf("failed to prepare chunk cleanup statement: %w", err)
+		}
+		defer delStmt.Close()
+
+		for sID := range sourceIDs {
+			if _, err := delStmt.Exec(notebookID, sID); err != nil {
+				return fmt.Errorf("failed to clean up old chunks for source %s: %w", sID, err)
+			}
+		}
 	}
 
 	query := `INSERT INTO document_chunks (id, notebook_id, source_id, chunk_index, content, embedding, created_at) 
