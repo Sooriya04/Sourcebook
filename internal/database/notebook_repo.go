@@ -28,7 +28,11 @@ func (r *Repository) CreateNotebook(title, description string) (*models.Notebook
 }
 
 func (r *Repository) GetNotebooks() ([]models.Notebook, error) {
-	query := `SELECT id, title, description, created_at, updated_at FROM notebooks ORDER BY updated_at DESC`
+	query := `SELECT n.id, n.title, n.description, n.created_at, n.updated_at, COUNT(s.id) 
+	          FROM notebooks n 
+	          LEFT JOIN sources s ON s.notebook_id = n.id 
+	          GROUP BY n.id 
+	          ORDER BY n.updated_at DESC`
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query notebooks: %w", err)
@@ -38,21 +42,16 @@ func (r *Repository) GetNotebooks() ([]models.Notebook, error) {
 	var notebooks []models.Notebook
 	for rows.Next() {
 		var nb models.Notebook
-		if err := rows.Scan(&nb.ID, &nb.Title, &nb.Description, &nb.CreatedAt, &nb.UpdatedAt); err != nil {
+		var sourceCount int
+		if err := rows.Scan(&nb.ID, &nb.Title, &nb.Description, &nb.CreatedAt, &nb.UpdatedAt, &sourceCount); err != nil {
 			return nil, err
 		}
-		notebooks = append(notebooks, nb)
-	}
-	
-	// Close rows before executing new queries
-	rows.Close()
-
-	// Fetch sources for each notebook to populate the count
-	for i := range notebooks {
-		sources, err := r.GetSourcesByNotebook(notebooks[i].ID)
-		if err == nil {
-			notebooks[i].Sources = sources
+		if sourceCount > 0 {
+			nb.Sources = make([]models.SourceRecord, sourceCount)
+		} else {
+			nb.Sources = []models.SourceRecord{}
 		}
+		notebooks = append(notebooks, nb)
 	}
 
 	return notebooks, nil
