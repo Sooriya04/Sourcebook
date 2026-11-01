@@ -19,6 +19,18 @@ jobs:
           go-version: '1.22'
           cache: true
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: services/embedding/requirements.txt
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r services/embedding/requirements.txt
+
       - name: Verify Go Dependencies
         run: go mod verify
 
