@@ -15,6 +15,7 @@ services:
       - SEARQON_SCRAPE_URL=http://searqon:4001/scrape/batch
       - YOUTUBE_SERVICE_URL=http://youtube-service:6001
       - AUDIO_SERVICE_URL=http://audio-service:6003
+      - EMBEDDING_SERVICE_URL=http://embedding-service:6002
       - LLM_PROVIDER=ollama
       - LLM_URL=http://host.docker.internal:11434
       - LLM_MODEL=gemma2
@@ -26,6 +27,7 @@ services:
       - searqon
       - youtube-service
       - audio-service
+      - embedding-service
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -78,6 +80,21 @@ services:
     volumes:
       - audio_data:/app/database/audio
 
+  embedding-service:
+    build:
+      context: ../services/embedding
+      dockerfile: Dockerfile
+    container_name: sourcebook-embedding
+    restart: unless-stopped
+    ports:
+      - "6002:6002"
+    environment:
+      - PORT=6002
+      - EMBEDDING_MODEL_DIR=/root/.cache/chroma/onnx_models/all-MiniLM-L6-v2/onnx
+    volumes:
+      - embedding_cache:/root/.cache
+
 volumes:
   sourcebook_data:
   audio_data:
+  embedding_cache:

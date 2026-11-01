@@ -528,6 +528,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Search Pipeline Channel Race Fix (`internal/api/pipeline_search.go`, `internal/api/pipeline_search_test.go`)**: Separated Web Search error reporting and concurrent YouTube search synchronization, preventing swallowed search errors and verifying error propagation with unit tests.
 - **Pipeline Subsystem Modularization (`internal/api/pipeline_handler.go`, `internal/api/pipeline_scrape.go`, `internal/api/pipeline_web.go`)**: Decomposed monolithic 538-line pipeline handler into clean sub-200-line components for search, specialized URL scraping, and web scraping.
 
+## Commit 68: Add Embedding Microservice to Docker Compose Stack
+- **Docker Compose Embedding Orchestration (`docker/docker-compose.yml`)**: Added `embedding-service` on port 6002 with persistent model cache volume, wired `EMBEDDING_SERVICE_URL` into the main app container, and restored vector ingestion capabilities in containerized deployments.
+- **Embedding Containerization (`services/embedding/Dockerfile`, `services/embedding/requirements.txt`)**: Packaged Python ONNX Runtime MiniLM embedder with minimal dependencies and container build specs.
+
+
 
 
 
