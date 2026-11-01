@@ -169,3 +169,59 @@ func TestSaveMemoryPair_ChronologicalOrder(t *testing.T) {
 		t.Errorf("Expected second record to be assistant answer, got role=%s content=%s", records[1].Role, records[1].Content)
 	}
 }
+
+func TestGetNotebooks_SourceCount(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "sourcebook_notebooks_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	db, err := InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewRepository(db)
+	nb1, err := repo.CreateNotebook("Notebook 1", "Desc 1")
+	if err != nil {
+		t.Fatalf("CreateNotebook 1 failed: %v", err)
+	}
+
+	nb2, err := repo.CreateNotebook("Notebook 2", "Desc 2")
+	if err != nil {
+		t.Fatalf("CreateNotebook 2 failed: %v", err)
+	}
+
+	err = repo.AddSource(&models.SourceRecord{ID: "s1", NotebookID: nb1.ID, Title: "Source 1"})
+	if err != nil {
+		t.Fatalf("AddSource failed: %v", err)
+	}
+	err = repo.AddSource(&models.SourceRecord{ID: "s2", NotebookID: nb1.ID, Title: "Source 2"})
+	if err != nil {
+		t.Fatalf("AddSource failed: %v", err)
+	}
+
+	notebooks, err := repo.GetNotebooks()
+	if err != nil {
+		t.Fatalf("GetNotebooks failed: %v", err)
+	}
+
+	if len(notebooks) != 2 {
+		t.Fatalf("Expected 2 notebooks, got %d", len(notebooks))
+	}
+
+	for _, nb := range notebooks {
+		if nb.ID == nb1.ID {
+			if len(nb.Sources) != 2 {
+				t.Errorf("Expected 2 sources for nb1, got %d", len(nb.Sources))
+			}
+		} else if nb.ID == nb2.ID {
+			if len(nb.Sources) != 0 {
+				t.Errorf("Expected 0 sources for nb2, got %d", len(nb.Sources))
+			}
+		}
+	}
+}
