@@ -1,119 +1,32 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
-	"sourcebook/internal/arxiv"
-	"sourcebook/internal/models"
+
 	"sourcebook/internal/synthesis"
-	"sourcebook/internal/utils"
-	"time"
 )
 
-// fetchPipelineSources performs Search -> Searqon /scrape/batch and returns clean docs.
+// fetchPipelineSources performs Search -> Scrape and returns clean docs.
 func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources int, urls []string, jobID string) ([]synthesis.ScrapedDoc, []byte, error) {
 	var youtubeDocs []synthesis.ScrapedDoc
 
 	if len(urls) == 0 {
-		settings, err := a.repo.GetSettings()
+		var err error
+		urls, youtubeDocs, err = a.searchPipelineSources(ctx, query, maxSources, jobID)
 		if err != nil {
-			log.Printf("[Pipeline] Failed to fetch settings: %v", err)
-			return nil, nil, fmt.Errorf("failed to fetch settings: %w", err)
+			return nil, nil, err
 		}
-		
-		options := models.SearchOptions{
-			Web:          true,
-			Provider:     settings.SearchProvider,
-			MaxResults:   settings.MaxSources,
-			SearxngLimit: settings.SearxngSplit,
-			DdgLimit:     settings.DdgSplit,
-		}
-		
-		var results []models.SearchResult
-		var mu sync.Mutex
-		
-		errChan := make(chan error, 2)
-		
-		log.Printf("[Pipeline] Querying Unified Search (%s) for query: %q", options.Provider, query)
-		searchStart := time.Now()
-
-		// Run Web Search
-		go func() {
-			res, err := a.searchController.Search(ctx, query, options)
-			if err == nil {
-				mu.Lock()
-				results = res
-				mu.Unlock()
-			}
-			errChan <- err
-		}()
-		
-		// Run YouTube Search concurrently if enabled
-		go func() {
-			var docs []synthesis.ScrapedDoc
-			var err error
-			if settings.YoutubeEnabled && settings.YoutubeMaxSources > 0 {
-				log.Printf("[Pipeline] Querying YouTube for query: %q", query)
-				docs, err = FetchYouTubeTranscripts(ctx, query, settings.YoutubeMaxSources)
-			}
-			if err == nil && len(docs) > 0 {
-				mu.Lock()
-				youtubeDocs = docs
-				mu.Unlock()
-			} else if err != nil {
-				log.Printf("[Pipeline] YouTube search failed: %v", err)
-			}
-			errChan <- nil // Non-fatal if youtube fails
-		}()
-		
-		// Wait for Web Search
-		if err := <-errChan; err != nil {
-			log.Printf("[Pipeline] Search failed after %v: %v", time.Since(searchStart), err)
-			return nil, nil, fmt.Errorf("search failed: %w", err)
-		}
-		
-		// Wait for YouTube Search
-		<-errChan
-
-		mu.Lock()
-		resultsCopy := make([]models.SearchResult, len(results))
-		copy(resultsCopy, results)
-		youtubeDocsCopy := make([]synthesis.ScrapedDoc, len(youtubeDocs))
-		copy(youtubeDocsCopy, youtubeDocs)
-		mu.Unlock()
-
-		log.Printf("[Pipeline] Search completed in %v. Found %d raw results and %d youtube results.", time.Since(searchStart), len(resultsCopy), len(youtubeDocsCopy))
-
-		seen := map[string]bool{}
-		for _, res := range resultsCopy {
-			if len(urls) >= maxSources {
-				break
-			}
-			if res.URL != "" && !seen[res.URL] {
-				seen[res.URL] = true
-				urls = append(urls, res.URL)
-				if a.pipelineStore != nil && jobID != "" {
-					a.pipelineStore.UpsertSource(jobID, res, query)
-				}
-			}
-		}
-		
-		// Note: youtubeDocs will be appended to the final docs list after Searqon finishes scraping web URLs
 	} else {
 		log.Printf("[Pipeline] Skipping search, using %d explicitly provided URLs.", len(urls))
 	}
 
 	if len(urls) == 0 {
 		if len(youtubeDocs) > 0 {
-			log.Printf("[Pipeline] No web URLs to scrape, but found %d YouTube transcripts. Returning them directly.", len(youtubeDocs))
+			log.Printf("[Pipeline] No web URLs to scrape, found %d YouTube transcripts.", len(youtubeDocs))
 			return youtubeDocs, []byte(`{"success":true,"data":[]}`), nil
 		}
 		log.Printf("[Pipeline] No valid URLs found to scrape.")
@@ -121,362 +34,90 @@ func (a *API) fetchPipelineSources(ctx context.Context, query string, maxSources
 	}
 
 	log.Printf("[Pipeline] Extracted %d unique target URLs to process: %v", len(urls), urls)
+	docs, rawBody := a.scrapePipelineURLs(ctx, urls)
 
-	var webUrls []string
-	var youtubeUrls []string
-	var arxivUrls []string
-	var redditUrls []string
-	var socialUrls []string
-	for _, u := range urls {
-		if strings.Contains(u, "youtube.com") || strings.Contains(u, "youtu.be") {
-			youtubeUrls = append(youtubeUrls, u)
-		} else if arxiv.IsArxivURL(u) {
-			arxivUrls = append(arxivUrls, u)
-		} else if utils.IsRedditURL(u) {
-			redditUrls = append(redditUrls, u)
-		} else if utils.IsSocialURL(u) {
-			socialUrls = append(socialUrls, u)
-		} else {
-			webUrls = append(webUrls, u)
-		}
+	if len(youtubeDocs) > 0 {
+		docs = append(docs, youtubeDocs...)
 	}
 
+	log.Printf("[Pipeline] Pipeline finished successfully. Cleaned %d documents.", len(docs))
+	return docs, rawBody, nil
+}
+
+func (a *API) scrapePipelineURLs(ctx context.Context, urls []string) ([]synthesis.ScrapedDoc, []byte) {
+	cat := categorizeURLs(urls)
+
 	var docs []synthesis.ScrapedDoc
-	var arxivDocs []synthesis.ScrapedDoc
-	var redditDocs []synthesis.ScrapedDoc
-	var socialDocs []synthesis.ScrapedDoc
 	var body []byte
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	// 1. Process YouTube URLs concurrently
-	for _, yu := range youtubeUrls {
-		wg.Add(1)
-		go func(url string) {
-			defer wg.Done()
-			log.Printf("[Pipeline] Intercepted YouTube URL for direct transcript extraction: %s", url)
-			transcript, ytErr := FetchSingleYouTubeTranscript(ctx, url)
-			if ytErr == nil && transcript != "" {
-				cleanText := utils.CleanText(transcript)
-				if cleanText != "" {
-					title := FetchYouTubeTitle(ctx, url)
-					mu.Lock()
-					youtubeDocs = append(youtubeDocs, synthesis.ScrapedDoc{
-						Title:   title,
-						URL:     url,
-						Content: cleanText,
-					})
-					mu.Unlock()
-				}
-			} else {
-				log.Printf("[Pipeline] Failed to extract YouTube transcript for %s: %v", url, ytErr)
-			}
-		}(yu)
-	}
-
-	// 2. Process ArXiv URLs concurrently
-	for _, au := range arxivUrls {
-		wg.Add(1)
-		go func(url string) {
-			defer wg.Done()
-			log.Printf("[Pipeline] Intercepted arXiv URL for paper extraction: %s", url)
-			title, content, axErr := arxiv.FetchSingleArxivDocument(ctx, url)
-			if axErr == nil && content != "" {
-				if title == "" {
-					title = "arXiv Paper"
-				}
-				mu.Lock()
-				arxivDocs = append(arxivDocs, synthesis.ScrapedDoc{
-					Title:   title,
-					URL:     url,
-					Content: content,
-				})
-				mu.Unlock()
-			} else {
-				log.Printf("[Pipeline] Failed to extract arXiv paper for %s: %v", url, axErr)
-			}
-		}(au)
-	}
-
-	// 2. Process Reddit URLs concurrently via Reddit microservice
-	if len(redditUrls) > 0 {
+	if len(cat.youtube) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			log.Printf("[Pipeline] Intercepted %d Reddit URL(s) for microservice extraction", len(redditUrls))
-			res, err := utils.ScrapeWithReddit(ctx, redditUrls)
-			if err == nil {
+			if yDocs := scrapeYouTubeURLs(ctx, cat.youtube); len(yDocs) > 0 {
 				mu.Lock()
-				for _, item := range res {
-					if item.Success && item.Markdown != "" {
-						cleanText := utils.CleanText(item.Markdown)
-						if cleanText != "" {
-							redditDocs = append(redditDocs, synthesis.ScrapedDoc{
-								Title:   item.Title,
-								URL:     item.URL,
-								Content: cleanText,
-							})
-						}
-					} else {
-						log.Printf("[Pipeline] Reddit scrape failed for %s: %s", item.URL, item.Error)
-					}
-				}
+				docs = append(docs, yDocs...)
 				mu.Unlock()
-			} else {
-				log.Printf("[Pipeline] Reddit microservice call failed: %v", err)
 			}
 		}()
 	}
 
-	// 3. Process Social URLs concurrently via Social microservice
-	if len(socialUrls) > 0 {
+	if len(cat.arxiv) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			log.Printf("[Pipeline] Intercepted %d Social/Feed URL(s) for microservice extraction", len(socialUrls))
-			res, err := utils.ScrapeWithSocial(ctx, socialUrls)
-			if err == nil {
+			if aDocs := scrapeArxivURLs(ctx, cat.arxiv); len(aDocs) > 0 {
 				mu.Lock()
-				for _, item := range res {
-					if item.Success && item.Markdown != "" {
-						cleanText := utils.CleanText(item.Markdown)
-						if cleanText != "" {
-							socialDocs = append(socialDocs, synthesis.ScrapedDoc{
-								Title:   item.Title,
-								URL:     item.URL,
-								Content: cleanText,
-							})
-						}
-					} else {
-						log.Printf("[Pipeline] Social scrape failed for %s: %s", item.URL, item.Error)
-					}
-				}
+				docs = append(docs, aDocs...)
 				mu.Unlock()
-			} else {
-				log.Printf("[Pipeline] Social microservice call failed: %v", err)
 			}
 		}()
 	}
 
-	// 4. Process Web URLs via Searqon concurrently (Batch or Deep Crawl Sub-URLs)
-	if len(webUrls) > 0 {
+	if len(cat.reddit) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
-			settings, _ := a.repo.GetSettings()
-			deepCrawl := settings != nil && settings.DeepCrawlEnabled
-
-			if deepCrawl {
-				searqonURL := os.Getenv("SEARQON_URL")
-				if searqonURL == "" {
-					searqonURL = "http://localhost:4001"
-				}
-				log.Printf("[Pipeline] Deep Crawl Enabled! Crawling sub-URLs for %d web sources via Searqon (%s)...", len(webUrls), searqonURL)
-
-				limit := 5
-				depth := 1
-				if settings.DeepCrawlLimit > 0 {
-					limit = settings.DeepCrawlLimit
-				}
-				if settings.DeepCrawlDepth > 0 {
-					depth = settings.DeepCrawlDepth
-				}
-
-				client := &http.Client{Timeout: 30 * time.Second}
-				var crawlWg sync.WaitGroup
-				for _, webURL := range webUrls {
-					crawlWg.Add(1)
-					go func(u string) {
-						defer crawlWg.Done()
-						crawlEndpoint := fmt.Sprintf("%s/crawl", searqonURL)
-						crawlBody, _ := json.Marshal(map[string]interface{}{
-							"url":    u,
-							"limit":  limit,
-							"depth":  depth,
-							"format": "markdown",
-						})
-						req, err := http.NewRequestWithContext(ctx, "POST", crawlEndpoint, bytes.NewBuffer(crawlBody))
-						if err != nil {
-							return
-						}
-						req.Header.Set("Content-Type", "application/json")
-						resp, err := client.Do(req)
-						if err != nil || resp.StatusCode != http.StatusOK {
-							if resp != nil {
-								resp.Body.Close()
-							}
-							return
-						}
-						var searqonCrawlData struct {
-							Success bool `json:"success"`
-							Data    struct {
-								Pages []struct {
-									Title    string `json:"title"`
-									URL      string `json:"url"`
-									Markdown string `json:"markdown"`
-									Content  string `json:"content"`
-								} `json:"pages"`
-							} `json:"data"`
-						}
-						if err := json.NewDecoder(resp.Body).Decode(&searqonCrawlData); err == nil && searqonCrawlData.Success {
-							mu.Lock()
-							for _, item := range searqonCrawlData.Data.Pages {
-								text := item.Markdown
-								if text == "" {
-									text = item.Content
-								}
-								text = utils.CleanText(text)
-								if text != "" {
-									docs = append(docs, synthesis.ScrapedDoc{
-										Title:   item.Title,
-										URL:     item.URL,
-										Content: text,
-									})
-								}
-							}
-							mu.Unlock()
-						}
-						resp.Body.Close()
-					}(webURL)
-				}
-				crawlWg.Wait()
-				return
-			}
-
-			// Standard Batch Scrape with Jina fallback
-			unresolved := make(map[string]bool, len(webUrls))
-			for _, u := range webUrls {
-				unresolved[u] = true
-			}
-
-			searqonURL := ""
-			if a.repo != nil {
-				if s, err := a.repo.GetSettings(); err == nil && s.SearqonURL != "" {
-					searqonURL = s.SearqonURL
-				}
-			}
-			if searqonURL == "" {
-				searqonURL = os.Getenv("SEARQON_SCRAPE_URL")
-			}
-			if searqonURL == "" {
-				searqonURL = "http://127.0.0.1:4001/scrape/batch"
-			}
-			var searqonSuccess bool
-			var respBody []byte
-
-			if searqonURL != "" {
-				batchBody, _ := json.Marshal(map[string]interface{}{
-					"urls":   webUrls,
-					"format": "markdown",
-				})
-				searqonReq, err := http.NewRequestWithContext(ctx, "POST", searqonURL, bytes.NewBuffer(batchBody))
-				if err == nil {
-					searqonReq.Header.Set("Content-Type", "application/json")
-					client := &http.Client{Timeout: 45 * time.Second}
-					searqonResp, err := client.Do(searqonReq)
-					if err == nil {
-						defer searqonResp.Body.Close()
-						if searqonResp.StatusCode == http.StatusOK {
-							respBody, err = io.ReadAll(searqonResp.Body)
-							if err == nil {
-								var searqonData struct {
-									Success bool `json:"success"`
-									Data    []struct {
-										Title    string `json:"title"`
-										URL      string `json:"url"`
-										Markdown string `json:"markdown"`
-										Content  string `json:"content"`
-									} `json:"data"`
-								}
-								if err := json.Unmarshal(respBody, &searqonData); err == nil && searqonData.Success {
-									searqonSuccess = true
-									mu.Lock()
-									for _, item := range searqonData.Data {
-										text := item.Markdown
-										if text == "" {
-											text = item.Content
-										}
-										text = utils.CleanText(text)
-										if text != "" {
-											docs = append(docs, synthesis.ScrapedDoc{
-												Title:   item.Title,
-												URL:     item.URL,
-												Content: text,
-											})
-											delete(unresolved, item.URL)
-										}
-									}
-									mu.Unlock()
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// Jina AI fallback for remaining web URLs
-			if len(unresolved) > 0 {
-				var jinaUrls []string
-				for u := range unresolved {
-					jinaUrls = append(jinaUrls, u)
-				}
-				log.Printf("[Pipeline] Searqon did not resolve all web URLs (success=%t). Dispatching Jina AI fallback for %d URL(s)...", searqonSuccess, len(jinaUrls))
-				jinaResults, jinaErr := utils.ScrapeWithJina(ctx, jinaUrls)
-				if jinaErr == nil {
-					mu.Lock()
-					for _, item := range jinaResults {
-						if item.Success && item.Markdown != "" {
-							cleanText := utils.CleanText(item.Markdown)
-							if cleanText != "" {
-								docs = append(docs, synthesis.ScrapedDoc{
-									Title:   item.Title,
-									URL:     item.URL,
-									Content: cleanText,
-								})
-								delete(unresolved, item.URL)
-							}
-						}
-					}
-					mu.Unlock()
-				} else {
-					log.Printf("[Pipeline] Fallback Jina AI scrape failed: %v", jinaErr)
-				}
-			}
-
-			if respBody != nil {
+			if rDocs := scrapeRedditURLs(ctx, cat.reddit); len(rDocs) > 0 {
 				mu.Lock()
-				body = respBody
-				mu.Unlock()
-			} else {
-				mu.Lock()
-				body = []byte(`{"success":true,"data":[]}`)
+				docs = append(docs, rDocs...)
 				mu.Unlock()
 			}
+		}()
+	}
+
+	if len(cat.social) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if sDocs := scrapeSocialURLs(ctx, cat.social); len(sDocs) > 0 {
+				mu.Lock()
+				docs = append(docs, sDocs...)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	if len(cat.web) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			wDocs, rawBody := a.scrapeWebURLs(ctx, cat.web)
+			mu.Lock()
+			if len(wDocs) > 0 {
+				docs = append(docs, wDocs...)
+			}
+			body = rawBody
+			mu.Unlock()
 		}()
 	} else {
 		body = []byte(`{"success":true,"data":[]}`)
 	}
-	
-	// Wait for all youtube extractions and web scrapes to finish
+
 	wg.Wait()
-
-	// Append youtube, arxiv, reddit, and social results to docs
-	if len(youtubeDocs) > 0 {
-		docs = append(docs, youtubeDocs...)
-	}
-	if len(arxivDocs) > 0 {
-		docs = append(docs, arxivDocs...)
-	}
-	if len(redditDocs) > 0 {
-		docs = append(docs, redditDocs...)
-	}
-	if len(socialDocs) > 0 {
-		docs = append(docs, socialDocs...)
-	}
-
-	log.Printf("[Pipeline] Pipeline finished successfully. Cleaned and normalized %d documents for LLM.", len(docs))
-	return docs, body, nil
+	return docs, body
 }
 
 // HandlePipeline: search via SearXNG → top URLs → Searqon /scrape/batch → clean JSON

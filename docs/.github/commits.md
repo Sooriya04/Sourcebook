@@ -524,6 +524,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Path Traversal Protection (`internal/api/podcast_audio.go`, `internal/api/podcast_audio_test.go`)**: Enforced strict alphanumeric identifier validation and filesystem boundary checks on podcast audio and metadata endpoints, preventing arbitrary file reads.
 - **Audio Service Sanitization (`services/audio/main.py`)**: Added identifier validation to audio streaming, episode listing, and audio serving endpoints in the Python audio microservice.
 
+## Commit 67: Resolve Channel Race in Search Pipeline and Modularize Pipeline Handlers
+- **Search Pipeline Channel Race Fix (`internal/api/pipeline_search.go`, `internal/api/pipeline_search_test.go`)**: Separated Web Search error reporting and concurrent YouTube search synchronization, preventing swallowed search errors and verifying error propagation with unit tests.
+- **Pipeline Subsystem Modularization (`internal/api/pipeline_handler.go`, `internal/api/pipeline_scrape.go`, `internal/api/pipeline_web.go`)**: Decomposed monolithic 538-line pipeline handler into clean sub-200-line components for search, specialized URL scraping, and web scraping.
+
+
 
 
 
