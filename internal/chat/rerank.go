@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"sort"
-	"sync"
 
 	"sourcebook/internal/vector"
 )
@@ -43,24 +42,30 @@ func (r *Reranker) Rerank(ctx context.Context, query string, docs []Document, li
 	}
 
 	vecScores := make([]float32, len(docs))
-	var wg sync.WaitGroup
+	var textsToEmbed []string
+	var textIndices []int
+
 	for i, doc := range docs {
-		wg.Add(1)
-		go func(idx int, d Document) {
-			defer wg.Done()
-			if len(d.Embedding) > 0 {
-				vecScores[idx] = vector.CosineSimilarity(queryEmb, d.Embedding)
-				return
-			}
-			if r.vectorClient != nil {
-				docEmb, err := r.vectorClient.GenerateQueryEmbedding(ctx, d.Content)
-				if err == nil && len(docEmb) > 0 {
-					vecScores[idx] = vector.CosineSimilarity(queryEmb, docEmb)
+		if len(doc.Embedding) > 0 {
+			vecScores[i] = vector.CosineSimilarity(queryEmb, doc.Embedding)
+		} else if r.vectorClient != nil {
+			textsToEmbed = append(textsToEmbed, doc.Content)
+			textIndices = append(textIndices, i)
+		}
+	}
+
+	if len(textsToEmbed) > 0 && r.vectorClient != nil {
+		docEmbs, err := r.vectorClient.GenerateBatchEmbeddings(ctx, textsToEmbed)
+		if err == nil && len(docEmbs) == len(textsToEmbed) {
+			for j, idx := range textIndices {
+				if len(docEmbs[j]) > 0 {
+					vecScores[idx] = vector.CosineSimilarity(queryEmb, docEmbs[j])
 				}
 			}
-		}(i, doc)
+		} else {
+			log.Printf("[Rerank] Batch embedding failed (%v), falling back to zero scores for %d docs", err, len(textsToEmbed))
+		}
 	}
-	wg.Wait()
 
 	type rankPair struct {
 		idx   int

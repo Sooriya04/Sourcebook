@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"strings"
 	"sourcebook/internal/models"
 	"sourcebook/internal/vector"
 	"time"
@@ -40,7 +41,7 @@ func (r *Repository) GetMemoryByNotebook(notebookID string) ([]models.MemoryReco
 	for rows.Next() {
 		var m models.MemoryRecord
 		var embeddingBytes []byte
-		err := rows.Scan(&m.ID, &m.NotebookID, &m.MessageID, &m.Role, &m.Content, &embeddingBytes, &m.CreatedAt)
+        err := rows.Scan(&m.ID, &m.NotebookID, &m.MessageID, &m.Role, &m.Content, &embeddingBytes, &m.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan memory row: %w", err)
 		}
@@ -48,4 +49,43 @@ func (r *Repository) GetMemoryByNotebook(notebookID string) ([]models.MemoryReco
 		records = append(records, m)
 	}
 	return records, nil
+}
+
+// SaveMemoryPair persists user and assistant chat memory entries in a single transaction to guarantee chronological order.
+func (r *Repository) SaveMemoryPair(notebookID, userMessageID, userContent string, userEmbedding []float32, asstMessageID, asstContent string, asstEmbedding []float32) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	now := time.Now().UTC()
+
+	if strings.TrimSpace(userContent) != "" {
+		userID := uuid.NewString()
+		userEmbBytes := vector.Float32SliceToBytes(userEmbedding)
+		query := `INSERT INTO chat_memory (id, notebook_id, message_id, role, content, embedding, created_at)
+		          VALUES (?, ?, ?, ?, ?, ?, ?)`
+		_, err = tx.Exec(query, userID, notebookID, userMessageID, "user", userContent, userEmbBytes, now)
+		if err != nil {
+			return fmt.Errorf("failed to insert user memory: %w", err)
+		}
+	}
+
+	if strings.TrimSpace(asstContent) != "" {
+		asstID := uuid.NewString()
+		asstEmbBytes := vector.Float32SliceToBytes(asstEmbedding)
+		asstTime := now.Add(1 * time.Millisecond)
+		query := `INSERT INTO chat_memory (id, notebook_id, message_id, role, content, embedding, created_at)
+		          VALUES (?, ?, ?, ?, ?, ?, ?)`
+		_, err = tx.Exec(query, asstID, notebookID, asstMessageID, "assistant", asstContent, asstEmbBytes, asstTime)
+		if err != nil {
+			return fmt.Errorf("failed to insert assistant memory: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit memory pair transaction: %w", err)
+	}
+	return nil
 }

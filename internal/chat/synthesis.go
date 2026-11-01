@@ -67,8 +67,7 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 			_, _ = c.repo.AddMessage(req.NotebookID, "assistant", answer)
 		}
 		if c.memoryRetriever != nil {
-			c.memoryRetriever.SaveTurn(req.NotebookID, "", "user", req.Query)
-			c.memoryRetriever.SaveTurn(req.NotebookID, "", "assistant", answer)
+			c.memoryRetriever.SaveTurn(req.NotebookID, req.Query, answer)
 		}
 	}
 
@@ -165,8 +164,7 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 			_, _ = c.repo.AddMessage(req.NotebookID, "assistant", fullAnswer.String())
 		}
 		if c.memoryRetriever != nil {
-			c.memoryRetriever.SaveTurn(req.NotebookID, "", "user", req.Query)
-			c.memoryRetriever.SaveTurn(req.NotebookID, "", "assistant", fullAnswer.String())
+			c.memoryRetriever.SaveTurn(req.NotebookID, req.Query, fullAnswer.String())
 		}
 	}
 

@@ -131,25 +131,39 @@ func (m *MemoryRetriever) RetrieveRelevantHistory(ctx context.Context, notebookI
 	return result, nil
 }
 
-// SaveTurn Async/Sync saves a chat turn into the database and generates its vector embedding.
-func (m *MemoryRetriever) SaveTurn(notebookID, messageID, role, content string) {
-	if notebookID == "" || strings.TrimSpace(content) == "" {
+// SaveTurn saves user and assistant chat turns chronologically in a single transaction/function.
+func (m *MemoryRetriever) SaveTurn(notebookID, userContent, assistantContent string) {
+	if notebookID == "" || (strings.TrimSpace(userContent) == "" && strings.TrimSpace(assistantContent) == "") {
 		return
 	}
 
-	// Run in background goroutine to prevent blocking HTTP response
+	// Run in background goroutine to prevent blocking HTTP response,
+	// coordinating user and assistant saves chronologically in a single transaction/function.
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
-		emb, err := m.vectorClient.GenerateQueryEmbedding(ctx, content)
-		if err != nil {
-			log.Printf("[MemoryRetriever] Failed to embed chat turn (%s): %v", role, err)
-			emb = nil
+		var userEmb, asstEmb []float32
+		var err error
+
+		if strings.TrimSpace(userContent) != "" {
+			userEmb, err = m.vectorClient.GenerateQueryEmbedding(ctx, userContent)
+			if err != nil {
+				log.Printf("[MemoryRetriever] Failed to embed chat turn (user): %v", err)
+				userEmb = nil
+			}
 		}
 
-		if err := m.repo.SaveMemory(notebookID, messageID, role, content, emb); err != nil {
-			log.Printf("[MemoryRetriever] Failed to save chat memory: %v", err)
+		if strings.TrimSpace(assistantContent) != "" {
+			asstEmb, err = m.vectorClient.GenerateQueryEmbedding(ctx, assistantContent)
+			if err != nil {
+				log.Printf("[MemoryRetriever] Failed to embed chat turn (assistant): %v", err)
+				asstEmb = nil
+			}
+		}
+
+		if err := m.repo.SaveMemoryPair(notebookID, "", userContent, userEmb, "", assistantContent, asstEmb); err != nil {
+			log.Printf("[MemoryRetriever] Failed to save chat memory pair: %v", err)
 		}
 	}()
 }
