@@ -1,11 +1,15 @@
 import os
+import io
+import tarfile
 import threading
+import urllib.request
 from typing import List
 import numpy as np
 import onnxruntime as ort
 from tokenizers import Tokenizer
 
 DEFAULT_MODEL_DIR = os.path.expanduser("~/.cache/chroma/onnx_models/all-MiniLM-L6-v2/onnx")
+MODEL_TAR_URL = "https://chroma-onnx-models.s3.amazonaws.com/all-MiniLM-L6-v2/onnx.tar.gz"
 
 class MiniLMEmbedder:
     _instance = None
@@ -15,6 +19,9 @@ class MiniLMEmbedder:
         self.model_dir = model_dir or os.getenv("EMBEDDING_MODEL_DIR", DEFAULT_MODEL_DIR)
         model_path = os.path.join(self.model_dir, "model.onnx")
         tok_path = os.path.join(self.model_dir, "tokenizer.json")
+
+        if not os.path.exists(model_path) or not os.path.exists(tok_path):
+            self._download_model()
 
         if not os.path.exists(model_path) or not os.path.exists(tok_path):
             raise FileNotFoundError(f"Model or tokenizer not found in {self.model_dir}")
@@ -30,6 +37,18 @@ class MiniLMEmbedder:
         self.tokenizer = Tokenizer.from_file(tok_path)
         self.tokenizer.enable_truncation(max_length=256)
         self.inference_lock = threading.Lock()
+
+    def _download_model(self):
+        parent_dir = os.path.dirname(self.model_dir)
+        os.makedirs(parent_dir, exist_ok=True)
+        try:
+            req = urllib.request.Request(MODEL_TAR_URL, headers={"User-Agent": "Sourcebook/1.0"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                with tarfile.open(fileobj=io.BytesIO(resp.read()), mode="r:gz") as tar:
+                    tar.extractall(parent_dir)
+        except Exception as e:
+            # Re-raise or log download issue
+            pass
 
     @classmethod
     def get_instance(cls):
