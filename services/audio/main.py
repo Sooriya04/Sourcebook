@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import time
 from datetime import datetime, timezone
@@ -21,9 +22,11 @@ app.add_middleware(
 
 synthesizer = None
 
+def is_safe_id(val: str | None) -> bool:
+    return bool(val and len(val) <= 128 and re.fullmatch(r"[a-zA-Z0-9_\-]+", val))
+
 def get_output_dir():
-    custom_dir = os.getenv("AUDIO_OUTPUT_DIR")
-    if custom_dir:
+    if custom_dir := os.getenv("AUDIO_OUTPUT_DIR"):
         return custom_dir
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return os.path.join(base_dir, "database", "audio")
@@ -116,6 +119,8 @@ def _save_episode_meta(output_dir: str, notebook_id: str, episode_id: str, meta:
 def synthesize_podcast_stream(req: SynthesizeRequest):
     if not req.turns:
         raise HTTPException(status_code=400, detail="Turns cannot be empty")
+    if not is_safe_id(req.notebook_id) or (req.episode_id and not is_safe_id(req.episode_id)):
+        raise HTTPException(status_code=400, detail="Invalid notebook or episode ID")
 
     output_dir = get_output_dir()
     episode_id = req.episode_id or f"ep_{int(time.time())}"
@@ -143,6 +148,8 @@ def synthesize_podcast_stream(req: SynthesizeRequest):
 
 @app.get("/episodes/{notebook_id}")
 def list_episodes(notebook_id: str):
+    if not is_safe_id(notebook_id):
+        raise HTTPException(status_code=400, detail="Invalid notebook ID")
     output_dir = get_output_dir()
     nb_dir = os.path.join(output_dir, notebook_id)
     episodes = []
@@ -179,12 +186,10 @@ def list_episodes(notebook_id: str):
 
 @app.get("/audio/{notebook_id}")
 def serve_audio(notebook_id: str, episode: str | None = None):
+    if not is_safe_id(notebook_id) or (episode and not is_safe_id(episode)):
+        raise HTTPException(status_code=400, detail="Invalid notebook or episode ID")
     output_dir = get_output_dir()
-    if episode:
-        path = os.path.join(output_dir, notebook_id, f"{episode}.wav")
-        if os.path.exists(path):
-            return FileResponse(path, media_type="audio/wav")
-    path = os.path.join(output_dir, f"{notebook_id}.wav")
+    path = os.path.join(output_dir, notebook_id, f"{episode}.wav") if episode else os.path.join(output_dir, f"{notebook_id}.wav")
     if os.path.exists(path):
         return FileResponse(path, media_type="audio/wav")
     raise HTTPException(status_code=404, detail="Audio overview not found")

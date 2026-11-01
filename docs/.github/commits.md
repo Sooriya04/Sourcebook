@@ -520,6 +520,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Isolated Connection Testing (`internal/api/models_handler.go`, `internal/api/models_handler_test.go`)**: Ran `action="test"` credentials against an ephemeral client instance to prevent credential hijacking and concurrent chat disruptions.
 - **Thread-Safe Client & Subsystem Modularization (`internal/llm/client.go`, `internal/llm/ollama.go`, `internal/llm/openai.go`, `internal/llm/client_test.go`)**: Protected client configuration with `sync.RWMutex`, split Ollama/OpenAI implementations into sub-200-line modules, and verified with race detector tests.
 
+## Commit 66: Fix Path Traversal in Audio Overview Endpoints
+- **Path Traversal Protection (`internal/api/podcast_audio.go`, `internal/api/podcast_audio_test.go`)**: Enforced strict alphanumeric identifier validation and filesystem boundary checks on podcast audio and metadata endpoints, preventing arbitrary file reads.
+- **Audio Service Sanitization (`services/audio/main.py`)**: Added identifier validation to audio streaming, episode listing, and audio serving endpoints in the Python audio microservice.
+
+
 
 
 
