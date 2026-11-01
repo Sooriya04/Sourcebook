@@ -82,26 +82,25 @@ func (a *API) HandleDiscovery(w http.ResponseWriter, r *http.Request) {
 			searchReq.Header.Set("Content-Type", "application/json")
 			client := &http.Client{Timeout: 15 * time.Second}
 			resp, err := client.Do(searchReq)
-			if err == nil && resp.StatusCode == http.StatusOK {
+			if err == nil && resp != nil {
 				defer resp.Body.Close()
-				var rawSearqon struct {
-					Success bool `json:"success"`
-					Data    struct {
-						Results []models.SearchResult `json:"results"`
-					} `json:"data"`
+				if resp.StatusCode == http.StatusOK {
+					var rawSearqon struct {
+						Success bool `json:"success"`
+						Data    struct {
+							Results []models.SearchResult `json:"results"`
+						} `json:"data"`
+					}
+					if decodeErr := json.NewDecoder(resp.Body).Decode(&rawSearqon); decodeErr == nil && rawSearqon.Success && len(rawSearqon.Data.Results) > 0 {
+						log.Printf("[Discovery] Searqon discovery completed successfully (%d results) in %v.", len(rawSearqon.Data.Results), time.Since(startTime))
+						mu.Lock()
+						webResults = rawSearqon.Data.Results
+						mu.Unlock()
+						return
+					} else if decodeErr != nil {
+						log.Printf("[Discovery] Searqon JSON decode error: %v", decodeErr)
+					}
 				}
-				if decodeErr := json.NewDecoder(resp.Body).Decode(&rawSearqon); decodeErr == nil && rawSearqon.Success && len(rawSearqon.Data.Results) > 0 {
-					log.Printf("[Discovery] Searqon discovery completed successfully (%d results) in %v.", len(rawSearqon.Data.Results), time.Since(startTime))
-					mu.Lock()
-					webResults = rawSearqon.Data.Results
-					mu.Unlock()
-					return
-				} else if decodeErr != nil {
-					log.Printf("[Discovery] Searqon JSON decode error: %v", decodeErr)
-				}
-			}
-			if resp != nil {
-				resp.Body.Close()
 			}
 		}
 
