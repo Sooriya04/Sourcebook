@@ -119,6 +119,15 @@ func (a *API) HandleFlashcards(w http.ResponseWriter, r *http.Request) {
 
 	// Parse JSON
 	rawJSON = strings.TrimSpace(rawJSON)
+	if strings.HasPrefix(rawJSON, "```json") {
+		rawJSON = strings.TrimPrefix(rawJSON, "```json")
+		rawJSON = strings.TrimSuffix(rawJSON, "```")
+	} else if strings.HasPrefix(rawJSON, "```") {
+		rawJSON = strings.TrimPrefix(rawJSON, "```")
+		rawJSON = strings.TrimSuffix(rawJSON, "```")
+	}
+	rawJSON = strings.TrimSpace(rawJSON)
+
 	var flashcards []map[string]string
 	if err := json.Unmarshal([]byte(rawJSON), &flashcards); err != nil {
 		log.Printf("[Study] Failed to parse flashcard JSON: %v. Raw: %s", err, rawJSON)
