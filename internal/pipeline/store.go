@@ -14,6 +14,8 @@ type Store struct {
 
 	seq uint64
 
+	maxJobs     int
+	jobOrder    []string
 	jobs        map[string]*models.PipelineJob
 	sources     map[string]*models.SourceRecord
 	documents   map[string]*models.DocumentRecord
@@ -27,6 +29,8 @@ type Store struct {
 
 func NewStore() *Store {
 	return &Store{
+		maxJobs:      50,
+		jobOrder:     make([]string, 0, 50),
 		jobs:         make(map[string]*models.PipelineJob),
 		sources:      make(map[string]*models.SourceRecord),
 		documents:    make(map[string]*models.DocumentRecord),
@@ -57,9 +61,64 @@ func (s *Store) CreateJob(query string, maxSources int) *models.PipelineJob {
 
 	s.mu.Lock()
 	s.jobs[job.ID] = job
+	s.jobOrder = append(s.jobOrder, job.ID)
+
+	maxJ := s.maxJobs
+	if maxJ <= 0 {
+		maxJ = 50
+	}
+	for len(s.jobs) > maxJ && len(s.jobOrder) > 0 {
+		oldestID := s.jobOrder[0]
+		s.evictJobLocked(oldestID)
+	}
 	s.mu.Unlock()
 
 	return cloneJob(job)
+}
+
+func (s *Store) evictJobLocked(jobID string) {
+	delete(s.jobs, jobID)
+
+	for _, docID := range s.jobDocuments[jobID] {
+		delete(s.documents, docID)
+	}
+	delete(s.jobDocuments, jobID)
+
+	for _, chunkID := range s.jobChunks[jobID] {
+		delete(s.chunks, chunkID)
+	}
+	delete(s.jobChunks, jobID)
+
+	sourceIDs := s.jobSources[jobID]
+	delete(s.jobSources, jobID)
+
+	for _, srcID := range sourceIDs {
+		referenced := false
+		for _, jIDs := range s.jobSources {
+			for _, id := range jIDs {
+				if id == srcID {
+					referenced = true
+					break
+				}
+			}
+			if referenced {
+				break
+			}
+		}
+		if !referenced {
+			if src, ok := s.sources[srcID]; ok {
+				delete(s.sourceIndex, src.CanonicalURL)
+			}
+			delete(s.sources, srcID)
+		}
+	}
+
+	for i, id := range s.jobOrder {
+		if id == jobID {
+			s.jobOrder = append(s.jobOrder[:i], s.jobOrder[i+1:]...)
+			break
+		}
+	}
 }
 
 func (s *Store) RetryJob(jobID string) (*models.PipelineJob, error) {

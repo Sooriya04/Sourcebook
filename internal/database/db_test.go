@@ -126,3 +126,46 @@ func TestSaveChunks_PreservesUnrelatedSources(t *testing.T) {
 		t.Fatalf("Source chunks lost: foundSrc1=%v, foundSrc2=%v", foundSrc1, foundSrc2)
 	}
 }
+
+func TestSaveMemoryPair_ChronologicalOrder(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "sourcebook_memory_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	db, err := InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewRepository(db)
+	nb, err := repo.CreateNotebook("Memory Notebook", "Desc")
+	if err != nil {
+		t.Fatalf("CreateNotebook failed: %v", err)
+	}
+
+	err = repo.SaveMemoryPair(nb.ID, "msg-1", "Hello user query", []float32{0.1}, "msg-2", "Hello assistant answer", []float32{0.2})
+	if err != nil {
+		t.Fatalf("SaveMemoryPair failed: %v", err)
+	}
+
+	records, err := repo.GetMemoryByNotebook(nb.ID)
+	if err != nil {
+		t.Fatalf("GetMemoryByNotebook failed: %v", err)
+	}
+
+	if len(records) != 2 {
+		t.Fatalf("Expected 2 memory records, got %d", len(records))
+	}
+
+	if records[0].Role != "user" || records[0].Content != "Hello user query" {
+		t.Errorf("Expected first record to be user query, got role=%s content=%s", records[0].Role, records[0].Content)
+	}
+
+	if records[1].Role != "assistant" || records[1].Content != "Hello assistant answer" {
+		t.Errorf("Expected second record to be assistant answer, got role=%s content=%s", records[1].Role, records[1].Content)
+	}
+}
