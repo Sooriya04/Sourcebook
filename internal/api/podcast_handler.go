@@ -106,6 +106,19 @@ func (a *API) HandleGeneratePodcast(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, fmt.Sprintf("Kokoro audio synthesis failed with status %d", resp.StatusCode), http.StatusBadGateway)
+		return
+	}
+
+	// Drain SSE stream to completion to ensure Kokoro TTS audio generation finishes without premature termination.
+	// ponytail: io.Copy discards stream to EOF; upgrade to parse SSE events if step progress tracking is needed
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		log.Printf("[Podcast] Failed reading audio synthesis stream to completion: %v", err)
+		http.Error(w, fmt.Sprintf("Kokoro audio synthesis stream interrupted: %v", err), http.StatusBadGateway)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":    true,
