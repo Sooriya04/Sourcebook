@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sourcebook/internal/llm"
 	"time"
 )
 
@@ -94,19 +95,10 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if req.Action == "test" {
-			if a.llmClient == nil {
-				http.Error(w, "LLM client not initialized", http.StatusInternalServerError)
-				return
-			}
-
-			// Perform temporary test without mutating saved state permanently if failed
-			oldProv, oldURL, oldModel, oldKey := a.llmClient.GetConfig()
-			a.llmClient.SetConfig(req.Provider, req.BaseURL, req.Model, req.APIKey)
-
-			ok, sampleRes, testErr := a.llmClient.TestConnection(r.Context())
+			// Perform temporary test using an isolated client without mutating the active server singleton
+			testClient := llm.NewClientWithConfig(req.Provider, req.BaseURL, req.Model, req.APIKey)
+			ok, sampleRes, testErr := testClient.TestConnection(r.Context())
 			if !ok || testErr != nil {
-				// Revert on failure
-				a.llmClient.SetConfig(oldProv, oldURL, oldModel, oldKey)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
 				errDetail := "Connection or API key verification failed"

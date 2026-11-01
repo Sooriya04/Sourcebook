@@ -516,5 +516,10 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Shortlink Context Fix (`services/reddit/main.go`, `services/reddit/main_test.go`)**: Resolved premature context cancellation bug in `resolveRedditShortLink` with deferred timeout cancellation, adding unit tests.
 - **Configurable Endpoints (`services/reddit/main.go`, `services/reddit/types.go`, `.env`)**: Allowed `REDDIT_MIRROR_DOMAIN` and `JINA_READER_URL` to be configured via `.env` instead of hardcoded strings, while keeping all files strictly under 200 lines.
 
+## Commit 65: Thread-Safe LLM Client and Isolated Connection Verification
+- **Isolated Connection Testing (`internal/api/models_handler.go`, `internal/api/models_handler_test.go`)**: Ran `action="test"` credentials against an ephemeral client instance to prevent credential hijacking and concurrent chat disruptions.
+- **Thread-Safe Client & Subsystem Modularization (`internal/llm/client.go`, `internal/llm/ollama.go`, `internal/llm/openai.go`, `internal/llm/client_test.go`)**: Protected client configuration with `sync.RWMutex`, split Ollama/OpenAI implementations into sub-200-line modules, and verified with race detector tests.
+
+
 
 
