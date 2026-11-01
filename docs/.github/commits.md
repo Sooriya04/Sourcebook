@@ -532,6 +532,11 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Docker Compose Embedding Orchestration (`docker/docker-compose.yml`)**: Added `embedding-service` on port 6002 with persistent model cache volume, wired `EMBEDDING_SERVICE_URL` into the main app container, and restored vector ingestion capabilities in containerized deployments.
 - **Embedding Containerization (`services/embedding/Dockerfile`, `services/embedding/requirements.txt`)**: Packaged Python ONNX Runtime MiniLM embedder with minimal dependencies and container build specs.
 
+## Commit 69: Fix SSE Stream Abandonment in Podcast Generation
+- **Audio Stream Completion (`internal/api/podcast_handler.go`)**: Drained the `/synthesize/stream` SSE response body to completion before returning success in non-streaming podcast generation, preventing premature connection termination from aborting Kokoro TTS audio synthesis.
+- **Upstream Error Propagation & Verification (`internal/api/podcast_handler.go`, `internal/api/podcast_generate_test.go`)**: Added status code validation and stream interruption checks returning 502 Bad Gateway on audio service failures, verified with comprehensive mock unit tests.
+
+
 
 
 
