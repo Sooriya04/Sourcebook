@@ -70,10 +70,14 @@ func (e *SelfEvaluator) EvaluateContext(ctx context.Context, query string, docs 
 
 		// 2. Semantic vector score
 		var vecScore float32 = 0.0
-		if len(queryEmb) > 0 && e.vectorClient != nil {
-			docEmb, err := e.vectorClient.GenerateQueryEmbedding(ctx, doc.Content)
-			if err == nil {
-				vecScore = vector.CosineSimilarity(queryEmb, docEmb)
+		if len(queryEmb) > 0 {
+			if len(doc.Embedding) > 0 {
+				vecScore = vector.CosineSimilarity(queryEmb, doc.Embedding)
+			} else if e.vectorClient != nil {
+				docEmb, err := e.vectorClient.GenerateQueryEmbedding(ctx, doc.Content)
+				if err == nil {
+					vecScore = vector.CosineSimilarity(queryEmb, docEmb)
+				}
 			}
 		}
 
