@@ -512,4 +512,9 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Targeted Chunk Cleanup (`internal/database/chunk_repo.go`, `internal/database/db_test.go`)**: Switched `SaveChunks` from notebook-wide deletion to source-scoped cleanup (`WHERE notebook_id = ? AND source_id = ?`), preventing new web sources from wiping out existing document chunks and embeddings.
 - **System Audit (`artifacts/audit.md`)**: Cataloged 20 repository findings prioritized by safety, performance, and scale.
 
+## Commit 64: Fix Reddit Shortlink Resolution and De-Hardcode Mirror URLs
+- **Shortlink Context Fix (`services/reddit/main.go`, `services/reddit/main_test.go`)**: Resolved premature context cancellation bug in `resolveRedditShortLink` with deferred timeout cancellation, adding unit tests.
+- **Configurable Endpoints (`services/reddit/main.go`, `services/reddit/types.go`, `.env`)**: Allowed `REDDIT_MIRROR_DOMAIN` and `JINA_READER_URL` to be configured via `.env` instead of hardcoded strings, while keeping all files strictly under 200 lines.
+
+
 

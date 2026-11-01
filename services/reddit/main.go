@@ -13,37 +13,43 @@ import (
 	"time"
 )
 
-type ScrapeRequest struct {
-	URL  string   `json:"url,omitempty"`
-	URLs []string `json:"urls,omitempty"`
-}
-
-type ScrapeResult struct {
-	URL      string `json:"url"`
-	Title    string `json:"title"`
-	Markdown string `json:"markdown"`
-	Success  bool   `json:"success"`
-	Error    string `json:"error,omitempty"`
-}
-
-type BatchResponse struct {
-	Success bool           `json:"success"`
-	Data    []ScrapeResult `json:"data"`
-}
-
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		next(w, r)
 	}
+}
+
+func resolveRedditShortLink(ctx context.Context, rawURL string) string {
+	resolveCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequestWithContext(resolveCtx, "GET", rawURL, nil)
+	if err != nil {
+		return rawURL
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return rawURL
+	}
+	defer resp.Body.Close()
+
+	if loc := resp.Header.Get("Location"); loc != "" {
+		return loc
+	}
+	return rawURL
 }
 
 func scrapeReddit(ctx context.Context, targetURL string) (string, string, error) {
@@ -54,34 +60,27 @@ func scrapeReddit(ctx context.Context, targetURL string) (string, string, error)
 
 	// Resolve redd.it short links to full reddit.com URLs before mirroring
 	if strings.Contains(url, "redd.it") {
-		resolveCtx, resolveCancel := context.WithTimeout(ctx, 10*time.Second)
-		resolveClient := &http.Client{
-			Timeout: 10 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse // capture redirect, don't follow
-			},
-		}
-		resolveReq, err := http.NewRequestWithContext(resolveCtx, "GET", url, nil)
-		resolveCancel()
-		if err == nil {
-			resolveResp, err := resolveClient.Do(resolveReq)
-			if err == nil {
-				resolveResp.Body.Close()
-				if loc := resolveResp.Header.Get("Location"); loc != "" {
-					url = loc
-				}
-			}
-		}
+		url = resolveRedditShortLink(ctx, url)
 	}
 
-	// Clean/normalize Reddit URL and use rxddit.com mirror for zero-config public read.
-	// E.g., https://www.reddit.com/r/... -> https://rxddit.com/r/...
+	// Configurable mirror domain via REDDIT_MIRROR_DOMAIN (default: rxddit.com)
+	mirrorDomain := os.Getenv("REDDIT_MIRROR_DOMAIN")
+	if mirrorDomain == "" {
+		mirrorDomain = "rxddit.com"
+	}
+
 	mirrorURL := url
 	if strings.Contains(url, "reddit.com") {
-		mirrorURL = strings.Replace(url, "reddit.com", "rxddit.com", 1)
+		mirrorURL = strings.Replace(url, "reddit.com", mirrorDomain, 1)
 	}
 
-	jinaURL := fmt.Sprintf("https://r.jina.ai/%s", mirrorURL)
+	// Configurable Jina reader endpoint via JINA_READER_URL (default: https://r.jina.ai)
+	jinaBase := os.Getenv("JINA_READER_URL")
+	if jinaBase == "" {
+		jinaBase = "https://r.jina.ai"
+	}
+	jinaURL := fmt.Sprintf("%s/%s", strings.TrimRight(jinaBase, "/"), mirrorURL)
+
 	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -103,11 +102,8 @@ func scrapeReddit(ctx context.Context, targetURL string) (string, string, error)
 		rawErr, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return "", "", fmt.Errorf("Reddit mirror fetch failed (HTTP %d): %s", resp.StatusCode, string(rawErr))
 	}
-
-	title := ""
-	if tHeader := resp.Header.Get("X-Title"); tHeader != "" {
-		title = tHeader
-	} else {
+	title := resp.Header.Get("X-Title")
+	if title == "" {
 		parts := strings.Split(targetURL, "/")
 		for i := len(parts) - 1; i >= 0; i-- {
 			if parts[i] != "" {
@@ -119,12 +115,10 @@ func scrapeReddit(ctx context.Context, targetURL string) (string, string, error)
 			title = targetURL
 		}
 	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024)) // 10MB limit
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return "", "", err
 	}
-
 	return title, string(body), nil
 }
 
@@ -144,7 +138,6 @@ func handleScrapeBatch(w http.ResponseWriter, r *http.Request) {
 	if req.URL != "" {
 		urls = append(urls, req.URL)
 	}
-
 	if len(urls) == 0 {
 		http.Error(w, "URLs are required", http.StatusBadRequest)
 		return
@@ -159,10 +152,7 @@ func handleScrapeBatch(w http.ResponseWriter, r *http.Request) {
 		go func(targetURL string) {
 			defer wg.Done()
 			title, md, err := scrapeReddit(r.Context(), targetURL)
-
-			res := ScrapeResult{
-				URL: targetURL,
-			}
+			res := ScrapeResult{URL: targetURL}
 			if err != nil {
 				res.Success = false
 				res.Error = err.Error()
@@ -171,7 +161,6 @@ func handleScrapeBatch(w http.ResponseWriter, r *http.Request) {
 				res.Title = title
 				res.Markdown = md
 			}
-
 			mu.Lock()
 			results = append(results, res)
 			mu.Unlock()
@@ -197,7 +186,6 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/scrape/batch", enableCORS(handleScrapeBatch))
 	mux.HandleFunc("/health", enableCORS(handleHealth))
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "4004"
