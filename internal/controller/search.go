@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"sourcebook/internal/models"
+	"sourcebook/internal/providers/searx"
 	"sourcebook/internal/registry"
 	"time"
 )
@@ -14,6 +15,14 @@ type UnifiedSearchController struct {
 func NewUnifiedSearchController(r *registry.ProviderRegistry) *UnifiedSearchController {
 	return &UnifiedSearchController{
 		registry: r,
+	}
+}
+
+func (c *UnifiedSearchController) SetSearxngURL(baseURL string) {
+	if p, err := c.registry.Get("searxng"); err == nil {
+		if searxProv, ok := p.(*searx.SearXNGProvider); ok {
+			searxProv.BaseURL = baseURL
+		}
 	}
 }
 
