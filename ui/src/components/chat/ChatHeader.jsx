@@ -18,45 +18,47 @@ export default function ChatHeader(props) {
   const modelName = isOnline ? (llmHealth.model?.split('/')?.pop() || 'Online') : 'Offline';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '48px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', background: '#09090b', flexShrink: 0, gap: '8px', whiteSpace: 'nowrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '48px', borderBottom: 'none', background: '#0e0f12', flexShrink: 0, gap: '8px', whiteSpace: 'nowrap' }}>
       {/* Left: Sources panel toggle and section title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={onToggleSources}
-          title={isSourcesCollapsed ? "Expand Sources Panel (⌘/)" : "Collapse Sources Panel (⌘/)"}
-          aria-label={isSourcesCollapsed ? "Expand Sources Panel" : "Collapse Sources Panel"}
-          style={{
-            padding: '4px 8px',
-            borderRadius: '8px',
-            background: isSourcesCollapsed ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-            border: isSourcesCollapsed ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-            color: isSourcesCollapsed ? '#a5b4fc' : '#d4d4d8',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.74rem',
-            transition: 'all 0.15s ease',
-            outline: 'none'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-            e.currentTarget.style.color = '#ffffff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = isSourcesCollapsed ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.1)';
-            e.currentTarget.style.color = isSourcesCollapsed ? '#a5b4fc' : '#d4d4d8';
-          }}
-        >
-          {isSourcesCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
-          <span style={{ fontWeight: 500 }}>Sources</span>
-        </button>
-        <span style={{ fontSize: '0.86rem', fontWeight: 600, color: '#f4f4f5', letterSpacing: '-0.01em' }}>Chat</span>
+        {isSourcesCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleSources}
+            title="Expand Sources Panel (⌘/)"
+            aria-label="Expand Sources Panel"
+            style={{
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              background: '#18191c',
+              border: '1px solid rgba(255, 255, 255, 0.04)',
+              color: '#d4d4d8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.76rem',
+              transition: 'all 0.15s ease',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.04)';
+              e.currentTarget.style.color = '#d4d4d8';
+            }}
+          >
+            <PanelLeftOpen size={14} />
+            <span style={{ fontWeight: 500 }}>Sources</span>
+          </button>
+        )}
+        <span style={{ fontSize: '0.92rem', fontWeight: 500, color: '#f4f4f5', letterSpacing: '-0.01em' }}>Chat</span>
       </div>
 
       {/* Center: Segmented Mode Switcher */}
-      <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(24, 24, 27, 0.8)', border: '1px solid #27272a', borderRadius: '12px', padding: '2px', flexShrink: 0 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', background: '#18191c', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '9999px', padding: '3px', flexShrink: 0 }}>
         {MODES.map(item => {
           const isActive = mode === item.id;
           return (
@@ -65,13 +67,13 @@ export default function ChatHeader(props) {
               type="button"
               onClick={() => setMode(item.id)}
               style={{
-                padding: '3px 10px', borderRadius: '9px', border: isActive ? '1px solid #3f3f46' : '1px solid transparent',
-                background: isActive ? '#27272a' : 'transparent', color: isActive ? '#f4f4f5' : '#a1a1aa',
-                fontSize: '0.72rem', fontWeight: isActive ? 600 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                padding: '4px 12px', borderRadius: '9999px', border: 'none',
+                background: isActive ? '#2b2d35' : 'transparent', color: isActive ? '#f4f4f5' : '#9ca3af',
+                fontSize: '0.74rem', fontWeight: isActive ? 500 : 400, cursor: 'pointer', display: 'flex', alignItems: 'center',
                 gap: '5px', transition: 'all 0.12s ease', outline: 'none'
               }}
             >
-              {React.cloneElement(item.icon, { color: isActive ? '#818cf8' : '#71717a' })}
+              {React.cloneElement(item.icon, { color: isActive ? '#38bdf8' : '#717582' })}
               <span>{item.label}</span>
             </button>
           );
@@ -83,10 +85,10 @@ export default function ChatHeader(props) {
         <div
           onClick={() => navigate('/settings')}
           title={isOnline ? `${llmHealth.model} (Online)` : 'LLM Offline (Click to configure)'}
-          style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '3px 8px', borderRadius: '10px', background: 'rgba(24, 24, 27, 0.6)', border: '1px solid #27272a', fontSize: '0.68rem', color: '#a1a1aa' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '4px 10px', borderRadius: '9999px', background: '#18191c', border: '1px solid rgba(255, 255, 255, 0.04)', fontSize: '0.72rem', color: '#9ca3af' }}
         >
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor }} />
-          <span style={{ maxWidth: '85px', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 }}>{modelName}</span>
+          <span style={{ maxWidth: '85px', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 400 }}>{modelName}</span>
         </div>
 
         <button type="button" onClick={onOpenShortcuts} title="Keyboard shortcuts (⌘?)" style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '5px', borderRadius: '6px', display: 'grid', placeItems: 'center' }}>
@@ -104,37 +106,39 @@ export default function ChatHeader(props) {
           <Trash2 size={14} />
         </button>
 
-        <button
-          type="button"
-          onClick={onToggleStudio}
-          title={isStudioCollapsed ? "Expand Studio Panel" : "Collapse Studio Panel"}
-          aria-label={isStudioCollapsed ? "Expand Studio Panel" : "Collapse Studio Panel"}
-          style={{
-            padding: '4px 8px',
-            borderRadius: '8px',
-            background: isStudioCollapsed ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-            border: isStudioCollapsed ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-            color: isStudioCollapsed ? '#a5b4fc' : '#d4d4d8',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.74rem',
-            transition: 'all 0.15s ease',
-            outline: 'none'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-            e.currentTarget.style.color = '#ffffff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = isStudioCollapsed ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.1)';
-            e.currentTarget.style.color = isStudioCollapsed ? '#a5b4fc' : '#d4d4d8';
-          }}
-        >
-          <span style={{ fontWeight: 500 }}>Studio</span>
-          {isStudioCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
-        </button>
+        {isStudioCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleStudio}
+            title="Expand Studio Panel"
+            aria-label="Expand Studio Panel"
+            style={{
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              background: '#18191c',
+              border: '1px solid rgba(255, 255, 255, 0.04)',
+              color: '#d4d4d8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.76rem',
+              transition: 'all 0.15s ease',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.04)';
+              e.currentTarget.style.color = '#d4d4d8';
+            }}
+          >
+            <span style={{ fontWeight: 500 }}>Studio</span>
+            <PanelRightOpen size={14} />
+          </button>
+        )}
       </div>
     </div>
   );

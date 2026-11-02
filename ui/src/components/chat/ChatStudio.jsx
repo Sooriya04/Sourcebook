@@ -78,7 +78,7 @@ export default function ChatStudio(props) {
   };
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#09090b' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0e0f12' }}>
       {toast.message && (
         <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 120 }}>
           <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'info' })} />

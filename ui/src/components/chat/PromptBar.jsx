@@ -73,16 +73,14 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
       <form
         onSubmit={handleSubmit}
         style={{
-          background: 'rgba(20, 21, 26, 0.92)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: isFocused ? '1px solid rgba(99, 102, 241, 0.6)' : '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: isFocused ? '0 0 0 2px rgba(99, 102, 241, 0.15), 0 10px 30px rgba(0, 0, 0, 0.45)' : '0 10px 30px rgba(0, 0, 0, 0.35)',
+          background: '#1e2025',
+          border: isFocused ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.05)',
+          boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4)' : '0 8px 24px rgba(0, 0, 0, 0.3)',
           borderRadius: '9999px',
-          padding: '6px 10px 6px 16px',
+          padding: '8px 12px 8px 18px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '12px',
           transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
         }}
       >
@@ -90,7 +88,7 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
 
         <textarea
           ref={ref}
-          placeholder="Ask a question about your sources... (Type / for commands)"
+          placeholder="Ask a question or create something..."
           value={query}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -120,7 +118,7 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
         <PromptActionButtons query={query} loading={loading} onClear={handleClear} onStop={onStop} />
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '0.67rem', color: '#71717a' }}>
+      <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '0.7rem', color: '#9ca3af' }}>
         SourceBook may display inaccurate info, so verify its answers against original sources.
       </div>
     </div>

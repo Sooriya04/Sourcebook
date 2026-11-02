@@ -18,17 +18,17 @@ export default function ChatWelcomeScreen({ notebookTitle, notebookDescription, 
     <div style={{ maxWidth: '680px', margin: '48px auto 20px', textAlign: 'center', padding: '0 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* Brand Sparkle Icon */}
       <div style={{
-        width: '44px',
-        height: '44px',
-        borderRadius: '12px',
-        background: 'rgba(99, 102, 241, 0.12)',
-        border: '1px solid rgba(99, 102, 241, 0.25)',
+        width: '48px',
+        height: '48px',
+        borderRadius: '16px',
+        background: '#18191c',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
         display: 'grid',
         placeItems: 'center',
-        color: '#818cf8',
-        marginBottom: '18px'
+        color: '#38bdf8',
+        marginBottom: '20px'
       }}>
-        <Sparkles size={20} />
+        <Sparkles size={22} />
       </div>
 
       {/* Notebook Title & Description */}
@@ -111,26 +111,26 @@ export default function ChatWelcomeScreen({ notebookTitle, notebookDescription, 
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '8px 16px',
+                padding: '9px 18px',
                 borderRadius: '9999px',
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: '#18191c',
+                border: '1px solid rgba(255, 255, 255, 0.04)',
                 color: '#e4e4e7',
-                fontSize: '0.8rem',
-                fontWeight: 500,
+                fontSize: '0.82rem',
+                fontWeight: 400,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 outline: 'none'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                e.currentTarget.style.background = '#22242a';
                 e.currentTarget.style.color = '#ffffff';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.04)';
+                e.currentTarget.style.background = '#18191c';
                 e.currentTarget.style.color = '#e4e4e7';
                 e.currentTarget.style.transform = 'translateY(0)';
               }}

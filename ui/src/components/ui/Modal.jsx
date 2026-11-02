@@ -57,10 +57,10 @@ export default function Modal({
         style={{
           width: '100%',
           maxWidth,
-          backgroundColor: '#18181b', // zinc-900
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '14px',
-          boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.75)',
+          backgroundColor: '#18191c',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          borderRadius: '24px',
+          boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.85)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -73,8 +73,8 @@ export default function Modal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '16px 20px',
-            borderBottom: '1px solid #27272a', // zinc-800
+            padding: '20px 24px 16px',
+            borderBottom: 'none',
             gap: '12px'
           }}
         >
@@ -82,9 +82,9 @@ export default function Modal({
             <h3
               className="modal-title"
               style={{
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                color: '#f4f4f5', // zinc-100
+                fontSize: '1.05rem',
+                fontWeight: 500,
+                color: '#f4f4f5',
                 margin: 0,
                 letterSpacing: '-0.015em'
               }}

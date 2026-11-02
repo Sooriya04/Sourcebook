@@ -81,11 +81,14 @@ export default function NotesPanel({
     <aside 
       className="notes-panel-tasteful" 
       style={{ 
-        width: '320px', 
+        width: '300px', 
         flexShrink: 0, 
         height: '100%',
-        backgroundColor: '#16181d',
-        borderLeft: '1px solid rgba(255, 255, 255, 0.06)'
+        backgroundColor: '#18191c',
+        border: '1px solid rgba(255, 255, 255, 0.04)',
+        borderRadius: '24px',
+        margin: '0 0 0 6px',
+        overflow: 'hidden'
       }}
     >
       {/* Studio Header (Clean Typography) */}

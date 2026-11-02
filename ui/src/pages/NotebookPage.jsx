@@ -257,7 +257,7 @@ export default function NotebookPage({ getNotebook }) {
       onDragLeave={handleDragLeave}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
-      style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#09090b' }}
+      style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#0e0f12' }}
     >
       <DragDropOverlay isDragging={isDraggingFile} />
 
@@ -281,7 +281,8 @@ export default function NotebookPage({ getNotebook }) {
           width: '100%',
           height: '100%',
           overflow: 'hidden',
-          backgroundColor: '#09090b'
+          backgroundColor: '#0e0f12',
+          padding: '6px'
         }}
       >
         {!isSourcesCollapsed && (
@@ -322,7 +323,7 @@ export default function NotebookPage({ getNotebook }) {
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#09090b'
+            backgroundColor: '#0e0f12'
           }}
         >
           <ErrorBoundary title="Workspace Error">

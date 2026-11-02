@@ -42,7 +42,6 @@ export default function PromptActionButtons({ query, loading, onClear, onStop })
             placeItems: 'center',
             cursor: 'pointer',
             outline: 'none',
-            boxShadow: '0 0 10px rgba(239, 68, 68, 0.45)',
           }}
           onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
           onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
@@ -59,11 +58,11 @@ export default function PromptActionButtons({ query, loading, onClear, onStop })
             height: '32px',
             borderRadius: '50%',
             border: 'none',
-            background: query?.trim() ? '#f4f4f5' : 'rgba(39, 39, 42, 0.6)',
-            color: query?.trim() ? '#09090b' : '#52525b',
+            background: query?.trim() ? '#ffffff' : '#2b2d35',
+            color: query?.trim() ? '#111215' : '#717582',
             display: 'grid',
             placeItems: 'center',
-            cursor: query?.trim() ? 'pointer' : 'not-allowed',
+            cursor: query?.trim() ? 'pointer' : 'default',
             outline: 'none',
             transition: 'all 0.15s ease',
           }}

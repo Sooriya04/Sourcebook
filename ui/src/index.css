@@ -1153,15 +1153,15 @@
 
 .user-chat-bubble {
   max-width: 75%;
-  padding: 10px 14px;
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
-  background: var(--surface-2);
-  color: var(--text-primary);
-  border: 1px solid var(--border-default);
-  font-size: 0.86rem;
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: #252830;
+  color: #f4f4f5;
+  border: none;
+  font-size: 0.9rem;
   line-height: 1.55;
   word-break: break-word;
-  box-shadow: var(--shadow-subtle);
+  box-shadow: none;
 }
 
 .ai-message-row {
@@ -2312,36 +2312,34 @@
    1. SourceCard
    -------------------------------------------------------------------------- */
 .source-card-tasteful {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 10px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  gap: 4px;
+  transition: background 140ms ease;
   user-select: none;
   position: relative;
 }
 
 .source-card-tasteful:hover {
-  background: #202024;
-  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .source-card-tasteful:active {
-  transform: scale(0.99);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .source-card-tasteful:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid rgba(255, 255, 255, 0.2);
   outline-offset: 1px;
 }
 
 .source-card-tasteful.active {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .source-card-tasteful.indexing {
@@ -2357,9 +2355,10 @@
 }
 
 .source-scope-input {
-  width: 13px;
-  height: 13px;
-  accent-color: #6366f1;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  accent-color: #2563eb;
   cursor: pointer;
   flex-shrink: 0;
   margin: 0;
@@ -2383,9 +2382,9 @@
 
 .source-title-text {
   flex: 1;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #f4f4f5;
+  font-size: 0.84rem;
+  font-weight: 400;
+  color: #e3e3e8;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2535,8 +2534,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px 8px 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 4px 6px 6px 6px;
+  border-bottom: none;
 }
 
 .sources-select-all-label {
@@ -3147,15 +3146,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 4px 6px 4px 12px;
+  background: #141518;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 9999px;
+  padding: 8px 12px 8px 16px;
   transition: border-color 140ms ease;
 }
 
 .add-source-search-bar:focus-within {
-  border-color: #6366f1;
+  border-color: #3b82f6;
+  background: #101114;
 }
 
 .add-source-search-input {
@@ -3164,23 +3164,23 @@
   border: none;
   outline: none;
   color: #f4f4f5;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
 .add-source-search-btn {
-  background: #6366f1;
+  background: #2563eb;
   border: none;
   color: #ffffff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.74rem;
-  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 120ms ease;
 }
 
 .add-source-search-btn:hover:not(:disabled) {
-  background: #4f46e5;
+  background: #1d4ed8;
 }
 
 .add-source-search-btn:disabled {
@@ -3210,10 +3210,10 @@
 }
 
 .add-source-dropzone {
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  background: #18181b;
-  border-radius: 10px;
-  padding: 24px 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: #141518;
+  border-radius: 20px;
+  padding: 32px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3225,17 +3225,17 @@
 }
 
 .add-source-dropzone:hover {
-  background: #202024;
-  border-color: rgba(255, 255, 255, 0.25);
+  background: #1a1b1f;
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .add-source-dropzone.drag-active {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.08);
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .add-source-dropzone:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
@@ -3289,30 +3289,31 @@
 }
 
 .add-source-grid-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: center;
 }
 
 .add-source-option-tile {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: #202227;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 9999px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  color: #d4d4d8;
+  color: #e4e4e7;
   cursor: pointer;
   transition: all 120ms ease;
 }
 
 .add-source-option-tile:hover {
-  background: #27272a;
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #f4f4f5;
+  background: #2a2c33;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 .add-source-option-tile:active {
@@ -3438,13 +3439,15 @@
    6. Sidebar (Sources Layout)
    -------------------------------------------------------------------------- */
 .sidebar-tasteful {
-  width: 300px;
+  width: 280px;
   flex-shrink: 0;
-  background: #09090b;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #18191c;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 24px;
+  margin: 8px 0 8px 8px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: calc(100% - 16px);
   overflow: hidden;
   min-width: 0;
 }
@@ -3458,26 +3461,20 @@
 
 .sidebar-header-row {
   height: 48px;
-  padding: 0 14px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
   flex-shrink: 0;
 }
 
-.sidebar-title-group {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
 .sidebar-title-heading {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 500;
   color: #f4f4f5;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 
 .sidebar-count-badge {
@@ -3520,24 +3517,24 @@
 
 .sidebar-add-source-btn {
   width: 100%;
-  padding: 9px 16px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 18px;
+  background: #202227;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 9999px;
   color: #f4f4f5;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   cursor: pointer;
   transition: all 140ms ease;
 }
 
 .sidebar-add-source-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #282a30;
+  border-color: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
 
@@ -3558,18 +3555,19 @@
 
 .sidebar-search-input {
   width: 100%;
-  padding: 8px 64px 8px 14px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 64px 10px 16px;
+  background: #141518;
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 9999px;
   color: #f4f4f5;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   outline: none;
   transition: border-color 140ms ease;
 }
 
 .sidebar-search-input:focus {
   border-color: rgba(99, 102, 241, 0.55);
+  background: #101114;
 }
 
 .sidebar-search-addons {
@@ -3612,10 +3610,13 @@
    7. NotesPanel & Studio Layout
    -------------------------------------------------------------------------- */
 .notes-panel-tasteful {
-  width: 320px;
+  width: 290px;
   flex-shrink: 0;
-  background: #09090b;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: #18191c;
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 24px;
+  margin: 8px 8px 8px 0;
+  height: calc(100% - 16px);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -3977,8 +3978,8 @@
    -------------------------------------------------------------------------- */
 .notebook-header-tasteful {
   height: 48px;
-  background: #09090b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0e0f12;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   padding: 0 16px;
   display: flex;
   align-items: center;

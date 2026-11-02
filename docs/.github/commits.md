@@ -536,6 +536,35 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Audio Stream Completion (`internal/api/podcast_handler.go`)**: Drained the `/synthesize/stream` SSE response body to completion before returning success in non-streaming podcast generation, preventing premature connection termination from aborting Kokoro TTS audio synthesis.
 - **Upstream Error Propagation & Verification (`internal/api/podcast_handler.go`, `internal/api/podcast_generate_test.go`)**: Added status code validation and stream interruption checks returning 502 Bad Gateway on audio service failures, verified with comprehensive mock unit tests.
 
+## Commit 70: Resolve Audit Items 8 and 9 (Pipeline Memory Leak & Evaluator Embedding Optimization)
+- **Bounded In-Memory Job Eviction (`internal/pipeline/store.go`, `internal/pipeline/store_test.go`)**: Added LRU ring-buffer eviction capping memory at the last 50 pipeline search jobs, preventing monotonic heap leaks under continuous queries.
+- **Precomputed Embedding Reuse (`internal/chat/evaluator.go`, `internal/chat/evaluator_test.go`)**: Reused precomputed chunk embeddings directly in the self-evaluator relevance check instead of re-embedding documents sequentially on CPU.
+
+## Commit 71: Resolve Audit Items 10, 11, 12, and 13 (Batch Rerank, Flashcard Parsing, Discovery Cleanup, and Memory Ordering)
+- **Chronological Memory Coordination (`internal/chat/memory.go`, `internal/chat/synthesis.go`, `internal/database/memory_repo.go`, `internal/database/db_test.go`)**: Saved user and assistant turns in a coordinated single transaction to guarantee strict chronological pairing.
+- **Batch Vector Reranking (`internal/chat/rerank.go`)**: Replaced N single-item HTTP embedding requests with a single `GenerateBatchEmbeddings` call.
+- **Markdown Fence Stripping (`internal/api/study_handler.go`)**: Stripped markdown code fences (` ```json `) from flashcard LLM responses to avoid parser crashes.
+- **Double Close Elimination (`internal/api/discovery_handler.go`)**: Removed redundant unconditional response body close.
+
+## Commit 72: CI Subprocess Fallback & Docker Compose Model Auto-Fetch
+- **Headless Model Fetching (`services/embedding/embedder.py`)**: Added automatic onnx.tar.gz download and extraction fallback if local Chroma ONNX cache is missing.
+- **Docker Compose Configuration Validation (`.github/workflows/ci.yml`)**: Corrected Docker Compose validation path to `docker/docker-compose.yml`.
+
+## Commit 73: Resolve Audit Item 14 (N+1 Query Elimination in Notebook Listing)
+- **SQL JOIN Aggregation (`internal/database/notebook_repo.go`, `internal/database/db_test.go`)**: Replaced N+1 loop loading full document texts with a single `LEFT JOIN` and `COUNT(s.id)` query.
+
+## Commit 74: Resolve Audit Items 16, 17, and 18 (Pipeline Modularity, Unit Tests & Live Search Settings Sync)
+- **Live Search Provider Synchronization (`internal/api/settings_handler.go`, `internal/api/settings_handler_test.go`, `internal/controller/search.go`)**: Propagated updated embedding and search engine URLs dynamically to active controller singletons without requiring backend server restarts.
+- **Pipeline and Podcast Unit Tests (`internal/api/pipeline_handler_test.go`, `internal/api/podcast_generate_test.go`)**: Added comprehensive `httptest` suites verifying search pipeline routing, error handling, and SSE streaming.
+
+## Commit 75: NotebookLM Parity UI Overhaul, Floating Rounded Surfaces, and Redundancy Elimination
+- **Floating Island Panels (`ui/src/index.css`, `ui/src/pages/NotebookPage.jsx`)**: Styled Sources and Studio panels with 24px border radii, 6px inset margins, and cohesive `#0e0f12` canvas tone.
+- **Transparent Source Item Rows (`ui/src/components/sources/SourceCard.jsx`, `ui/src/index.css`)**: Switched from boxed card outlines to hover-activated rows with smooth rounded checkboxes and crisp title typography.
+- **Add Source Curved Sheet Modal (`ui/src/components/ui/Modal.jsx`, `ui/src/components/sources/AddSourceModal.jsx`, `ui/src/index.css`)**: Styled modal with borderless header, rounded pill search bar, pill import chips, and rounded dashed dropzone.
+- **Header Duplicate Controls Elimination (`ui/src/components/chat/ChatHeader.jsx`)**: Removed redundant Sources and Studio buttons from the central Chat header when those sidebars are already open, showing toggle buttons only when collapsed.
+- **Prompt Bar & Welcome Screen Polish (`ui/src/components/chat/PromptBar.jsx`, `ui/src/components/chat/ChatWelcomeScreen.jsx`, `ui/src/components/layout/StudioToolsGrid.jsx`)**: Refined floating prompt pill bar, unboxed welcome prompt chips, and pill studio tool chips.
+
+
 
 
 

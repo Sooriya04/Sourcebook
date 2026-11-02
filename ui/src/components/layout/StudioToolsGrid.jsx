@@ -93,23 +93,23 @@ export default function StudioToolsGrid({ activeMode, setActiveMode, studyTab, s
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '9px 12px',
-            borderRadius: '16px',
-            backgroundColor: tool.isActive ? '#252934' : '#1e2025',
-            border: tool.isActive ? '1px solid rgba(99, 102, 241, 0.45)' : 'none',
-            color: tool.isActive ? '#ffffff' : '#e4e4e7',
+            padding: '9px 14px',
+            borderRadius: '9999px',
+            backgroundColor: tool.isActive ? '#2b2d35' : '#202227',
+            border: tool.isActive ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.04)',
+            color: tool.isActive ? '#ffffff' : '#d4d4d8',
             cursor: 'pointer',
             textAlign: 'left',
             transition: 'background-color 0.15s ease, border-color 0.15s ease'
           }}
           onMouseEnter={(e) => {
             if (!tool.isActive) {
-              e.currentTarget.style.backgroundColor = '#26282f';
+              e.currentTarget.style.backgroundColor = '#282a31';
             }
           }}
           onMouseLeave={(e) => {
             if (!tool.isActive) {
-              e.currentTarget.style.backgroundColor = '#1e2025';
+              e.currentTarget.style.backgroundColor = '#202227';
             }
           }}
         >
