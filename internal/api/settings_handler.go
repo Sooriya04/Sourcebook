@@ -34,6 +34,9 @@ func (a *API) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		if a.llmClient != nil && (req.LLMProvider != "" || req.LLMBaseURL != "" || req.LLMModel != "" || req.LLMAPIKey != "") {
 			a.llmClient.SetConfig(req.LLMProvider, req.LLMBaseURL, req.LLMModel, req.LLMAPIKey)
 		}
+		if a.searchController != nil && req.SearxngURL != "" {
+			a.searchController.SetSearxngURL(req.SearxngURL)
+		}
 		InvalidateHealthCache()
 
 		w.Header().Set("Content-Type", "application/json")
