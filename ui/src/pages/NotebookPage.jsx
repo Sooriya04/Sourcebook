@@ -257,7 +257,6 @@ export default function NotebookPage({ getNotebook }) {
       onDragLeave={handleDragLeave}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
-      style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#0e0f12' }}
     >
       <DragDropOverlay isDragging={isDraggingFile} />
 
@@ -271,20 +270,7 @@ export default function NotebookPage({ getNotebook }) {
         onExport={handleExportNotebook}
       />
 
-      <div
-        className="three-panel-body"
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'row',
-          width: '100%',
-          height: '100%',
-          overflow: 'hidden',
-          backgroundColor: '#0e0f12',
-          padding: '6px'
-        }}
-      >
+      <div className="three-panel-body">
         {!isSourcesCollapsed && (
           <ErrorBoundary title="Sources Panel Error">
             <Sidebar
@@ -314,18 +300,7 @@ export default function NotebookPage({ getNotebook }) {
           </ErrorBoundary>
         )}
 
-        <div
-          className="center-workspace-wrapper"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: '#0e0f12'
-          }}
-        >
+        <div className="center-workspace-wrapper">
           <ErrorBoundary title="Workspace Error">
             {activeMode === 'chat' ? (
               <ChatStudio

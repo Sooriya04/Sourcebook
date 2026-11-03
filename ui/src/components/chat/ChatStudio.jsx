@@ -78,7 +78,7 @@ export default function ChatStudio(props) {
   };
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0e0f12' }}>
+    <div className="chat-studio-container">
       {toast.message && (
         <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 120 }}>
           <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'info' })} />
@@ -99,7 +99,7 @@ export default function ChatStudio(props) {
 
       {showOfflineBanner && llmHealth.status === 'offline' && <OfflineBanner onDismiss={() => setShowOfflineBanner(false)} />}
 
-      <div ref={scrollAreaRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '0 16px' }}>
+      <div ref={scrollAreaRef} onScroll={handleScroll} className="chat-scroll-area">
         {messages.length === 0 ? (
           <ChatWelcomeScreen
             notebookTitle={notebookTitle}
@@ -109,7 +109,7 @@ export default function ChatStudio(props) {
             onOpenAddSources={onOpenAddSources}
           />
         ) : (
-          <div style={{ maxWidth: '780px', margin: '0 auto', padding: '20px 0 30px' }}>
+          <div className="chat-reading-column">
             {messages.map((msg, idx) => (
               <MessageBubble
                 key={idx}

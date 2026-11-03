@@ -17,10 +17,6 @@ export default function SourceCard({
   const isIndexing = source.status === 'Indexing...';
   const [onlineStatus, setOnlineStatus] = useState('checking');
 
-  const textBody = source.content || source.snippet || '';
-  const wordCount = textBody ? textBody.trim().split(/\s+/).length : 0;
-  const readTimeMin = Math.max(1, Math.round(wordCount / 200));
-
   useEffect(() => {
     if (!source.url || !source.url.startsWith('http')) {
       setOnlineStatus('local');
@@ -134,7 +130,6 @@ export default function SourceCard({
             {source.url ? truncateUrl(source.url) : source.filename || 'Uploaded Document'}
           </span>
         </div>
-        {wordCount > 0 && <span className="source-read-badge">{readTimeMin}m read</span>}
       </div>
     </div>
   );

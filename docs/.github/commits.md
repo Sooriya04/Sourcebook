@@ -564,6 +564,14 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Header Duplicate Controls Elimination (`ui/src/components/chat/ChatHeader.jsx`)**: Removed redundant Sources and Studio buttons from the central Chat header when those sidebars are already open, showing toggle buttons only when collapsed.
 - **Prompt Bar & Welcome Screen Polish (`ui/src/components/chat/PromptBar.jsx`, `ui/src/components/chat/ChatWelcomeScreen.jsx`, `ui/src/components/layout/StudioToolsGrid.jsx`)**: Refined floating prompt pill bar, unboxed welcome prompt chips, and pill studio tool chips.
 
+## Commit 76: Master Stylesheet Streamlining, CSS De-bloat, and Imperative DOM State Elimination
+- **Master Stylesheet Consolidation (`ui/src/index.css`)**: Removed 3,000+ lines of duplicate and conflicting CSS overrides, reducing minified CSS bundle from 77.8 kB to 47.2 kB (~40% reduction) while unifying 3-panel workspace, sources sidebar, chat column, and modal styling.
+- **Eliminate Imperative JS Hover and Focus State Hacks (`ui/src/components/notebook/CreateNotebookCard.jsx`, `ui/src/components/notebook/NotebookCard.jsx`, `ui/src/components/notebook/NotebookSearchBar.jsx`, `ui/src/components/notebook/CreateNotebookModal.jsx`)**: Replaced manual `isHovered` state, `onMouseEnter`, `onMouseLeave`, `onFocus`, `onBlur`, and direct `e.currentTarget.style` DOM mutations with declarative CSS pseudo-classes (`:hover`, `:active`, `:focus-visible`).
+- **Workspace and Shell Inline Style Cleanup (`ui/src/components/layout/AppShell.jsx`, `ui/src/pages/HomePage.jsx`, `ui/src/pages/NotebookPage.jsx`, `ui/src/components/chat/PromptBar.jsx`, `ui/src/components/chat/ChatStudio.jsx`, `ui/src/components/layout/Sidebar.jsx`, `ui/src/components/layout/NotesPanel.jsx`)**: Decoupled layout markup from hardcoded hex codes and inline style objects, transitioning elements to semantic token-driven class names.
+- **Source Card Reading Badge Removal (`ui/src/components/sources/SourceCard.jsx`)**: Removed word count calculation and wrapping reading time badge (`"2m read"`), giving the source domain and filename clean single-row width without awkward wrapping.
+- **Unused Import Cleanup (`ui/src/components/chat/ChatHeader.jsx`, `ui/src/components/chat/SourcesCountBadge.jsx`)**: Removed unused `lucide-react` icon imports.
+
+
 
 
 

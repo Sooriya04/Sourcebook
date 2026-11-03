@@ -38,7 +38,7 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="sidebar-tasteful" style={{ width: '280px', flexShrink: 0, height: '100%', margin: '0 6px 0 0' }}>
+    <aside className="sidebar-tasteful">
       {inspectingSource ? (
         <SourceInspector
           source={inspectingSource}

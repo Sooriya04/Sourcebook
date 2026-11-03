@@ -1,5 +1,5 @@
 import React from 'react';
-import { PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Keyboard, Trash2, BookOpen, Globe, Sparkles } from 'lucide-react';
+import { PanelLeftOpen, PanelRightOpen, Keyboard, Trash2, BookOpen, Globe, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const MODES = [

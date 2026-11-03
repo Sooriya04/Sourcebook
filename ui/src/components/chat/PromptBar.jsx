@@ -10,7 +10,6 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
   const [showSlash, setShowSlash] = useState(false);
   const [slashIdx, setSlashIdx] = useState(0);
   const [detectedUrl, setDetectedUrl] = useState(null);
-  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     setShowSlash(query.startsWith('/'));
@@ -60,7 +59,7 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: '780px', margin: '0 auto', padding: '0 16px 12px', position: 'relative' }}>
+    <div className="prompt-bar-outer">
       {showSlash && <SlashMenu commands={SLASH_COMMANDS} selectedIndex={slashIdx} onSelect={selectCommand} />}
       {detectedUrl && (
         <UrlDetectedBanner
@@ -70,28 +69,13 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
         />
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: '#1e2025',
-          border: isFocused ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.05)',
-          boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4)' : '0 8px 24px rgba(0, 0, 0, 0.3)',
-          borderRadius: '9999px',
-          padding: '8px 12px 8px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-        }}
-      >
+      <form onSubmit={handleSubmit} className="prompt-bar-pill">
         <SourcesCountBadge sourceCount={sourceCount} scopedCount={scopedCount} />
 
         <textarea
           ref={ref}
           placeholder="Ask a question or create something..."
           value={query}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           onChange={(e) => {
             setQuery(e.target.value);
             e.target.style.height = 'auto';
@@ -99,26 +83,13 @@ const PromptBar = forwardRef(function PromptBar({ onSend, onStop, onAddUrl, load
           }}
           onKeyDown={handleKeyDown}
           rows={1}
-          style={{
-            flex: 1,
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            color: '#f4f4f5',
-            fontSize: '0.88rem',
-            lineHeight: '1.45',
-            resize: 'none',
-            padding: '4px 0',
-            fontFamily: 'inherit',
-            maxHeight: '160px',
-            overflowY: 'auto'
-          }}
+          className="prompt-bar-textarea"
         />
 
         <PromptActionButtons query={query} loading={loading} onClear={handleClear} onStop={onStop} />
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '0.7rem', color: '#9ca3af' }}>
+      <div className="prompt-disclaimer">
         SourceBook may display inaccurate info, so verify its answers against original sources.
       </div>
     </div>
