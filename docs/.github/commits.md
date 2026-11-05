@@ -603,6 +603,15 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Dropzone Layout Refactoring (`ui/src/components/sources/AddSourceDropzone.jsx`, `ui/src/index.css`)**: Rebuilt the dropzone into a compact horizontal card with 16px rounded borders, subtle dashed outline, and `#1e1f20` icon badge.
 - **Web Search Trigger Polish (`ui/src/index.css`)**: Added pill button styling for `.add-source-search-btn` matching the workspace surface tokens.
 
+## Commit 81: Dedicated YouTube Watch & Chat Cockpit Architecture
+- **Dedicated Watch & Chat View (`ui/src/pages/ytchat/YouTubeChatPage.jsx`, `ui/src/router/AppRouter.jsx`, `ui/src/components/layout/AppShell.jsx`)**: Built a standalone 2-column video intelligence cockpit under `/youtube/:videoId` pairing an embedded YouTube player with real-time video transcript exploration and conversational grounding.
+- **Independent Scroll Geometry (`ui/src/index.css`)**: Engineered separate scrollable containers for the video transcript stream (`.ytc-transcript-content-scroll`) and the chat history (`.ytc-chat-messages-scroll`), preventing layout lockups and providing fluid vertical scrolling across all viewports.
+- **Live Transcript Sync Status Pill (`ui/src/components/ytchat/YtChatHeader.jsx`, `ui/src/index.css`)**: Added an interactive sync badge displaying real-time extraction status with emerald green pulse indicator when indexed, amber animated spinner during probe, and an on-demand refresh trigger.
+- **Automatic Video Metadata Resolution (`ui/src/pages/ytchat/YouTubeChatPage.jsx`)**: Integrated asynchronous oEmbed video title and creator resolution to replace raw video ID strings with polished content titles and author names.
+- **Interactive Timestamp Citations (`ui/src/components/ytchat/YtChatPanel.jsx`, `ui/src/components/ytchat/YtTranscriptSidebar.jsx`)**: Implemented bidirectional video seeking allowing users to click timestamp badges in either the transcript or AI responses (`[08:40]`, `[14:22]`) to jump the video player to that exact second.
+- **Clean Quick Action Starters & Empty Slate (`ui/src/components/ytchat/YtChatPanel.jsx`)**: Replaced emojis and static placeholder text with a clean empty state and SVG-driven starter pills (`<ListOrdered />`, `<BookOpen />`, `<BarChart3 />`) for key takeaways, core concept explanation, and benchmark discovery.
+- **Homepage Quick-Start Trigger (`ui/src/pages/HomePage.jsx`, `ui/src/components/notebook/CreateYouTubeNotebookModal.jsx`)**: Placed a `Chat with YouTube` modal trigger directly on the homepage header bar allowing instant launch of video research sessions from any pasted link.
+
 
 
 

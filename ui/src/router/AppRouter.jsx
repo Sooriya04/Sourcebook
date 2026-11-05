@@ -7,6 +7,7 @@ import { useNotebooks } from '../hooks/useNotebooks';
 const HomePage = lazy(() => import('../pages/HomePage'));
 const NotebookPage = lazy(() => import('../pages/NotebookPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const YouTubeChatPage = lazy(() => import('../pages/ytchat/YouTubeChatPage'));
 
 export default function AppRouter() {
   const { notebooks, createNotebook, deleteNotebook, getNotebook, updateNotebook } = useNotebooks();
@@ -38,6 +39,10 @@ export default function AppRouter() {
           <Route
             path="/settings"
             element={<SettingsPage />}
+          />
+          <Route
+            path="/youtube/:videoId"
+            element={<YouTubeChatPage />}
           />
         </Routes>
       </Suspense>

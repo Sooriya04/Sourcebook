@@ -27,6 +27,13 @@ export default function SourceInspector({ source, onClose, onExplainSource, onCh
     try { return source.url ? new URL(source.url).hostname.replace(/^www\./, '') : ''; } catch { return source.url || ''; }
   })();
 
+  const isYouTube = source.type === 'youtube' || source.url?.includes('youtube.com') || source.url?.includes('youtu.be');
+  const ytVideoId = (() => {
+    if (!isYouTube || !source.url) return null;
+    const match = source.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+    return match ? match[1] : null;
+  })();
+
   return (
     <div className="source-inspector-panel">
       <div className="inspector-header">
@@ -39,6 +46,28 @@ export default function SourceInspector({ source, onClose, onExplainSource, onCh
 
       <div className="inspector-body">
         <h3 className="inspector-title">{source.title || 'Untitled Source'}</h3>
+
+        {/* Embedded YouTube Player if YouTube Source */}
+        {ytVideoId && (
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            aspectRatio: '16 / 9',
+            borderRadius: '14px',
+            overflow: 'hidden',
+            marginBottom: '12px',
+            backgroundColor: '#000',
+            border: '1px solid var(--border-default)'
+          }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${ytVideoId}?rel=0&modestbranding=1`}
+              title={source.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+            />
+          </div>
+        )}
 
         {source.url && (
           <div className="inspector-url-card">

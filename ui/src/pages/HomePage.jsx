@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Layers } from 'lucide-react';
+import { Plus, Layers, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CreateNotebookModal from '../components/notebook/CreateNotebookModal';
+import CreateYouTubeNotebookModal from '../components/notebook/CreateYouTubeNotebookModal';
 import NotebookCard from '../components/notebook/NotebookCard';
 import CreateNotebookCard from '../components/notebook/CreateNotebookCard';
 import NotebookSearchBar from '../components/notebook/NotebookSearchBar';
@@ -9,6 +10,7 @@ import EmptyState from '../components/ui/EmptyState';
 
 export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNotebook }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
@@ -30,6 +32,15 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
 
           <div className="home-actions-group">
             <NotebookSearchBar value={search} onChange={setSearch} placeholder="Filter workspaces..." />
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setIsYouTubeModalOpen(true)}
+              title="Chat directly with any YouTube video"
+            >
+              <Video size={14} className="text-accent" />
+              <span>Chat with YouTube</span>
+            </button>
             <button
               type="button"
               className="btn-primary"
@@ -84,6 +95,17 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
             const nb = await onCreateNotebook(title, desc);
             setIsCreateModalOpen(false);
             if (nb?.id) navigate(`/notebook/${nb.id}`);
+          }}
+        />
+      )}
+
+      {isYouTubeModalOpen && (
+        <CreateYouTubeNotebookModal
+          isOpen={isYouTubeModalOpen}
+          onClose={() => setIsYouTubeModalOpen(false)}
+          onOpenChat={(videoId) => {
+            setIsYouTubeModalOpen(false);
+            navigate(`/youtube/${videoId}`);
           }}
         />
       )}

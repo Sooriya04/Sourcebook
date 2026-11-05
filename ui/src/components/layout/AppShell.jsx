@@ -6,6 +6,7 @@ export default function AppShell({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const isNotebookPage = location.pathname.startsWith('/notebook/');
+  const isYouTubeChatPage = location.pathname.startsWith('/youtube/');
   const isSettingsPage = location.pathname === '/settings';
 
   const [engineStatus, setEngineStatus] = useState('checking');
@@ -42,7 +43,7 @@ export default function AppShell({ children }) {
 
   return (
     <div className="app-container">
-      {!isNotebookPage && (
+      {!isNotebookPage && !isYouTubeChatPage && (
         <header className="top-nav-bar">
           <div className="nav-left">
             <Link to="/" className="brand-link" title="SourceBook Workspace">
@@ -91,7 +92,7 @@ export default function AppShell({ children }) {
         </header>
       )}
 
-      <main className="app-workspace-body" style={{ height: isNotebookPage ? '100%' : 'calc(100% - 56px)' }}>
+      <main className="app-workspace-body" style={{ height: (isNotebookPage || isYouTubeChatPage) ? '100%' : 'calc(100% - 56px)' }}>
         {children}
       </main>
     </div>
