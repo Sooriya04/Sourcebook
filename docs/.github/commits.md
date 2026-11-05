@@ -597,6 +597,12 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Toggle Switch & Input Polish (`ui/src/components/ui/ToggleSwitch.jsx`, `ui/src/components/settings/llm/TestConnectionBar.jsx`, `ui/src/components/settings/SettingsHeader.jsx`)**: Redesigned form inputs, select dropdowns, and toggle switches to match the `#1e1f20` / `#131314` surface tokens with ice blue `#a8c7fa` active states and subtle focus rings.
 - **SPA Stale Chunk 404 Guard (`internal/api/static_handler.go`)**: Ensured missing `/assets/` requests return `http.NotFound` rather than fallback `index.html` to prevent MIME-type errors during frontend rebuilds.
 
+## Commit 80: Source Ingestion Modal Dark Theme Harmonization & Dropzone Redesign
+- **Inline Source Form Skinning (`ui/src/index.css`)**: Eliminated white background flash on Website, YouTube, and Copied text modals by explicitly styling `.inline-form-input` and `.inline-form-textarea` with `#131314` base card background, `#e3e3e3` text, `#8e918f` placeholder, and `#a8c7fa` focus glow.
+- **Form Action Controls (`ui/src/index.css`)**: Styled `.inline-form-back-btn`, `.inline-form-cancel`, and `.inline-form-submit` with rounded pill geometry and smooth dark hover states.
+- **Dropzone Layout Refactoring (`ui/src/components/sources/AddSourceDropzone.jsx`, `ui/src/index.css`)**: Rebuilt the dropzone into a compact horizontal card with 16px rounded borders, subtle dashed outline, and `#1e1f20` icon badge.
+- **Web Search Trigger Polish (`ui/src/index.css`)**: Added pill button styling for `.add-source-search-btn` matching the workspace surface tokens.
+
 
 
 

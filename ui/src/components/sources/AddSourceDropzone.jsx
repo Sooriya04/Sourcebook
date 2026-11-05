@@ -39,21 +39,23 @@ export default function AddSourceDropzone({
           </div>
         </div>
       ) : (
-        <>
+        <div className="dropzone-content-layout">
           <div className="dropzone-icon-box">
             {dragActive ? (
-              <UploadCloud size={24} className="text-indigo-400" />
+              <UploadCloud size={20} className="text-accent" />
             ) : (
-              <FileText size={24} className="text-zinc-500" />
+              <FileText size={20} className="text-zinc-400" />
             )}
           </div>
-          <span className="dropzone-title">
-            Drag & drop files here or browse
-          </span>
-          <span className="dropzone-sub">
-            PDF, TXT, MD, JSON, CSV, or Images
-          </span>
-        </>
+          <div className="dropzone-text-group">
+            <span className="dropzone-title">
+              Drag & drop files here or browse
+            </span>
+            <span className="dropzone-sub">
+              PDF, TXT, MD, JSON, CSV, or Images
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );
