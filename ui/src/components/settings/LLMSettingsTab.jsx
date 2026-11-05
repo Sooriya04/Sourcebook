@@ -21,28 +21,28 @@ export default function LLMSettingsTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
       <div
         style={{
-          backgroundColor: '#18181b',
+          backgroundColor: '#1e1f20',
           padding: '24px',
-          borderRadius: '12px',
-          border: '1px solid #27272a'
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.05)'
         }}
       >
         <div style={{ marginBottom: '20px' }}>
           <h3
             style={{
               fontSize: '0.94rem',
-              fontWeight: 600,
+              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              color: '#f4f4f5',
+              color: '#e3e3e3',
               margin: '0 0 4px 0'
             }}
           >
-            <Cpu size={16} color="#818cf8" />
+            <Cpu size={16} color="#a8c7fa" />
             <span>Inference Provider & Model Protocol</span>
           </h3>
-          <p style={{ fontSize: '0.78rem', color: '#71717a', margin: 0 }}>
+          <p style={{ fontSize: '0.78rem', color: '#8e918f', margin: 0 }}>
             Select the inference backend and specify connection parameters for grounded synthesis.
           </p>
         </div>

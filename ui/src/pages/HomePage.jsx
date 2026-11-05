@@ -22,20 +22,20 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
       <div className="home-content-wrapper">
         <header className="home-header">
           <div className="home-title-group">
-            <h1>Notebooks</h1>
-            <p>
-              {notebooks.length} {notebooks.length === 1 ? 'notebook' : 'notebooks'} in your workspace
+            <h1 className="text-xl font-medium tracking-tight text-[#e3e3e3]">Notebooks</h1>
+            <p className="text-xs font-normal text-[#8e918f]">
+              {notebooks.length} {notebooks.length === 1 ? 'workspace' : 'workspaces'} connected locally
             </p>
           </div>
 
           <div className="home-actions-group">
-            <NotebookSearchBar value={search} onChange={setSearch} placeholder="Search notebooks..." />
+            <NotebookSearchBar value={search} onChange={setSearch} placeholder="Filter workspaces..." />
             <button
               type="button"
               className="btn-primary"
               onClick={() => setIsCreateModalOpen(true)}
             >
-              <Plus size={15} />
+              <Plus size={14} strokeWidth={2.2} />
               <span>New notebook</span>
             </button>
           </div>
@@ -56,18 +56,18 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
           </div>
 
           {filteredNotebooks.length === 0 && search && (
-            <div style={{ marginTop: '32px' }}>
+            <div style={{ marginTop: '36px' }}>
               <EmptyState
                 icon={Layers}
                 title="No matching notebooks"
-                description={`No notebooks found matching "${search}".`}
+                description={`No notebook workspaces found matching "${search}".`}
                 action={
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={() => setSearch('')}
                   >
-                    Clear Search
+                    Clear Filter
                   </button>
                 }
               />

@@ -26,7 +26,7 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingBottom: '20px',
-        borderBottom: '1px solid #27272a',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         flexWrap: 'wrap',
         gap: '16px'
       }}
@@ -35,15 +35,15 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
         <h1
           style={{
             fontSize: '1.35rem',
-            fontWeight: 600,
-            letterSpacing: '-0.025em',
-            color: '#f4f4f5',
+            fontWeight: 500,
+            letterSpacing: '-0.02em',
+            color: '#e3e3e3',
             margin: '0 0 4px 0'
           }}
         >
           {titles[activeTab] || 'Settings'}
         </h1>
-        <p style={{ fontSize: '0.82rem', color: '#71717a', margin: 0 }}>
+        <p style={{ fontSize: '0.82rem', color: '#8e918f', margin: 0 }}>
           {descriptions[activeTab] || 'Configure persistent workspace properties.'}
         </p>
       </div>
@@ -79,24 +79,32 @@ export default function SettingsHeader({ activeTab, saveMessage, saving, onSave 
             alignItems: 'center',
             gap: '7px',
             padding: '8px 18px',
-            backgroundColor: '#4f46e5',
-            color: '#ffffff',
-            border: '1px solid #6366f1',
-            borderRadius: '8px',
+            backgroundColor: '#131314',
+            color: '#e3e3e3',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '9999px',
             fontWeight: 500,
             cursor: saving ? 'not-allowed' : 'pointer',
-            fontSize: '0.82rem',
+            fontSize: '0.84rem',
             transition: 'all 0.15s ease',
             opacity: saving ? 0.7 : 1
           }}
           onMouseEnter={(e) => {
-            if (!saving) e.currentTarget.style.backgroundColor = '#4338ca';
+            if (!saving) {
+              e.currentTarget.style.backgroundColor = '#282a2d';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.color = '#ffffff';
+            }
           }}
           onMouseLeave={(e) => {
-            if (!saving) e.currentTarget.style.backgroundColor = '#4f46e5';
+            if (!saving) {
+              e.currentTarget.style.backgroundColor = '#131314';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+              e.currentTarget.style.color = '#e3e3e3';
+            }
           }}
         >
-          {saving ? <Spinner size={14} color="#ffffff" /> : <Save size={14} />}
+          {saving ? <Spinner size={14} color="#e3e3e3" /> : <Save size={14} />}
           <span>{saving ? 'Saving...' : 'Save Settings'}</span>
         </button>
       </div>

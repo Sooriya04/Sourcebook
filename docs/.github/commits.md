@@ -585,6 +585,18 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Inspector Scroll Fix & Metadata De-bloat (`ui/src/components/sources/SourceInspector.jsx`, `ui/src/index.css`)**: Removed word count and estimated reading time badges from the inspector view, and fixed panel scroll issues by configuring `min-height: 0`, container scrolling on `.inspector-body`, and a scrollable markdown container with a custom styled scrollbar.
 - **Source Row Styling & Crash Prevention (`ui/src/components/sources/SourceCard.jsx`)**: Streamlined source items into single-row horizontal cards with circular favicons, clean title truncation, right-aligned square scope checkboxes, and removed deprecated `onlineStatus` references.
 
+## Commit 79: UI Harmonization, Settings Overhaul & Multi-Service Verification Architecture
+- **Unified Deep Dark Design System (`ui/src/App.css`, `ui/src/index.css`)**: Aligned root surface tokens with the workspace's deep dark color scheme (`#0e0f12` canvas, `#131314` base cards & inputs, `#1e1f20` raised panels, `#18191c` pill containers, `#282a2d` hover states). Updated text hierarchy to `#e3e3e3` (primary typography), `#c4c7c5` (body text & labels), and `#8e918f` (captions & metadata).
+- **Homepage Card and Layout Polish (`ui/src/pages/HomePage.jsx`, `ui/src/index.css`)**: Refactored `NotebookCard` and `CreateNotebookCard` to use `#1e1f20` panel backgrounds, 24px rounded corners, circular icon badges (`#131314` with hover transition to `#282a2d`), subtle `rgba(255, 255, 255, 0.05)` borders, and pill-styled action triggers.
+- **Top Navigation Bar Unification (`ui/src/components/layout/AppShell.jsx`, `ui/src/index.css`)**: Restyled the global header with a `#0e0f12` background, clean `SourceBook` brand typography (removing redundant icons and badges), and a live local engine status indicator with on-demand check functionality.
+- **Settings Semantic Layout Architecture (`ui/src/index.css`, `ui/src/pages/SettingsPage.jsx`, `ui/src/components/settings/SettingsSidebar.jsx`)**: Replaced utility styling with pure semantic CSS classes (`.settings-container`, `.settings-sidebar-panel`, `.settings-back-btn`, `.settings-nav-item`, `.settings-main-scroll`), eliminating horizontal layout collapse and maintaining a solid 240px vertical sidebar with responsive content scrolling.
+- **Live Service Health Checks (`ui/src/components/settings/SearchSettingsTab.jsx`, `ui/src/components/settings/MediaSettingsTab.jsx`)**: Added interactive **Test Connection** action buttons across all external services:
+  - **SearXNG Metasearch**: Live ping against `http://localhost:8080` returning immediate HTTP status feedback.
+  - **Searqon Web Scraper**: Live health probe against `http://127.0.0.1:4001/health` verifying scraper daemon availability.
+  - **YouTube Transcript Microservice**: Live connectivity check against `http://127.0.0.1:6001/health` with visual green/red indicators.
+- **Toggle Switch & Input Polish (`ui/src/components/ui/ToggleSwitch.jsx`, `ui/src/components/settings/llm/TestConnectionBar.jsx`, `ui/src/components/settings/SettingsHeader.jsx`)**: Redesigned form inputs, select dropdowns, and toggle switches to match the `#1e1f20` / `#131314` surface tokens with ice blue `#a8c7fa` active states and subtle focus rings.
+- **SPA Stale Chunk 404 Guard (`internal/api/static_handler.go`)**: Ensured missing `/assets/` requests return `http.NotFound` rather than fallback `index.html` to prevent MIME-type errors during frontend rebuilds.
+
 
 
 

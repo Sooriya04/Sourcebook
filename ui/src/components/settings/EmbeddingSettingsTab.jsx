@@ -5,10 +5,10 @@ export default function EmbeddingSettingsTab({ settings, onChange }) {
   const inputStyle = {
     width: '100%',
     padding: '10px 14px',
-    borderRadius: '8px',
-    backgroundColor: '#09090b',
-    border: '1px solid #27272a',
-    color: '#f4f4f5',
+    borderRadius: '12px',
+    backgroundColor: '#131314',
+    border: '1px solid rgba(255, 255, 255, 0.06)',
+    color: '#e3e3e3',
     fontSize: '0.84rem',
     fontFamily: "'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace",
     outline: 'none',
@@ -17,12 +17,12 @@ export default function EmbeddingSettingsTab({ settings, onChange }) {
   };
 
   const handleFocus = (e) => {
-    e.currentTarget.style.borderColor = '#6366f1';
-    e.currentTarget.style.boxShadow = '0 0 0 1px #6366f1';
+    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(168, 199, 250, 0.25)';
   };
 
   const handleBlur = (e) => {
-    e.currentTarget.style.borderColor = '#27272a';
+    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
     e.currentTarget.style.boxShadow = 'none';
   };
 
@@ -30,28 +30,28 @@ export default function EmbeddingSettingsTab({ settings, onChange }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
       <div
         style={{
-          backgroundColor: '#18181b',
+          backgroundColor: '#1e1f20',
           padding: '24px',
-          borderRadius: '12px',
-          border: '1px solid #27272a'
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.05)'
         }}
       >
         <div style={{ marginBottom: '20px' }}>
           <h3
             style={{
               fontSize: '0.94rem',
-              fontWeight: 600,
+              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              color: '#f4f4f5',
+              color: '#e3e3e3',
               margin: '0 0 4px 0'
             }}
           >
-            <Layers size={16} color="#818cf8" />
+            <Layers size={16} color="#a8c7fa" />
             <span>Vector Embeddings & Semantic Index</span>
           </h3>
-          <p style={{ fontSize: '0.78rem', color: '#71717a', margin: 0 }}>
+          <p style={{ fontSize: '0.78rem', color: '#8e918f', margin: 0 }}>
             Configure dense vector models for chunk embeddings, semantic reranking, and context retrieval.
           </p>
         </div>

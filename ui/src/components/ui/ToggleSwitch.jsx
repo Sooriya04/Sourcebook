@@ -34,8 +34,8 @@ export default function ToggleSwitch({ checked, onChange, label, id, disabled = 
           width: '36px',
           height: '20px',
           borderRadius: '9999px',
-          backgroundColor: checked ? '#4f46e5' : '#27272a',
-          border: checked ? '1px solid #6366f1' : '1px solid #3f3f46',
+          backgroundColor: checked ? '#a8c7fa' : '#131314',
+          border: checked ? '1px solid #a8c7fa' : '1px solid rgba(255, 255, 255, 0.1)',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           flexShrink: 0
         }}
@@ -48,14 +48,14 @@ export default function ToggleSwitch({ checked, onChange, label, id, disabled = 
             width: '14px',
             height: '14px',
             borderRadius: '50%',
-            backgroundColor: '#ffffff',
+            backgroundColor: checked ? '#0e0f12' : '#8e918f',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
             transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         />
       </div>
       {label && (
-        <span style={{ marginLeft: '10px', fontSize: '0.84rem', color: '#f4f4f5', fontWeight: 500 }}>
+        <span style={{ marginLeft: '10px', fontSize: '0.84rem', color: '#e3e3e3', fontWeight: 500 }}>
           {label}
         </span>
       )}

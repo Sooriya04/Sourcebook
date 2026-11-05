@@ -6,41 +6,41 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Sora:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Surface Tokens (Neutral Zincs) */
-  --surface-0: #09090b;       /* Canvas / Canvas 0 (zinc-950) */
-  --surface-1: #121215;       /* Panels, sidebars, base cards (zinc-900 tint) */
-  --surface-panel: #18181b;   /* Raised panels and container cards */
-  --surface-2: #202024;       /* Raised surfaces, hover targets, inputs */
-  --surface-raised: #27272a;  /* Higher elevation cards and controls (zinc-800) */
-  --surface-3: #2e2e33;       /* Active controls, pill backgrounds (zinc-700 tint) */
-  --surface-pill: #3f3f46;    /* Active pill badges, secondary buttons (zinc-700) */
+  /* Surface Tokens — Unified Deep Dark Theme */
+  --surface-0: #0e0f12;       /* Global Canvas & Workspace background */
+  --surface-1: #131314;       /* Base cards, inputs, secondary panels */
+  --surface-panel: #1e1f20;   /* Raised panels, sidebar & inspector backgrounds */
+  --surface-2: #18191c;       /* Elevated controls, pill groups, header switchers */
+  --surface-raised: #282a2d;  /* Interactive hover states, active control fills */
+  --surface-3: #32353a;       /* Secondary active buttons, emphasized chips */
+  --surface-pill: #282a2d;    /* Pill badges and selection indicators */
 
-  /* Border Tokens (Crisp 1px borders over drop-shadows) */
+  /* Border Tokens (Crisp 1px borders over heavy drop-shadows) */
   --border-default: rgba(255, 255, 255, 0.08); /* Crisp 1px border */
-  --border-subtle: rgba(255, 255, 255, 0.05);  /* Faintest divider */
-  --border-hover: rgba(255, 255, 255, 0.16);   /* Interactive hover border */
-  --border-active: #6366f1;                    /* Active state border */
-  --border-focus: rgba(99, 102, 241, 0.5);     /* Restrained indigo focus ring */
-  --border-zinc: #27272a;                      /* Solid zinc-800 fallback */
-  --border-zinc-hover: #3f3f46;                /* Solid zinc-700 fallback */
+  --border-subtle: rgba(255, 255, 255, 0.05);  /* Subtle 1px divider */
+  --border-hover: rgba(255, 255, 255, 0.15);   /* Interactive hover border */
+  --border-active: #a8c7fa;                    /* Restrained active blue border */
+  --border-focus: rgba(168, 199, 250, 0.45);   /* Focus ring */
+  --border-zinc: #282a2d;                      /* Fallback solid border */
+  --border-zinc-hover: #3f4247;                /* Fallback solid hover border */
 
-  /* Text Contrasts (Enforcing crisp contrast) */
-  --text-primary: #f4f4f5;     /* Page headers & primary text (zinc-100) */
-  --text-secondary: #d4d4d8;   /* Body text & secondary content (zinc-300) */
-  --text-muted: #a1a1aa;       /* Captions, subtext & metadata (zinc-400) */
-  --text-dim: #71717a;         /* Muted tags, disabled labels (zinc-500) */
-  --text-inverse: #09090b;     /* High-contrast inverted text */
+  /* Text Contrasts (Enforcing crisp contrast matching workspace) */
+  --text-primary: #e3e3e3;     /* Page headers & primary typography */
+  --text-secondary: #c4c7c5;   /* Body text & secondary content */
+  --text-muted: #8e918f;       /* Captions, subtext & metadata */
+  --text-dim: #717375;         /* Muted tags, disabled labels */
+  --text-inverse: #0e0f12;     /* High-contrast inverted text */
 
-  /* Deliberate Single Brand Accent (Restrained Indigo) */
-  --accent: #6366f1;           /* Restrained Indigo-500 */
-  --accent-primary: #6366f1;   /* Primary action color */
-  --accent-hover: #818cf8;     /* Indigo-400 for hover states */
-  --accent-active: #4f46e5;    /* Indigo-600 for active states */
-  --accent-subtle: rgba(99, 102, 241, 0.12); /* Subtle indigo tint */
-  --accent-bg: rgba(99, 102, 241, 0.12);
-  --accent-muted: rgba(99, 102, 241, 0.15);
-  --accent-border: rgba(99, 102, 241, 0.35);
-  --accent-text: #a5b4fc;      /* Indigo-300 for readable accent text */
+  /* Accent Tone */
+  --accent: #a8c7fa;           /* Soft Ice Blue Accent */
+  --accent-primary: #a8c7fa;   /* Primary accent */
+  --accent-hover: #c2e7ff;     /* Lighter blue hover */
+  --accent-active: #82a8f8;    /* Pressed blue */
+  --accent-subtle: rgba(168, 199, 250, 0.12); /* Subtle accent tint */
+  --accent-bg: rgba(168, 199, 250, 0.12);
+  --accent-muted: rgba(168, 199, 250, 0.15);
+  --accent-border: rgba(168, 199, 250, 0.3);
+  --accent-text: #a8c7fa;      /* Clean accent text */
 
   /* Status Indicators */
   --status-online: #10b981;    /* Emerald for online / success */

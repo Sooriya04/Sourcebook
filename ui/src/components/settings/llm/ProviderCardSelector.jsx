@@ -34,9 +34,9 @@ export default function ProviderCardSelector({ provider, onSelectProvider }) {
             }}
             style={{
               padding: '14px 16px',
-              borderRadius: '10px',
-              border: isSelected ? '1px solid #6366f1' : '1px solid #27272a',
-              backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.08)' : '#121214',
+              borderRadius: '16px',
+              border: isSelected ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
+              backgroundColor: isSelected ? '#282a2d' : '#131314',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
               outline: 'none',
@@ -47,14 +47,14 @@ export default function ProviderCardSelector({ provider, onSelectProvider }) {
             }}
             onMouseEnter={(e) => {
               if (!isSelected) {
-                e.currentTarget.style.backgroundColor = '#18181b';
-                e.currentTarget.style.borderColor = '#3f3f46';
+                e.currentTarget.style.backgroundColor = '#1e1f20';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
               }
             }}
             onMouseLeave={(e) => {
               if (!isSelected) {
-                e.currentTarget.style.backgroundColor = '#121214';
-                e.currentTarget.style.borderColor = '#27272a';
+                e.currentTarget.style.backgroundColor = '#131314';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
               }
             }}
           >

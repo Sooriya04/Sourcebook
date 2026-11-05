@@ -39,12 +39,12 @@ export default function SettingsPage() {
           width: '100%',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#09090b',
-          color: '#71717a',
+          backgroundColor: '#0e0f12',
+          color: '#8e918f',
           gap: '12px'
         }}
       >
-        <Spinner size={18} color="#818cf8" />
+        <Spinner size={18} color="#a8c7fa" />
         <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>
           LOADING SETTINGS...
         </p>
@@ -53,30 +53,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        width: '100%',
-        flex: 1,
-        height: '100%',
-        backgroundColor: '#09090b',
-        color: '#f4f4f5',
-        overflow: 'hidden'
-      }}
-    >
+    <div className="settings-container">
       <SettingsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main style={{ flex: 1, padding: '36px clamp(20px, 4vw, 48px) 64px', overflowY: 'auto', width: '100%' }}>
-        <div
-          style={{
-            maxWidth: '880px',
-            width: '100%',
-            margin: '0 auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px'
-          }}
-        >
+      <main className="settings-main-scroll">
+        <div className="settings-content-wrapper">
           <SettingsHeader
             activeTab={activeTab}
             saveMessage={saveMessage}

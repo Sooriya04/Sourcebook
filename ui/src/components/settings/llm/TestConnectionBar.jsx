@@ -11,7 +11,7 @@ export default function TestConnectionBar({ testingKey, testStatus, onTestConnec
         gap: '12px',
         marginTop: '24px',
         paddingTop: '20px',
-        borderTop: '1px solid #27272a',
+        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
         flexWrap: 'wrap'
       }}
     >
@@ -23,11 +23,11 @@ export default function TestConnectionBar({ testingKey, testStatus, onTestConnec
           display: 'inline-flex',
           alignItems: 'center',
           gap: '8px',
-          padding: '8px 16px',
-          backgroundColor: '#27272a',
-          border: '1px solid #3f3f46',
-          color: '#f4f4f5',
-          borderRadius: '8px',
+          padding: '8px 18px',
+          backgroundColor: '#131314',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          color: '#e3e3e3',
+          borderRadius: '9999px',
           cursor: testingKey ? 'not-allowed' : 'pointer',
           fontWeight: 500,
           fontSize: '0.82rem',
@@ -35,18 +35,20 @@ export default function TestConnectionBar({ testingKey, testStatus, onTestConnec
         }}
         onMouseEnter={(e) => {
           if (!testingKey) {
-            e.currentTarget.style.backgroundColor = '#323238';
-            e.currentTarget.style.borderColor = '#52525b';
+            e.currentTarget.style.backgroundColor = '#282a2d';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
           }
         }}
         onMouseLeave={(e) => {
           if (!testingKey) {
-            e.currentTarget.style.backgroundColor = '#27272a';
-            e.currentTarget.style.borderColor = '#3f3f46';
+            e.currentTarget.style.backgroundColor = '#131314';
+            e.currentTarget.style.color = '#e3e3e3';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
           }
         }}
       >
-        {testingKey ? <Spinner size={14} color="#818cf8" /> : <ShieldCheck size={14} color="#818cf8" />}
+        {testingKey ? <Spinner size={14} color="#a8c7fa" /> : <ShieldCheck size={14} color="#a8c7fa" />}
         <span>{testingKey ? 'Verifying Endpoint...' : 'Test Connection & Key'}</span>
       </button>
 

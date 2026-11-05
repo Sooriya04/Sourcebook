@@ -30,6 +30,12 @@ func RegisterStaticSPA(mux *http.ServeMux, distDir string) bool {
 		targetFile := filepath.Join(distDir, cleanPath)
 
 		info, err := os.Stat(targetFile)
+		// Missing assets should return 404 rather than index.html to avoid MIME mismatch errors on stale JS chunks
+		if err != nil && strings.HasPrefix(cleanPath, "/assets/") {
+			http.NotFound(w, r)
+			return
+		}
+
 		// If file doesn't exist or is a directory, serve SPA index.html
 		if err != nil || info.IsDir() {
 			http.ServeFile(w, r, indexPath)
