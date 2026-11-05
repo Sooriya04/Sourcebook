@@ -49,10 +49,6 @@ export function useSources(initialSources = [], notebookId = null) {
     const saved = getSavedScopedIds(notebookId);
     if (saved !== null) {
       setScopedSourceIdsState(new Set(saved));
-    } else if (sources.length > 0) {
-      const allSet = new Set(sources.map((s) => s.id || String(s.index)));
-      setScopedSourceIdsState(allSet);
-      persistScopedIds(notebookId, allSet);
     }
   }, [notebookId]);
 

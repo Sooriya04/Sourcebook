@@ -146,7 +146,7 @@ export default function QuizView() {
           marginTop: '24px'
         }}
       >
-        <span style={{ fontSize: '0.84rem', fontWeight: '600', color: '#ffffff' }}>Your Progress</span>
+        <span style={{ fontSize: '0.84rem', fontWeight: '600', color: '#ffffff' }}>Score: {score} / {MOCK_QUESTIONS.length}</span>
         <span style={{ fontSize: '0.94rem', fontWeight: '700', color: '#ffffff' }}>
           {Object.keys(selectedAnswers).length} / {MOCK_QUESTIONS.length} Answered
         </span>

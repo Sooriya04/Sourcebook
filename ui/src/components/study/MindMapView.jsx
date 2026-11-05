@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Network, Info, Plus, Minus, Search, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Network, Info, Plus, Minus, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 const NODES_DATA = {
   id: 'root',

@@ -571,6 +571,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Source Card Reading Badge Removal (`ui/src/components/sources/SourceCard.jsx`)**: Removed word count calculation and wrapping reading time badge (`"2m read"`), giving the source domain and filename clean single-row width without awkward wrapping.
 - **Unused Import Cleanup (`ui/src/components/chat/ChatHeader.jsx`, `ui/src/components/chat/SourcesCountBadge.jsx`)**: Removed unused `lucide-react` icon imports.
 
+## Commit 77: Resolve UI Audit Items (Scope Invalidation, Stream Abort Guard, Audio Buffer Cleanup, Dead Code & Code-Splitting)
+- **Stale Scope Invalidation on Notebook Switch (`ui/src/hooks/useSources.js`)**: Eliminated premature source scoping inside `useEffect([notebookId])` that previously assigned and persisted IDs from the prior notebook when switching notebooks without saved local storage state.
+- **Chat Stream Abort & Race Protection (`ui/src/services/sourcebookApi.js`)**: Added `abortSignal.aborted` checks inside the Server-Sent Events line parser and reader loop in `chatQueryStream`, preventing trailing buffered tokens from bleeding into subsequent user messages upon stop or rapid re-query.
+- **Audio Element Memory Cleanup (`ui/src/hooks/useAudioPlayer.js`)**: Added `audio.src = ''` and `audio.load()` on hook unmount to release buffered media audio chunks and prevent memory leaks across sessions.
+- **Dead State & Oxlint Cleanup (`ui/src/components/study/MindMapView.jsx`, `ui/src/components/study/QuizView.jsx`, `ui/src/components/study/StudyStudio.jsx`)**: Connected unread `score` state to quiz progress banner, removed unused `Search` icon import, and removed shadowed/unused `setActiveTab` prop.
+- **Route-Level Code Splitting (`ui/src/router/AppRouter.jsx`)**: Migrated static page imports (`HomePage`, `NotebookPage`, `SettingsPage`) to `React.lazy` and `Suspense`, eliminating Vite's monolithic chunk warning and reducing entry JS bundle size from 560 kB to 243 kB (~57% reduction).
+
 
 
 

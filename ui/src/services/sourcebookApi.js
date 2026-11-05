@@ -260,6 +260,7 @@ export async function chatQueryStream({ query, notebookId, maxSources = 5, scope
     let buffer = '';
 
     while (true) {
+      if (abortSignal?.aborted) break;
       const { value, done } = await reader.read();
       if (done) break;
 
@@ -269,6 +270,7 @@ export async function chatQueryStream({ query, notebookId, maxSources = 5, scope
       buffer = lines.pop();
 
       for (const line of lines) {
+        if (abortSignal?.aborted) break;
         const trimmed = line.trim();
         if (!trimmed || !trimmed.startsWith('data: ')) continue;
 

@@ -37,6 +37,8 @@ export function useAudioPlayer(notebookId) {
 
     return () => {
       audio.pause();
+      audio.src = '';
+      audio.load();
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('play', onPlay);

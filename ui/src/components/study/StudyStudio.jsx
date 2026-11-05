@@ -51,7 +51,6 @@ export default function StudyStudio({
   notebookId,
   sources,
   activeTab,
-  setActiveTab,
   setActiveMode,
   isSourcesCollapsed,
   onToggleSources,

@@ -1,41 +1,45 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell';
-import HomePage from '../pages/HomePage';
-import NotebookPage from '../pages/NotebookPage';
-import SettingsPage from '../pages/SettingsPage';
+import Spinner from '../components/ui/Spinner';
 import { useNotebooks } from '../hooks/useNotebooks';
+
+const HomePage = lazy(() => import('../pages/HomePage'));
+const NotebookPage = lazy(() => import('../pages/NotebookPage'));
+const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 
 export default function AppRouter() {
   const { notebooks, createNotebook, deleteNotebook, getNotebook, updateNotebook } = useNotebooks();
 
   return (
     <AppShell onNewNotebook={() => {}}>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <HomePage
-              notebooks={notebooks}
-              onCreateNotebook={createNotebook}
-              onDeleteNotebook={deleteNotebook}
-            />
-          }
-        />
-        <Route
-          path="/notebook/:id"
-          element={
-            <NotebookPage
-              getNotebook={getNotebook}
-              updateNotebook={updateNotebook}
-            />
-          }
-        />
-        <Route
-          path="/settings"
-          element={<SettingsPage />}
-        />
-      </Routes>
+      <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-[#131314]"><Spinner size="lg" /></div>}>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <HomePage
+                notebooks={notebooks}
+                onCreateNotebook={createNotebook}
+                onDeleteNotebook={deleteNotebook}
+              />
+            }
+          />
+          <Route
+            path="/notebook/:id"
+            element={
+              <NotebookPage
+                getNotebook={getNotebook}
+                updateNotebook={updateNotebook}
+              />
+            }
+          />
+          <Route
+            path="/settings"
+            element={<SettingsPage />}
+          />
+        </Routes>
+      </Suspense>
     </AppShell>
   );
 }
