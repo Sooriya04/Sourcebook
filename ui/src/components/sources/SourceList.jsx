@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layers, Globe, Video, FileText, GitBranch, BookOpen, MessageSquare } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Layers, SlidersHorizontal, Check } from 'lucide-react';
 import SourceCard from './SourceCard';
 
 export default function SourceList({
@@ -12,6 +12,22 @@ export default function SourceList({
   onDoubleClickSource,
   onDeleteSource
 }) {
+  const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'type'
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowSortMenu(false);
+      }
+    };
+    if (showSortMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSortMenu]);
+
   if (!sources || sources.length === 0) {
     return (
       <div className="sources-empty-tasteful">
@@ -35,91 +51,100 @@ export default function SourceList({
   const scopedCount = scopedSourceIds ? validScopedCount : totalCount;
   const isAllScoped = scopedCount === totalCount && totalCount > 0;
 
-  const categories = {
-    YouTube: { icon: <Video size={13} className="text-zinc-400" />, items: [] },
-    GitHub: { icon: <GitBranch size={13} className="text-zinc-400" />, items: [] },
-    Arxiv: { icon: <BookOpen size={13} className="text-zinc-400" />, items: [] },
-    Reddit: { icon: <MessageSquare size={13} className="text-zinc-400" />, items: [] },
-    PDF: { icon: <FileText size={13} className="text-zinc-400" />, items: [] },
-    Web: { icon: <Globe size={13} className="text-zinc-400" />, items: [] },
-  };
-
-  sources.forEach((src, idx) => {
-    const citationIndex = src.index || (idx + 1);
-    const enrichedSource = { ...src, index: citationIndex };
-    const url = (src.url || '').toLowerCase();
-
-    if (url.includes('youtube.com') || url.includes('youtu.be') || src.type === 'youtube') {
-      categories.YouTube.items.push(enrichedSource);
-    } else if (url.includes('github.com')) {
-      categories.GitHub.items.push(enrichedSource);
-    } else if (url.includes('arxiv.org')) {
-      categories.Arxiv.items.push(enrichedSource);
-    } else if (url.includes('reddit.com')) {
-      categories.Reddit.items.push(enrichedSource);
-    } else if (src.type === 'pdf' || url.endsWith('.pdf')) {
-      categories.PDF.items.push(enrichedSource);
-    } else {
-      categories.Web.items.push(enrichedSource);
+  // Sorted items based on active criteria
+  const sortedSources = [...sources].sort((a, b) => {
+    if (sortBy === 'title') {
+      const titleA = (a.title || '').toLowerCase();
+      const titleB = (b.title || '').toLowerCase();
+      return titleA.localeCompare(titleB);
     }
+    if (sortBy === 'type') {
+      const typeA = (a.type || 'web').toLowerCase();
+      const typeB = (b.type || 'web').toLowerCase();
+      return typeA.localeCompare(typeB);
+    }
+    // Default 'recent' maintains insertion index / natural order
+    return (a.index || 0) - (b.index || 0);
   });
 
   return (
     <div className="sources-list-container">
       {onToggleAllScope && (
-        <div className="sources-scope-header">
+        <div className="sources-scope-header" ref={menuRef}>
+          <button
+            type="button"
+            className="sources-filter-btn"
+            onClick={() => setShowSortMenu(prev => !prev)}
+            title="Sort sources"
+            aria-label="Sort sources"
+          >
+            <SlidersHorizontal size={15} />
+          </button>
+
+          {showSortMenu && (
+            <div className="sources-sort-menu">
+              <button
+                type="button"
+                className={`sources-sort-item ${sortBy === 'recent' ? 'active' : ''}`}
+                onClick={() => { setSortBy('recent'); setShowSortMenu(false); }}
+              >
+                <span>Recent</span>
+                {sortBy === 'recent' && <Check size={14} />}
+              </button>
+              <button
+                type="button"
+                className={`sources-sort-item ${sortBy === 'title' ? 'active' : ''}`}
+                onClick={() => { setSortBy('title'); setShowSortMenu(false); }}
+              >
+                <span>Title</span>
+                {sortBy === 'title' && <Check size={14} />}
+              </button>
+              <button
+                type="button"
+                className={`sources-sort-item ${sortBy === 'type' ? 'active' : ''}`}
+                onClick={() => { setSortBy('type'); setShowSortMenu(false); }}
+              >
+                <span>Type</span>
+                {sortBy === 'type' && <Check size={14} />}
+              </button>
+            </div>
+          )}
+
           <label className="sources-select-all-label">
+            <span>Select all</span>
             <input
               type="checkbox"
               checked={isAllScoped}
               onChange={onToggleAllScope}
               className="sources-select-all-checkbox"
             />
-            <span>Select all ({scopedCount}/{totalCount})</span>
           </label>
-          {scopedCount < totalCount && (
-            <span className="sources-excluded-pill">
-              {totalCount - scopedCount} excluded
-            </span>
-          )}
         </div>
       )}
 
-      {Object.entries(categories).map(([name, category]) => {
-        if (category.items.length === 0) return null;
-
-        return (
-          <div key={name} className="source-category-section">
-            <div className="source-category-header">
-              <span className="source-category-icon">{category.icon}</span>
-              <span className="source-category-name">{name}</span>
-              <span className="source-category-count">{category.items.length}</span>
-            </div>
-
-            <div className="source-category-cards">
-              {category.items.map((enrichedSource) => {
-                const sourceKey = enrichedSource.id || String(enrichedSource.index);
-                const isScoped = scopedSourceIds
-                  ? (scopedSourceIds.has(sourceKey) || (enrichedSource.id && scopedSourceIds.has(String(enrichedSource.index))))
-                  : true;
-                return (
-                  <SourceCard
-                    key={enrichedSource.id || enrichedSource.index}
-                    source={enrichedSource}
-                    isActive={activeCitation === enrichedSource.index}
-                    isScoped={isScoped}
-                    onToggleScope={onToggleScope}
-                    onClick={() => onSelectSource?.(enrichedSource)}
-                    onDoubleClick={() => onDoubleClickSource?.(enrichedSource)}
-                    onInspect={onDoubleClickSource}
-                    onDelete={onDeleteSource}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+      <div className="source-category-cards" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        {sortedSources.map((src, idx) => {
+          const citationIndex = src.index || (idx + 1);
+          const enrichedSource = { ...src, index: citationIndex };
+          const sourceKey = enrichedSource.id || String(enrichedSource.index);
+          const isScoped = scopedSourceIds
+            ? (scopedSourceIds.has(sourceKey) || (enrichedSource.id && scopedSourceIds.has(String(enrichedSource.index))))
+            : true;
+          return (
+            <SourceCard
+              key={enrichedSource.id || enrichedSource.index}
+              source={enrichedSource}
+              isActive={activeCitation === enrichedSource.index}
+              isScoped={isScoped}
+              onToggleScope={onToggleScope}
+              onClick={() => onSelectSource?.(enrichedSource)}
+              onDoubleClick={() => onDoubleClickSource?.(enrichedSource)}
+              onInspect={onDoubleClickSource}
+              onDelete={onDeleteSource}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

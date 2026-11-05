@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Globe, Sparkles, ExternalLink, Copy, Check, Clock, FileText, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Globe, Sparkles, ExternalLink, Copy, Check, MessageSquare, ArrowLeft } from 'lucide-react';
 
 export default function SourceInspector({ source, onClose, onExplainSource, onChatWithSource }) {
   const [copied, setCopied] = useState(false);
@@ -15,8 +15,6 @@ export default function SourceInspector({ source, onClose, onExplainSource, onCh
 
   const rawContent = source.content || source.Content || source.text || source.Text || 
                      source.snippet || source.Snippet || source.description || '';
-  const wordCount = rawContent ? rawContent.trim().split(/\s+/).length : 0;
-  const readTimeMin = Math.max(1, Math.round(wordCount / 200));
 
   const handleCopy = () => {
     if (!rawContent) return;
@@ -41,21 +39,6 @@ export default function SourceInspector({ source, onClose, onExplainSource, onCh
 
       <div className="inspector-body">
         <h3 className="inspector-title">{source.title || 'Untitled Source'}</h3>
-
-        <div className="inspector-meta-row">
-          {wordCount > 0 && (
-            <div className="inspector-meta-badge">
-              <FileText size={11} className="text-zinc-400" />
-              <span>{wordCount.toLocaleString()} words</span>
-            </div>
-          )}
-          {readTimeMin > 0 && (
-            <div className="inspector-meta-badge">
-              <Clock size={11} className="text-zinc-400" />
-              <span>~{readTimeMin} min read</span>
-            </div>
-          )}
-        </div>
 
         {source.url && (
           <div className="inspector-url-card">

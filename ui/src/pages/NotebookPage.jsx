@@ -16,15 +16,25 @@ import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
-import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes, fetchLLMHealth } from '../services/sourcebookApi';
 
 const EMPTY_ARR = [];
 
-export default function NotebookPage({ getNotebook }) {
+export default function NotebookPage({ getNotebook, createNotebook }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [notebook, setNotebook] = useState(() => getNotebook?.(id) || null);
   const [loadingNotebook, setLoadingNotebook] = useState(true);
+  const [chatMode, setChatMode] = useState('notebook');
+  const [llmHealth, setLlmHealth] = useState({ status: 'checking', model: '', embeddings: '' });
+
+  useEffect(() => {
+    fetchLLMHealth().then(setLlmHealth).catch(() => setLlmHealth({ status: 'offline', model: '', embeddings: '' }));
+    const interval = setInterval(() => {
+      fetchLLMHealth().then(setLlmHealth).catch(() => setLlmHealth({ status: 'offline', model: '', embeddings: '' }));
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
   
   const [notes, setNotes] = useState(EMPTY_ARR);
   const [episodes, setEpisodes] = useState(EMPTY_ARR);
@@ -264,10 +274,20 @@ export default function NotebookPage({ getNotebook }) {
         title={notebook.title}
         notebookId={notebook.id || id}
         onClearChat={clearChat}
-        messageCount={messages.length}
-        activeMode={activeMode}
-        setActiveMode={setActiveMode}
         onExport={handleExportNotebook}
+        mode={chatMode}
+        setMode={setChatMode}
+        llmHealth={llmHealth}
+        onOpenShortcuts={() => setIsCommandPaletteOpen(true)}
+        onCreateNotebook={async () => {
+          try {
+            const nb = await createNotebook?.('Untitled Notebook', '');
+            if (nb?.id) navigate(`/notebook/${nb.id}`);
+            else navigate('/');
+          } catch {
+            navigate('/');
+          }
+        }}
       />
 
       <div className="three-panel-body">
@@ -309,7 +329,7 @@ export default function NotebookPage({ getNotebook }) {
                 streamPhase={streamPhase}
                 maxSources={maxSources}
                 setMaxSources={setMaxSources}
-                onSendMessage={(q, m, h) => sendMessage(q, m, h, Array.from(scopedSourceIds))}
+                onSendMessage={(q, m, h) => sendMessage(q, m || chatMode, h, Array.from(scopedSourceIds))}
                 onStopStream={stopStream}
                 onRegenerate={regenerateMessage}
                 onEditAndResend={editAndResendMessage}
@@ -317,7 +337,9 @@ export default function NotebookPage({ getNotebook }) {
                 allSources={sources}
                 scopedSourceIds={scopedSourceIds}
                 onCitationClick={handleCitationClick}
-                activeCitation={activeCitation}
+                chatMode={chatMode}
+                setChatMode={setChatMode}
+                llmHealth={llmHealth}
                 onSaveNote={(note) => setNotes((prev) => [note, ...prev])}
                 chatEndRef={chatEndRef}
                 notebookTitle={notebook.title}

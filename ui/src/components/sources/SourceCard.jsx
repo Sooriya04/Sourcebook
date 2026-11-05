@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Globe, FileText, Video, Trash2, Loader2, Eye } from 'lucide-react';
-import { truncateUrl } from '../../utils/formatters';
-import { pingSourceURL } from '../../services/sourcebookApi';
+import React, { useState } from 'react';
+import { Globe, FileText, Video, Loader2 } from 'lucide-react';
 
 export default function SourceCard({ 
   source, 
@@ -9,23 +7,10 @@ export default function SourceCard({
   isScoped = true,
   onToggleScope,
   onClick, 
-  onDoubleClick, 
-  onInspect, 
-  onDelete 
+  onDoubleClick
 }) {
   const [iconFailed, setIconFailed] = useState(false);
   const isIndexing = source.status === 'Indexing...';
-  const [onlineStatus, setOnlineStatus] = useState('checking');
-
-  useEffect(() => {
-    if (!source.url || !source.url.startsWith('http')) {
-      setOnlineStatus('local');
-      return;
-    }
-    pingSourceURL(source.url)
-      .then(res => setOnlineStatus(res.online ? 'online' : 'offline'))
-      .catch(() => setOnlineStatus('offline'));
-  }, [source.url]);
 
   const domain = (() => {
     try { return source.url ? new URL(source.url).hostname.replace('www.', '') : ''; } catch { return ''; }
@@ -42,15 +27,12 @@ export default function SourceCard({
         />
       );
     }
-    if (source.type === 'pdf' || source.type === 'file') return <FileText size={13} className="text-zinc-400 shrink-0" />;
+    if (source.type === 'pdf' || source.type === 'file') return <FileText size={14} className="text-zinc-300 shrink-0" />;
     if (source.type === 'youtube' || source.url?.includes('youtube.com') || source.url?.includes('youtu.be')) {
-      return <Video size={13} className="text-zinc-400 shrink-0" />;
+      return <Video size={14} className="text-zinc-300 shrink-0" />;
     }
-    return <Globe size={13} className="text-zinc-400 shrink-0" />;
+    return <Globe size={14} className="text-zinc-300 shrink-0" />;
   };
-
-  const healthColor = onlineStatus === 'online' ? '#10b981' : onlineStatus === 'offline' ? '#f43f5e' : '#f59e0b';
-  const healthTitle = onlineStatus === 'online' ? 'Online' : onlineStatus === 'offline' ? 'Offline' : 'Checking Health...';
 
   return (
     <div
@@ -66,7 +48,24 @@ export default function SourceCard({
         }
       }}
     >
-      <div className="source-card-top-row">
+      <div className="source-card-left-group">
+        <div className="source-card-avatar">
+          {renderIcon()}
+        </div>
+
+        <span className={`source-title-text ${isScoped ? '' : 'unscoped'}`}>
+          {source.title || 'Untitled Source'}
+        </span>
+
+        {isIndexing && (
+          <div className="source-indexing-badge">
+            <Loader2 size={11} className="spin text-amber-400" />
+            <span>Indexing...</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         {onToggleScope && (
           <input
             type="checkbox"
@@ -81,55 +80,6 @@ export default function SourceCard({
             aria-label={`Scope source ${source.title || 'Untitled'}`}
           />
         )}
-
-        {source.index && <span className="source-index-badge">[{source.index}]</span>}
-
-        {onlineStatus !== 'local' && (
-          <span className="source-health-dot" style={{ backgroundColor: healthColor }} title={healthTitle} />
-        )}
-
-        <span className={`source-title-text ${isScoped ? '' : 'unscoped'}`}>
-          {source.title || 'Untitled Source'}
-        </span>
-
-        {isIndexing ? (
-          <div className="source-indexing-badge">
-            <Loader2 size={11} className="spin text-amber-400" />
-            <span>Indexing...</span>
-          </div>
-        ) : (
-          <div className="source-card-actions">
-            {onInspect && (
-              <button
-                type="button"
-                className="source-action-btn"
-                onClick={(e) => { e.stopPropagation(); onInspect(source); }}
-                title="Inspect source"
-              >
-                <Eye size={12} />
-              </button>
-            )}
-            {onDelete && (
-              <button
-                type="button"
-                className="source-action-btn delete"
-                onClick={(e) => { e.stopPropagation(); onDelete(source.index); }}
-                title="Remove source"
-              >
-                <Trash2 size={12} />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="source-card-bottom-row">
-        <div className="source-domain-wrapper">
-          {renderIcon()}
-          <span className="source-domain-text">
-            {source.url ? truncateUrl(source.url) : source.filename || 'Uploaded Document'}
-          </span>
-        </div>
       </div>
     </div>
   );

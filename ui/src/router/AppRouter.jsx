@@ -31,6 +31,7 @@ export default function AppRouter() {
               <NotebookPage
                 getNotebook={getNotebook}
                 updateNotebook={updateNotebook}
+                createNotebook={createNotebook}
               />
             }
           />

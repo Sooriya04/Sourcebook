@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, PanelLeftClose, Search, Globe, Sparkles } from 'lucide-react';
+import { Plus, PanelLeft, ArrowRight, Globe, Sparkles, ChevronDown } from 'lucide-react';
 import SourceList from '../sources/SourceList';
 import SourceDiscovery from '../sources/SourceDiscovery';
 import SourceInspector from '../sources/SourceInspector';
@@ -56,10 +56,7 @@ export default function Sidebar({
         <div className="sidebar-panel-wrapper">
           {/* Header */}
           <div className="sidebar-header-row">
-            <div className="sidebar-title-group">
-              <h3 className="sidebar-title-heading">Sources</h3>
-              <span className="sidebar-count-badge">{sources.length}</span>
-            </div>
+            <h3 className="sidebar-title-heading">Sources</h3>
             <button 
               type="button"
               className="sidebar-collapse-btn" 
@@ -67,7 +64,7 @@ export default function Sidebar({
               title="Minimize Sources Panel"
               aria-label="Minimize sources panel"
             >
-              <PanelLeftClose size={15} />
+              <PanelLeft size={18} />
             </button>
           </div>
 
@@ -78,32 +75,37 @@ export default function Sidebar({
               className="sidebar-add-source-btn" 
               onClick={onOpenAddModal}
             >
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={16} strokeWidth={2} />
               <span>Add sources</span>
             </button>
 
-            {/* Quick Web Discovery Input */}
-            <form onSubmit={handleSearchSubmit} className="sidebar-quick-search-form">
-              <div className="sidebar-search-wrapper">
-                <input 
-                  type="text" 
-                  placeholder="Search web for sources..." 
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="sidebar-search-input"
-                />
-                <div className="sidebar-search-addons">
-                  <Globe size={13} className="text-zinc-500" />
-                  <Sparkles size={13} className="text-zinc-500" />
-                  <button 
-                    type="submit" 
-                    className="sidebar-search-submit" 
-                    disabled={!searchInput.trim()}
-                    aria-label="Search web"
-                  >
-                    <Search size={13} />
-                  </button>
+            {/* NotebookLM Style Quick Web Search Card */}
+            <form onSubmit={handleSearchSubmit} className="sidebar-quick-search-card">
+              <input 
+                type="text" 
+                placeholder="Search the web for new sources" 
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+              <div className="sidebar-quick-search-bottom">
+                <div className="sidebar-search-chips">
+                  <div className="sidebar-search-chip">
+                    <Globe size={13} />
+                    <ChevronDown size={11} />
+                  </div>
+                  <div className="sidebar-search-chip">
+                    <Sparkles size={13} />
+                    <ChevronDown size={11} />
+                  </div>
                 </div>
+                <button 
+                  type="submit" 
+                  className="sidebar-search-arrow-btn" 
+                  disabled={!searchInput.trim()}
+                  aria-label="Search"
+                >
+                  <ArrowRight size={16} />
+                </button>
               </div>
             </form>
 
