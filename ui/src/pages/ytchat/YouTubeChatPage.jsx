@@ -70,15 +70,25 @@ export default function YouTubeChatPage() {
       const decoder = new TextDecoder();
       let assistantText = '';
       const assistantId = `a-${Date.now()}`;
+      let buffer = '';
+      let streamDone = false;
+      // ponytail: ceiling is chunk buffer line splitting for SSE stream; upgrade path is native EventSource API.
 
-      while (true) {
+      while (!streamDone) {
         const { value, done } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const dataStr = line.slice(6).trim();
-            if (dataStr === '[DONE]') break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // retain incomplete trailing line in buffer
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data: ')) {
+            const dataStr = trimmed.slice(6).trim();
+            if (dataStr === '[DONE]') {
+              streamDone = true;
+              break;
+            }
             try {
               const parsed = JSON.parse(dataStr);
               if (parsed.token) {
