@@ -36,9 +36,10 @@ func (a *API) HandleYouTubeDetails(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// 1. Check local SQLite cache first (zero redundant network calls)
+	var cached *database.YouTubeVideoRecord
 	if a.repo != nil {
-		cached, err := a.repo.GetYouTubeVideo(ctx, videoID)
-		if err == nil && cached != nil && cached.SegmentsJSON != "" {
+		cached, _ = a.repo.GetYouTubeVideo(ctx, videoID)
+		if cached != nil && cached.SegmentsJSON != "" {
 			var chaps []models.YouTubeChapter
 			var segs []models.YouTubeSegment
 			_ = json.Unmarshal([]byte(cached.ChaptersJSON), &chaps)
@@ -80,6 +81,11 @@ func (a *API) HandleYouTubeDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	durSeconds := int(maxSecs)
+	// ponytail: ceiling is fallback to cached db duration when transcript segment parsing yields empty segments; upgrade path is full multi-source duration extraction.
+	if durSeconds == 0 && cached != nil && cached.DurationSeconds > 0 {
+		durSeconds = cached.DurationSeconds
+		maxSecs = float64(cached.DurationSeconds)
+	}
 	durFormatted := FormatSecondsToTimestamp(maxSecs)
 
 	chapters := generateSynthesizedChapters(segments, maxSecs)

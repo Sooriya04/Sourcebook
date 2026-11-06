@@ -79,9 +79,18 @@ func FetchYouTubeMetadata(ctx context.Context, videoID string) (title, author st
 
 // FetchYouTubeTranscriptSegments calls local python script to fetch full segment array.
 func FetchYouTubeTranscriptSegments(ctx context.Context, videoID string) ([]models.YouTubeSegment, error) {
-	pythonBin := ".venv/bin/python"
-	if _, err := os.Stat(pythonBin); err != nil {
-		pythonBin = "python3"
+	// ponytail: ceiling is ENV or common path check for python bin; upgrade path is dedicated python runner service config.
+	pythonBin := os.Getenv("PYTHON_BIN")
+	if pythonBin == "" {
+		if _, err := os.Stat(".venv/bin/python"); err == nil {
+			pythonBin = ".venv/bin/python"
+		} else if path, err := exec.LookPath("python3"); err == nil {
+			pythonBin = path
+		} else if path, err := exec.LookPath("python"); err == nil {
+			pythonBin = path
+		} else {
+			pythonBin = "python3"
+		}
 	}
 
 	pyScript := `
