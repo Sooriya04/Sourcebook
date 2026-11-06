@@ -618,6 +618,7 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Timestamp-Grounded Video RAG Stream (`internal/api/youtube_chat_handler.go`, `internal/llm/youtube_prompt.go`)**: Built `POST /api/sourcebook/v1/youtube/chat` (SSE token streaming) enforcing strict timestamp citation grounding (`[mm:ss]`) in the LLM prompt and auto-persisting conversation turns to SQLite.
 - **Chat History Persistence (`internal/api/youtube_chat_handler.go`)**: Added `GET /api/sourcebook/v1/youtube/chat/history` to restore video chat sessions across reloads.
 - **Frontend Live Data Integration (`ui/src/pages/ytchat/YouTubeChatPage.jsx`, `ui/src/hooks/useYouTubeVideoDetails.js`)**: Connected the UI to the live backend endpoints for automated video metadata resolution, live transcript extraction, and real-time SSE token stream rendering.
+- **Microservice Transcript Bridge & Mock Isolation (`services/youtube/routes/youtube.py`, `internal/api/youtube_extractor.go`, `ui/src/hooks/useYouTubeVideoDetails.js`)**: Routed video transcript extraction directly through the dedicated FastAPI microservice on port 6001 returning full timestamped segment arrays, bypassed cloud IP blocking on direct fallback, and cleared initial mock states to guarantee genuine video chapters and dialogue load on all inputs.
 
 
 

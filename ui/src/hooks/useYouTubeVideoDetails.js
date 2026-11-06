@@ -7,8 +7,8 @@ export function useYouTubeVideoDetails(activeId) {
     channel: 'YouTube Video',
     duration: '00:00'
   });
-  const [chapters, setChapters] = useState(DEFAULT_MOCK_VIDEO.chapters);
-  const [transcript, setTranscript] = useState(DEFAULT_MOCK_VIDEO.transcript);
+  const [chapters, setChapters] = useState([]);
+  const [transcript, setTranscript] = useState([]);
   const [syncStatus, setSyncStatus] = useState('syncing');
 
   const loadVideoDetails = useCallback(async () => {

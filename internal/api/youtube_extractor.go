@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -77,20 +78,67 @@ func FetchYouTubeMetadata(ctx context.Context, videoID string) (title, author st
 	return title, author
 }
 
-// FetchYouTubeTranscriptSegments calls local python script to fetch full segment array.
+// FetchYouTubeTranscriptSegments tries microservice first, then falls back to python execution.
 func FetchYouTubeTranscriptSegments(ctx context.Context, videoID string) ([]models.YouTubeSegment, error) {
-	// ponytail: ceiling is ENV or common path check for python bin; upgrade path is dedicated python runner service config.
-	pythonBin := os.Getenv("PYTHON_BIN")
-	if pythonBin == "" {
-		if _, err := os.Stat(".venv/bin/python"); err == nil {
-			pythonBin = ".venv/bin/python"
-		} else if path, err := exec.LookPath("python3"); err == nil {
-			pythonBin = path
-		} else if path, err := exec.LookPath("python"); err == nil {
-			pythonBin = path
-		} else {
-			pythonBin = "python3"
+	ytServiceURL := os.Getenv("YOUTUBE_SERVICE_URL")
+	if ytServiceURL == "" {
+		ytServiceURL = "http://127.0.0.1:6001"
+	}
+
+	videoURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
+
+	// 1. Try YouTube microservice
+	bodyBytes, _ := json.Marshal(map[string]string{"url": videoURL})
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/youtube/transcript", ytServiceURL), bytes.NewBuffer(bodyBytes))
+	if err == nil {
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{Timeout: 20 * time.Second}
+		resp, doErr := client.Do(req)
+		if doErr == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var result struct {
+					Transcript []struct {
+						Text     string  `json:"text"`
+						Start    float64 `json:"start"`
+						Duration float64 `json:"duration"`
+					} `json:"transcript"`
+				}
+				if json.NewDecoder(resp.Body).Decode(&result) == nil && len(result.Transcript) > 0 {
+					return parseSegments(result.Transcript), nil
+				}
+			}
 		}
+	}
+
+	// 2. Fallback to local python
+	return fetchSegmentsLocalPython(ctx, videoURL)
+}
+
+func parseSegments(raw []struct {
+	Text     string  `json:"text"`
+	Start    float64 `json:"start"`
+	Duration float64 `json:"duration"`
+}) []models.YouTubeSegment {
+	var segments []models.YouTubeSegment
+	for _, item := range raw {
+		cleanTxt := strings.TrimSpace(item.Text)
+		if cleanTxt != "" {
+			segments = append(segments, models.YouTubeSegment{
+				Start:     item.Start,
+				Duration:  item.Duration,
+				Timestamp: FormatSecondsToTimestamp(item.Start),
+				Text:      cleanTxt,
+			})
+		}
+	}
+	return segments
+}
+
+func fetchSegmentsLocalPython(ctx context.Context, videoURL string) ([]models.YouTubeSegment, error) {
+	pythonBin := ".venv/bin/python"
+	if _, err := os.Stat(pythonBin); err != nil {
+		pythonBin = "python3"
 	}
 
 	pyScript := `
@@ -103,11 +151,10 @@ try:
 except Exception as e:
     print(json.dumps({"success": False, "error": str(e)}))
 `
-	videoURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
 	cmd := exec.CommandContext(ctx, pythonBin, "-c", pyScript, videoURL)
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("transcript execution failed: %w", err)
+		return nil, fmt.Errorf("local execution failed: %w", err)
 	}
 
 	var data struct {
@@ -120,26 +167,9 @@ except Exception as e:
 		Error string `json:"error"`
 	}
 
-	if err := json.Unmarshal(output, &data); err != nil {
-		return nil, fmt.Errorf("failed to decode transcript output: %w", err)
+	if err := json.Unmarshal(output, &data); err != nil || !data.Success {
+		return nil, fmt.Errorf("extraction error: %s", data.Error)
 	}
 
-	if !data.Success {
-		return nil, fmt.Errorf("transcript error: %s", data.Error)
-	}
-
-	var segments []models.YouTubeSegment
-	for _, item := range data.Transcript {
-		cleanTxt := strings.TrimSpace(item.Text)
-		if cleanTxt != "" {
-			segments = append(segments, models.YouTubeSegment{
-				Start:     item.Start,
-				Duration:  item.Duration,
-				Timestamp: FormatSecondsToTimestamp(item.Start),
-				Text:      cleanTxt,
-			})
-		}
-	}
-
-	return segments, nil
+	return parseSegments(data.Transcript), nil
 }

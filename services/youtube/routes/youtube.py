@@ -33,6 +33,9 @@ def transcript(req: VideoRequest):
         )
 
         return {
+            "video_id": result["video_id"],
+            "segments": result.get("segments", 0),
+            "transcript": result.get("transcript", []),
             "text": result["text"]
         }
 
