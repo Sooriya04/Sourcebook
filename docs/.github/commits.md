@@ -612,6 +612,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Clean Quick Action Starters & Empty Slate (`ui/src/components/ytchat/YtChatPanel.jsx`)**: Replaced emojis and static placeholder text with a clean empty state and SVG-driven starter pills (`<ListOrdered />`, `<BookOpen />`, `<BarChart3 />`) for key takeaways, core concept explanation, and benchmark discovery.
 - **Homepage Quick-Start Trigger (`ui/src/pages/HomePage.jsx`, `ui/src/components/notebook/CreateYouTubeNotebookModal.jsx`)**: Placed a `Chat with YouTube` modal trigger directly on the homepage header bar allowing instant launch of video research sessions from any pasted link.
 
+## Commit 82: YouTube Dedicated RAG Engine, Zero-Redundancy SQLite Schema & Streaming Pipeline
+- **Zero-Redundancy SQLite Storage (`internal/database/db.go`, `internal/database/youtube_repo.go`)**: Added `youtube_videos` (video_id primary key, metadata, structured chapters and transcript JSON) and `youtube_chat_messages` (cascade foreign key, role, message content) with indexed retrieval.
+- **Live Video Details Endpoint (`internal/api/youtube_details_handler.go`, `internal/api/youtube_extractor.go`)**: Implemented `POST /api/sourcebook/v1/youtube/details` that resolves metadata via oEmbed, fetches transcript segments via python bridge, synthesizes chapters, and caches results to prevent repeat network overhead.
+- **Timestamp-Grounded Video RAG Stream (`internal/api/youtube_chat_handler.go`, `internal/llm/youtube_prompt.go`)**: Built `POST /api/sourcebook/v1/youtube/chat` (SSE token streaming) enforcing strict timestamp citation grounding (`[mm:ss]`) in the LLM prompt and auto-persisting conversation turns to SQLite.
+- **Chat History Persistence (`internal/api/youtube_chat_handler.go`)**: Added `GET /api/sourcebook/v1/youtube/chat/history` to restore video chat sessions across reloads.
+- **Frontend Live Data Integration (`ui/src/pages/ytchat/YouTubeChatPage.jsx`, `ui/src/hooks/useYouTubeVideoDetails.js`)**: Connected the UI to the live backend endpoints for automated video metadata resolution, live transcript extraction, and real-time SSE token stream rendering.
+
 
 
 

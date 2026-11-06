@@ -119,6 +119,26 @@ func createTables(db *sql.DB) error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS youtube_videos (
+			video_id TEXT PRIMARY KEY,
+			title TEXT NOT NULL,
+			channel TEXT,
+			duration_seconds INTEGER DEFAULT 0,
+			chapters_json TEXT,
+			segments_json TEXT,
+			status TEXT DEFAULT 'synced',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE TABLE IF NOT EXISTS youtube_chat_messages (
+			id TEXT PRIMARY KEY,
+			video_id TEXT NOT NULL,
+			role TEXT NOT NULL,
+			content TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(video_id) REFERENCES youtube_videos(video_id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_yt_chat_video_id ON youtube_chat_messages(video_id, created_at);`,
 	}
 
 	for _, query := range queries {

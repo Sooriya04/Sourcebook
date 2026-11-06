@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import YtChatHeader from '../../components/ytchat/YtChatHeader';
 import YtVideoPlayer from '../../components/ytchat/YtVideoPlayer';
 import YtTranscriptSidebar from '../../components/ytchat/YtTranscriptSidebar';
 import YtChatPanel from '../../components/ytchat/YtChatPanel';
+import { useYouTubeVideoDetails } from '../../hooks/useYouTubeVideoDetails';
 import { DEFAULT_MOCK_VIDEO } from './ytMockData';
 
 export default function YouTubeChatPage() {
@@ -11,64 +12,30 @@ export default function YouTubeChatPage() {
   const playerRef = useRef(null);
   const activeId = videoId || DEFAULT_MOCK_VIDEO.id;
 
-  const [videoMeta, setVideoMeta] = useState({
-    title: activeId === DEFAULT_MOCK_VIDEO.id ? DEFAULT_MOCK_VIDEO.title : 'Loading video details...',
-    channel: activeId === DEFAULT_MOCK_VIDEO.id ? DEFAULT_MOCK_VIDEO.channel : 'YouTube Video',
-    duration: '24:18'
-  });
-
-  const [chapters] = useState(DEFAULT_MOCK_VIDEO.chapters);
-  const [transcript] = useState(DEFAULT_MOCK_VIDEO.transcript);
-  const [syncStatus, setSyncStatus] = useState('synced');
+  const { videoMeta, chapters, transcript, syncStatus, loadVideoDetails } = useYouTubeVideoDetails(activeId);
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [isThinking, setIsThinking] = useState(false);
 
-  // Fetch real oEmbed metadata for the video URL
-  const fetchMetadata = async () => {
+  const loadChatHistory = useCallback(async () => {
     try {
-      const url = `https://www.youtube.com/watch?v=${activeId}`;
-      const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      const res = await fetch(`/api/sourcebook/v1/youtube/chat/history?video_id=${activeId}`);
       if (res.ok) {
         const data = await res.json();
-        setVideoMeta((prev) => ({
-          ...prev,
-          title: data.title || prev.title,
-          channel: data.author_name || prev.channel
-        }));
-      }
-    } catch {}
-  };
-
-  // Attempt backend transcript sync
-  const checkTranscriptSync = async () => {
-    setSyncStatus('syncing');
-    try {
-      const res = await fetch('/api/sourcebook/v1/youtube/transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${activeId}` })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.content) {
-          setSyncStatus('synced');
-          return;
+        if (data.messages?.length > 0) {
+          setMessages(data.messages.map((m) => ({ id: m.id, sender: m.role, text: m.content })));
         }
       }
-      setSyncStatus('synced');
-    } catch {
-      setSyncStatus('synced');
-    }
-  };
-
-  useEffect(() => {
-    fetchMetadata();
-    checkTranscriptSync();
+    } catch {}
   }, [activeId]);
 
+  useEffect(() => {
+    loadVideoDetails();
+    loadChatHistory();
+  }, [loadVideoDetails, loadChatHistory]);
+
   const handleSeek = (seconds) => {
-    if (playerRef.current && playerRef.current.contentWindow) {
+    if (playerRef.current?.contentWindow) {
       playerRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }),
         '*'
@@ -76,7 +43,7 @@ export default function YouTubeChatPage() {
     }
   };
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e?.preventDefault();
     if (!inputVal.trim() || isThinking) return;
 
@@ -85,22 +52,53 @@ export default function YouTubeChatPage() {
     setInputVal('');
     setIsThinking(true);
 
-    setTimeout(() => {
-      const isSummary = query.toLowerCase().includes('summar') || query.toLowerCase().includes('takeaway');
-      const replyText = isSummary
-        ? `### Key Takeaways from "${videoMeta.title}"\n\n- **Architecture Overview [01:10]**: Eliminating recurrence removes the sequential bottleneck during forward passes.\n- **Attention Projections [08:40]**: Multi-head self-attention models complex relationships across different representation subspaces in parallel.\n- **Positional Encoding [14:22]**: Sine and cosine frequency embeddings inject token order without sequential stepping.`
-        : `At **[08:40]**, "${videoMeta.title}" explains that **Multi-Head Attention** projects queries, keys, and values into multiple subspaces simultaneously.\n\nNotice also around **[14:22]**, how positional encodings give the model order awareness without requiring recurrence!`;
+    try {
+      const history = messages.slice(-6).map((m) => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
 
-      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, sender: 'assistant', text: replyText }]);
+      const res = await fetch('/api/sourcebook/v1/youtube/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: activeId, query, history })
+      });
+
+      if (!res.ok) throw new Error('Chat failed');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantText = '';
+      const assistantId = `a-${Date.now()}`;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            if (dataStr === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.token) {
+                assistantText += parsed.token;
+                setMessages((prev) => [
+                  ...prev.filter((m) => m.id !== assistantId),
+                  { id: assistantId, sender: 'assistant', text: assistantText }
+                ]);
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `err-${Date.now()}`, sender: 'assistant', text: 'Unable to stream response from local LLM.' }
+      ]);
+    } finally {
       setIsThinking(false);
-    }, 850);
-  };
-
-  const handleQuickPrompt = (key) => {
-    if (key === 'summary') {
-      setInputVal('Summarize key takeaways and crucial moments');
-    } else {
-      setInputVal(key);
     }
   };
 
@@ -112,23 +110,13 @@ export default function YouTubeChatPage() {
         duration={videoMeta.duration}
         videoId={activeId}
         syncStatus={syncStatus}
-        onRefreshSync={checkTranscriptSync}
+        onRefreshSync={loadVideoDetails}
       />
-
       <div className="ytc-main-layout">
         <div className="ytc-left-col">
-          <YtVideoPlayer
-            videoId={activeId}
-            title={videoMeta.title}
-            playerRef={playerRef}
-          />
-          <YtTranscriptSidebar
-            chapters={chapters}
-            transcript={transcript}
-            onSeek={handleSeek}
-          />
+          <YtVideoPlayer videoId={activeId} title={videoMeta.title} playerRef={playerRef} />
+          <YtTranscriptSidebar chapters={chapters} transcript={transcript} onSeek={handleSeek} />
         </div>
-
         <div className="ytc-right-col">
           <YtChatPanel
             messages={messages}
@@ -136,7 +124,7 @@ export default function YouTubeChatPage() {
             onChangeInput={setInputVal}
             onSend={handleSend}
             onSeek={handleSeek}
-            onQuickPrompt={handleQuickPrompt}
+            onQuickPrompt={(key) => setInputVal(key === 'summary' ? 'Summarize key takeaways and timestamps' : key)}
             isThinking={isThinking}
             videoTitle={videoMeta.title}
           />
