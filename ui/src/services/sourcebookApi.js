@@ -140,6 +140,18 @@ export async function getPodcastVoices() {
   return [];
 }
 
+export async function fetchNotebookGuide(notebookId, refresh = false) {
+  try {
+    const res = await fetch(`${API_BASE}/api/sourcebook/v1/notebooks/${notebookId}/guide${refresh ? '?refresh=true' : ''}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Failed to fetch notebook guide:', e);
+  }
+  return null;
+}
+
 export async function getPodcastEpisodes(notebookId) {
   try {
     const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/episodes?notebook_id=${notebookId}`);

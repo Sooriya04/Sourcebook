@@ -84,7 +84,7 @@ export default function SourceDiscovery({ query, onImport, onCancel }) {
                   type="checkbox"
                   checked={selectedUrls.size === results.length && results.length > 0}
                   onChange={handleSelectAll}
-                  className="discovery-checkbox-input"
+                  className="sources-select-all-checkbox"
                 />
                 <span>Select all ({selectedUrls.size}/{results.length})</span>
               </label>

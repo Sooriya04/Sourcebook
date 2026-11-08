@@ -26,6 +26,10 @@ func NewSynthesizer() *Synthesizer {
 	}
 }
 
+func (s *Synthesizer) LLMClient() *llm.Client {
+	return s.llmClient
+}
+
 // Synthesize takes scraped documents and a user query, cleans the content, builds a grounded RAG prompt, and calls the LLM.
 func (s *Synthesizer) Synthesize(ctx context.Context, query string, docs []ScrapedDoc) (*llm.SynthesisResponse, error) {
 	startTime := time.Now()

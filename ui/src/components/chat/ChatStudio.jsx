@@ -16,7 +16,7 @@ export default function ChatStudio(props) {
     messages = [], loading = false, streamPhase = 'retrieving', onSendMessage, onStopStream,
     onClearChat, allSources = [], scopedSourceIds, onCitationClick, activeCitation, onSaveNote,
     chatEndRef, notebookTitle, notebookDescription, isSourcesCollapsed, onToggleSources,
-    isStudioCollapsed, onToggleStudio, onAddUrl, onOpenAddSources
+    isStudioCollapsed, onToggleStudio, onAddUrl, onOpenAddSources, guide
   } = props;
 
   const [mode, setMode] = useState('notebook');
@@ -105,6 +105,7 @@ export default function ChatStudio(props) {
             notebookTitle={notebookTitle}
             notebookDescription={notebookDescription}
             sourceCount={allSources ? allSources.length : 0}
+            guide={guide}
             onSend={handleSend}
             onOpenAddSources={onOpenAddSources}
           />

@@ -20,6 +20,10 @@ func (a *API) HandleNotebooks(w http.ResponseWriter, r *http.Request) {
 			a.handleNotebookExport(w, r, notebookID)
 			return
 		}
+		if strings.HasSuffix(id, "/guide") {
+			a.HandleNotebookGuide(w, r)
+			return
+		}
 		a.handleNotebookDetail(w, r, id)
 		return
 	}

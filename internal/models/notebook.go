@@ -26,3 +26,12 @@ type ChatMessage struct {
 	Content    string    `json:"content"`
 	CreatedAt  time.Time `json:"created_at"`
 }
+
+type NotebookGuide struct {
+	NotebookID         string    `json:"notebook_id"`
+	Summary            string    `json:"summary"`
+	Topics             []string  `json:"topics"`
+	SuggestedQuestions []string  `json:"suggested_questions"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}

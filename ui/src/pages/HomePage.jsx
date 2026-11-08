@@ -3,6 +3,7 @@ import { Plus, Layers, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CreateNotebookModal from '../components/notebook/CreateNotebookModal';
 import CreateYouTubeNotebookModal from '../components/notebook/CreateYouTubeNotebookModal';
+import DeleteNotebookModal from '../components/notebook/DeleteNotebookModal';
 import NotebookCard from '../components/notebook/NotebookCard';
 import CreateNotebookCard from '../components/notebook/CreateNotebookCard';
 import NotebookSearchBar from '../components/notebook/NotebookSearchBar';
@@ -11,6 +12,7 @@ import EmptyState from '../components/ui/EmptyState';
 export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNotebook }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
+  const [notebookToDelete, setNotebookToDelete] = useState(null);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
@@ -61,7 +63,7 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
                 key={nb.id}
                 notebook={nb}
                 onClick={() => navigate(`/notebook/${nb.id}`)}
-                onDelete={(id) => onDeleteNotebook(id)}
+                onDelete={(nb) => setNotebookToDelete(nb)}
               />
             ))}
           </div>
@@ -107,6 +109,18 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
             setIsYouTubeModalOpen(false);
             const query = title ? `?title=${encodeURIComponent(title)}` : '';
             navigate(`/youtube/${videoId}${query}`);
+          }}
+        />
+      )}
+
+      {notebookToDelete && (
+        <DeleteNotebookModal
+          isOpen={!!notebookToDelete}
+          notebookTitle={notebookToDelete.title}
+          onClose={() => setNotebookToDelete(null)}
+          onConfirm={() => {
+            onDeleteNotebook(notebookToDelete.id);
+            setNotebookToDelete(null);
           }}
         />
       )}

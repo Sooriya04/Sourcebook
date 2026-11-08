@@ -31,9 +31,7 @@ export default function NotebookCard({ notebook, onClick, onDelete }) {
             aria-label="Delete notebook"
             onClick={(e) => {
               e.stopPropagation();
-              if (window.confirm(`Delete notebook "${notebook.title || 'Untitled'}"?`)) {
-                onDelete?.(notebook.id);
-              }
+              onDelete?.(notebook);
             }}
           >
             <Trash2 size={14} />

@@ -138,6 +138,15 @@ func createTables(db *sql.DB) error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(video_id) REFERENCES youtube_videos(video_id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS notebook_guides (
+			notebook_id TEXT PRIMARY KEY,
+			summary TEXT,
+			topics_json TEXT,
+			questions_json TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
+		);`,
 		`CREATE INDEX IF NOT EXISTS idx_yt_chat_video_id ON youtube_chat_messages(video_id, created_at);`,
 	}
 

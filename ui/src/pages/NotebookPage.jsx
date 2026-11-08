@@ -16,7 +16,7 @@ import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
-import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes, deletePodcastEpisode, renamePodcastEpisode, fetchLLMHealth } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes, deletePodcastEpisode, renamePodcastEpisode, fetchNotebookGuide, fetchLLMHealth } from '../services/sourcebookApi';
 
 const EMPTY_ARR = [];
 
@@ -38,6 +38,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
   
   const [notes, setNotes] = useState(EMPTY_ARR);
   const [episodes, setEpisodes] = useState(EMPTY_ARR);
+  const [guide, setGuide] = useState(null);
   const audioPlayer = useAudioPlayer(id);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [discoveryTopic, setDiscoveryTopic] = useState(null);
@@ -95,13 +96,14 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
     return () => { isMounted = false; };
   }, [id, setSources, setMessages]);
 
-  // Load podcast episodes for this notebook
+  // Load podcast episodes and notebook guide
   useEffect(() => {
     if (!id) return;
     getPodcastEpisodes(id).then((eps) => {
-      if (eps && eps.length > 0) {
-        setEpisodes(eps);
-      }
+      if (eps && eps.length > 0) setEpisodes(eps);
+    }).catch(() => {});
+    fetchNotebookGuide(id).then((g) => {
+      if (g) setGuide(g);
     }).catch(() => {});
   }, [id]);
 
@@ -344,6 +346,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 chatEndRef={chatEndRef}
                 notebookTitle={notebook.title}
                 notebookDescription={notebook.description}
+                guide={guide}
                 isSourcesCollapsed={isSourcesCollapsed}
                 onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
                 isStudioCollapsed={isStudioCollapsed}
