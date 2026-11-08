@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Video, ArrowRight } from 'lucide-react';
+import { Video, ArrowRight, Type } from 'lucide-react';
 import Modal from '../ui/Modal';
 
 export function extractYouTubeId(url) {
@@ -17,6 +17,7 @@ export function extractYouTubeId(url) {
 
 export default function CreateYouTubeNotebookModal({ isOpen, onClose, onOpenChat }) {
   const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -30,8 +31,10 @@ export default function CreateYouTubeNotebookModal({ isOpen, onClose, onOpenChat
     }
 
     setError('');
+    const customTitle = title.trim();
     setUrl('');
-    onOpenChat(vId);
+    setTitle('');
+    onOpenChat(vId, customTitle);
   };
 
   return (
@@ -67,6 +70,27 @@ export default function CreateYouTubeNotebookModal({ isOpen, onClose, onOpenChat
           {error && (
             <p style={{ color: 'var(--status-error)', fontSize: '0.76rem', margin: '6px 0 0' }}>{error}</p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="yt-title" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '6px' }}>
+            Workspace Title (Optional)
+          </label>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              id="yt-title"
+              type="text"
+              className="form-input"
+              placeholder="e.g. TypeScript Ported to Rust Analysis"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{ paddingLeft: '36px' }}
+            />
+            <Type size={16} style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)' }} />
+          </div>
+          <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+            Leave blank to automatically detect video title from YouTube.
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--border-default)' }}>

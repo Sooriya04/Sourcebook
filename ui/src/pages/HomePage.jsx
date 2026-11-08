@@ -103,9 +103,10 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
         <CreateYouTubeNotebookModal
           isOpen={isYouTubeModalOpen}
           onClose={() => setIsYouTubeModalOpen(false)}
-          onOpenChat={(videoId) => {
+          onOpenChat={(videoId, title) => {
             setIsYouTubeModalOpen(false);
-            navigate(`/youtube/${videoId}`);
+            const query = title ? `?title=${encodeURIComponent(title)}` : '';
+            navigate(`/youtube/${videoId}${query}`);
           }}
         />
       )}

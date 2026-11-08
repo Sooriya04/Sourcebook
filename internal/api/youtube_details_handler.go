@@ -18,6 +18,7 @@ func (a *API) HandleYouTubeDetails(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		URL     string `json:"url"`
 		VideoID string `json:"video_id"`
+		Title   string `json:"title"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
@@ -34,12 +35,17 @@ func (a *API) HandleYouTubeDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	customTitle := strings.TrimSpace(req.Title)
 
 	// 1. Check local SQLite cache first (zero redundant network calls)
 	var cached *database.YouTubeVideoRecord
 	if a.repo != nil {
 		cached, _ = a.repo.GetYouTubeVideo(ctx, videoID)
 		if cached != nil && cached.SegmentsJSON != "" {
+			if customTitle != "" && customTitle != cached.Title {
+				cached.Title = customTitle
+				_ = a.repo.UpsertYouTubeVideo(ctx, cached)
+			}
 			var chaps []models.YouTubeChapter
 			var segs []models.YouTubeSegment
 			_ = json.Unmarshal([]byte(cached.ChaptersJSON), &chaps)
@@ -63,6 +69,9 @@ func (a *API) HandleYouTubeDetails(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Resolve Title & Channel via public oEmbed
 	title, channel := FetchYouTubeMetadata(ctx, videoID)
+	if customTitle != "" {
+		title = customTitle
+	}
 
 	// 3. Extract Transcript Segments via python bridge
 	segments, err := FetchYouTubeTranscriptSegments(ctx, videoID)

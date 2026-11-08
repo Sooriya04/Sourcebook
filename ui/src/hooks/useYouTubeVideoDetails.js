@@ -14,15 +14,22 @@ export function useYouTubeVideoDetails(activeId) {
   const loadVideoDetails = useCallback(async () => {
     setSyncStatus('syncing');
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const titleParam = urlParams.get('title') || '';
+      const payload = { video_id: activeId };
+      if (titleParam) {
+        payload.title = titleParam;
+      }
+
       const res = await fetch('/api/sourcebook/v1/youtube/details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video_id: activeId })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
         setVideoMeta({
-          title: data.title || 'YouTube Video',
+          title: data.title || titleParam || 'YouTube Video',
           channel: data.channel || 'YouTube Video',
           duration: data.duration || '00:00'
         });

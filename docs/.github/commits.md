@@ -620,6 +620,13 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Frontend Live Data Integration (`ui/src/pages/ytchat/YouTubeChatPage.jsx`, `ui/src/hooks/useYouTubeVideoDetails.js`)**: Connected the UI to the live backend endpoints for automated video metadata resolution, live transcript extraction, and real-time SSE token stream rendering.
 - **Microservice Transcript Bridge & Mock Isolation (`services/youtube/routes/youtube.py`, `internal/api/youtube_extractor.go`, `ui/src/hooks/useYouTubeVideoDetails.js`)**: Routed video transcript extraction directly through the dedicated FastAPI microservice on port 6001 returning full timestamped segment arrays, bypassed cloud IP blocking on direct fallback, and cleared initial mock states to guarantee genuine video chapters and dialogue load on all inputs.
 
+## Commit 83: Custom Title Support for YouTube Research Workspace & Modal Input Field
+- **Custom Workspace Title Field (`ui/src/components/notebook/CreateYouTubeNotebookModal.jsx`)**: Added an optional "Workspace Title" input field styled with `#131314` container tokens, `#a8c7fa` focus border, `<Type />` icon badge, and informative helper text (*"Leave blank to automatically detect video title from YouTube"*).
+- **Navigation Query Parameter Pass-through (`ui/src/pages/HomePage.jsx`)**: Updated modal submission in the homepage to propagate user-defined titles via URL search parameter (`/youtube/:videoId?title=...`) ensuring instant header title availability.
+- **Zero-Latency Custom Title Hook Resolution (`ui/src/hooks/useYouTubeVideoDetails.js`)**: Configured the video details hook to parse the `?title=` URL search parameter on load for immediate display and pass the title parameter to the backend.
+- **Backend Custom Title Persistence (`internal/api/youtube_details_handler.go`)**: Extended `POST /api/sourcebook/v1/youtube/details` to accept custom titles, update and re-persist cached SQLite video records when a custom title is provided, and return the custom title seamlessly across sessions.
+
+
 
 
 
