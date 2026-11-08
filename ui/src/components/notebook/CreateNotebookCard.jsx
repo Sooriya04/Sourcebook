@@ -21,12 +21,8 @@ export default function CreateNotebookCard({ onClick }) {
         </div>
         <h3 className="create-card-title">New Notebook</h3>
         <p className="create-card-description">
-          Initialize a research workspace to ingest sources, run grounded RAG, and generate insights.
+          Initialize a research notebook to ingest sources, run grounded RAG, and generate insights.
         </p>
-      </div>
-
-      <div className="create-card-footer">
-        <span className="create-card-action">Create workspace &rarr;</span>
       </div>
     </div>
   );

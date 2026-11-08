@@ -153,6 +153,32 @@ export async function getPodcastEpisodes(notebookId) {
   return [];
 }
 
+export async function deletePodcastEpisode(notebookId, episodeId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/episodes?notebook_id=${notebookId}&episode_id=${episodeId}`, {
+      method: 'DELETE'
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Failed to delete episode:', e);
+    return false;
+  }
+}
+
+export async function renamePodcastEpisode(notebookId, episodeId, title) {
+  try {
+    const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/episodes?notebook_id=${notebookId}&episode_id=${episodeId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notebook_id: notebookId, episode_id: episodeId, title })
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Failed to rename episode:', e);
+    return false;
+  }
+}
+
 export async function generatePodcast(notebookId, options = {}) {
   const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/generate`, {
     method: 'POST',

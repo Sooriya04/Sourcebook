@@ -11,6 +11,8 @@ export default function SavedNotesList({
   onSelectNote,
   onAddNote,
   onDeleteNote,
+  onDeleteEpisode,
+  onRenameEpisode,
   onOpenOverview,
   onOpenScript
 }) {
@@ -46,6 +48,8 @@ export default function SavedNotesList({
                 onTogglePlay={togglePlayEpisode}
                 onOpenOverview={onOpenOverview}
                 onOpenScript={onOpenScript}
+                onDeleteEpisode={onDeleteEpisode}
+                onRenameEpisode={onRenameEpisode}
               />
             );
           })}

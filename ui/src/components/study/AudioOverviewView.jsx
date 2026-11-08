@@ -19,6 +19,9 @@ export default function AudioOverviewView({
   const [summary, setSummary] = useState('');
   const [takeaways, setTakeaways] = useState([]);
   const [episodes, setEpisodes] = useState(() => parentEpisodes || []);
+  useEffect(() => {
+    if (parentEpisodes) setEpisodes(parentEpisodes);
+  }, [parentEpisodes]);
   const [activeEpId, setActiveEpId] = useState('');
   const [voices, setVoices] = useState([]);
   const [options, setOptions] = useState({

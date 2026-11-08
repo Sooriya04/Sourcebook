@@ -626,6 +626,15 @@ Implemented a standalone DuckDuckGo HTML search provider in `internal/providers/
 - **Zero-Latency Custom Title Hook Resolution (`ui/src/hooks/useYouTubeVideoDetails.js`)**: Configured the video details hook to parse the `?title=` URL search parameter on load for immediate display and pass the title parameter to the backend.
 - **Backend Custom Title Persistence (`internal/api/youtube_details_handler.go`)**: Extended `POST /api/sourcebook/v1/youtube/details` to accept custom titles, update and re-persist cached SQLite video records when a custom title is provided, and return the custom title seamlessly across sessions.
 
+## Commit 84: UI Polish, Studio 3-Dot Actions (Rename & Delete), and Resilient Audio Lifecycle Architecture
+- **Homepage Card Cleanup & Terminology Harmonization (`ui/src/components/notebook/CreateNotebookCard.jsx`, `ui/src/pages/HomePage.jsx`)**: Stripped the redundant "Create workspace ->" footer link from the notebook creation tile to deliver a clean interactive card surface. Standardized all homepage counters and search placeholders from "workspace" to "notebook" (`X notebooks connected locally`, `Filter notebooks...`).
+- **Middle Content Header De-cluttering (`ui/src/components/study/StudyStudio.jsx`)**: Removed duplicate `[Sources]` and `[Studio]` sidebar toggle buttons from the study view header since both sidebars already host dedicated collapse/expand toggles, leaving the visual navigation focused on `[Chat Studio]`, view titles, and `[Export Hub]`.
+- **Studio 3-Dot Options Dropdown (`ui/src/components/layout/StudioAudioItem.jsx`, `ui/src/components/layout/StudioNoteItem.jsx`)**: Added a 3-dot vertical action trigger (`<MoreVertical />`) to all audio overview and note items. Styled the dropdown menu to match reference design specs (`#1e1f20`, `12px` rounded corners, subtle translucent border, outside click auto-dismiss) supporting **Rename**, **Download** (.wav/.md), and **Delete**.
+- **Permanent Episode Deletion Architecture (`internal/api/podcast_episodes_handler.go`, `ui/src/pages/NotebookPage.jsx`, `ui/src/services/sourcebookApi.js`)**: Built `DELETE /api/sourcebook/v1/study/podcast/episodes` to remove episode JSON and WAV files from the notebook storage directory as well as any legacy root cache, resolving the bug where deleted episodes reappeared upon browser reload.
+- **Persistent Episode Rename System (`internal/api/podcast_episodes_handler.go`, `ui/src/components/layout/StudioAudioItem.jsx`, `ui/src/services/sourcebookApi.js`)**: Implemented `PUT /api/sourcebook/v1/study/podcast/episodes` to update and persist renamed episode titles in local JSON on disk. Added inline title editing on `StudioAudioItem` with keyboard submit (<kbd>Enter</kbd>) and synchronized state across `NotesPanel`, `SavedNotesList`, and `AudioOverviewView`.
+- **Microservice Resilient Disk Fallback (`internal/api/podcast_episodes_handler.go`)**: Modularized episode management into a dedicated handler file (<200 lines) and built automatic disk-level fallback reading from `database/audio/<notebook_id>/*.json` if the Python audio microservice is ever restarting or offline.
+
+
 
 
 

@@ -26,12 +26,12 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
           <div className="home-title-group">
             <h1 className="text-xl font-medium tracking-tight text-[#e3e3e3]">Notebooks</h1>
             <p className="text-xs font-normal text-[#8e918f]">
-              {notebooks.length} {notebooks.length === 1 ? 'workspace' : 'workspaces'} connected locally
+              {notebooks.length} {notebooks.length === 1 ? 'notebook' : 'notebooks'} connected locally
             </p>
           </div>
 
           <div className="home-actions-group">
-            <NotebookSearchBar value={search} onChange={setSearch} placeholder="Filter workspaces..." />
+            <NotebookSearchBar value={search} onChange={setSearch} placeholder="Filter notebooks..." />
             <button
               type="button"
               className="btn-secondary"
@@ -71,7 +71,7 @@ export default function HomePage({ notebooks = [], onCreateNotebook, onDeleteNot
               <EmptyState
                 icon={Layers}
                 title="No matching notebooks"
-                description={`No notebook workspaces found matching "${search}".`}
+                description={`No notebooks found matching "${search}".`}
                 action={
                   <button
                     type="button"

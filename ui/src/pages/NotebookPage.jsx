@@ -16,7 +16,7 @@ import { useSources } from '../hooks/useSources';
 import { useChat } from '../hooks/useChat';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
-import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes, fetchLLMHealth } from '../services/sourcebookApi';
+import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes, deletePodcastEpisode, renamePodcastEpisode, fetchLLMHealth } from '../services/sourcebookApi';
 
 const EMPTY_ARR = [];
 
@@ -397,6 +397,14 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
               onAddNote={(n) => setNotes((prev) => [n, ...prev])}
               onUpdateNote={(n) => setNotes((prev) => prev.map((item) => (item.id === n.id ? n : item)))}
               onDeleteNote={(nId) => setNotes((prev) => prev.filter((item) => item.id !== nId))}
+              onDeleteEpisode={(epId) => {
+                setEpisodes((prev) => prev.filter((item) => item.id !== epId));
+                deletePodcastEpisode(id, epId).catch(() => {});
+              }}
+              onRenameEpisode={(epId, newTitle) => {
+                setEpisodes((prev) => prev.map((e) => (e.id === epId ? { ...e, title: newTitle } : e)));
+                renamePodcastEpisode(id, epId, newTitle).catch(() => {});
+              }}
               activeMode={activeMode}
               setActiveMode={setActiveMode}
               isCollapsed={isStudioCollapsed}

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { generateFlashcards } from '../../services/sourcebookApi';
 import { 
-  RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Download, MessageSquare,
-  PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose
+  RefreshCw, ChevronLeft, ChevronRight, BrainCircuit, Download, MessageSquare
 } from 'lucide-react';
 import BriefingView from './BriefingView';
 import AudioOverviewView from './AudioOverviewView';
@@ -161,40 +160,6 @@ export default function StudyStudio({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {onToggleSources && activeTab !== 'audio' && (
-            <button
-              type="button"
-              onClick={onToggleSources}
-              title={isSourcesCollapsed ? "Expand Sources Panel (⌘/)" : "Collapse Sources Panel (⌘/)"}
-              aria-label={isSourcesCollapsed ? "Expand Sources Panel" : "Collapse Sources Panel"}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '8px',
-                background: isSourcesCollapsed ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-                border: isSourcesCollapsed ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: isSourcesCollapsed ? '#a5b4fc' : '#d4d4d8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.74rem',
-                outline: 'none',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                e.currentTarget.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = isSourcesCollapsed ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.color = isSourcesCollapsed ? '#a5b4fc' : '#d4d4d8';
-              }}
-            >
-              {isSourcesCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
-              <span style={{ fontWeight: 500 }}>Sources</span>
-            </button>
-          )}
-
           <button
             type="button"
             onClick={() => setActiveMode?.('chat')}
@@ -254,40 +219,6 @@ export default function StudyStudio({
             <Download size={13} />
             <span>Export Hub</span>
           </button>
-
-          {onToggleStudio && activeTab !== 'audio' && (
-            <button
-              type="button"
-              onClick={onToggleStudio}
-              title={isStudioCollapsed ? "Expand Studio Panel" : "Collapse Studio Panel"}
-              aria-label={isStudioCollapsed ? "Expand Studio Panel" : "Collapse Studio Panel"}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '8px',
-                background: isStudioCollapsed ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-                border: isStudioCollapsed ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: isStudioCollapsed ? '#a5b4fc' : '#d4d4d8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.74rem',
-                outline: 'none',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                e.currentTarget.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = isStudioCollapsed ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.color = isStudioCollapsed ? '#a5b4fc' : '#d4d4d8';
-              }}
-            >
-              <span style={{ fontWeight: 500 }}>Studio</span>
-              {isStudioCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
-            </button>
-          )}
 
           {isExportOpen && (
             <div 

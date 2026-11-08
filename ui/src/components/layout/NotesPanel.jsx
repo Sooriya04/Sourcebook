@@ -5,20 +5,9 @@ import NoteEditor from './NoteEditor';
 import SavedNotesList from './SavedNotesList';
 
 export default function NotesPanel({ 
-  notes = [], 
-  episodes = [],
-  notebookTitle = '',
-  sourcesCount = 0,
-  audioPlayer = {},
-  onAddNote,
-  onUpdateNote,
-  onDeleteNote, 
-  activeMode, 
-  setActiveMode,
-  isCollapsed,
-  onToggleCollapse,
-  studyTab,
-  setStudyTab
+  notes = [], episodes = [], notebookTitle = '', sourcesCount = 0, audioPlayer = {},
+  onAddNote, onUpdateNote, onDeleteNote, onDeleteEpisode, onRenameEpisode,
+  activeMode, setActiveMode, isCollapsed, onToggleCollapse, studyTab, setStudyTab
 }) {
   const [editorNote, setEditorNote] = useState(null);
 
@@ -45,25 +34,19 @@ export default function NotesPanel({
   const handleOpenScript = (ep) => {
     const slug = (notebookTitle || 'overview').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const existing = notes.find((n) => n.id === `note_script_${ep.id}` || n.title === `${slug}-script.md`);
-    if (existing) {
-      setEditorNote(existing);
-      return;
-    }
+    if (existing) { setEditorNote(existing); return; }
     let content = `# ${notebookTitle || 'Workspace'} — Audio Overview Script\n\n`;
     if (ep.summary) content += `## Executive Brief\n${ep.summary}\n\n`;
-    if (ep.takeaways && ep.takeaways.length > 0) {
-      content += `## Core Takeaways\n`;
-      ep.takeaways.forEach((t) => { content += `- ${t}\n`; });
-      content += `\n`;
+    if (ep.takeaways?.length > 0) {
+      content += `## Core Takeaways\n` + ep.takeaways.map((t) => `- ${t}`).join('\n') + '\n\n';
     }
-    if (ep.turns && ep.turns.length > 0) {
-      content += `## Spoken Dialogue\n\n`;
-      ep.turns.forEach((turn) => {
+    if (ep.turns?.length > 0) {
+      content += `## Spoken Dialogue\n\n` + ep.turns.map((turn) => {
         const spk = turn.name || (turn.speaker === 'austin' ? 'Austin' : 'Taylor');
-        content += `**${spk}**: ${turn.text}\n\n`;
-      });
+        return `**${spk}**: ${turn.text}`;
+      }).join('\n\n') + '\n\n';
     }
-    const newScriptNote = {
+    const newScript = {
       id: `note_script_${ep.id}`,
       title: `${slug}-script.md`,
       content,
@@ -71,8 +54,8 @@ export default function NotesPanel({
       sourcesCount: sourcesCount || 0,
       created_at: ep.created_at || new Date().toISOString()
     };
-    onAddNote?.(newScriptNote);
-    setEditorNote(newScriptNote);
+    onAddNote?.(newScript);
+    setEditorNote(newScript);
   };
 
   if (isCollapsed) return null;
@@ -141,6 +124,8 @@ export default function NotesPanel({
               onSelectNote={handleOpenEditNote}
               onAddNote={handleOpenNewNote}
               onDeleteNote={onDeleteNote}
+              onDeleteEpisode={onDeleteEpisode}
+              onRenameEpisode={onRenameEpisode}
               onOpenOverview={handleOpenOverview}
               onOpenScript={handleOpenScript}
             />
