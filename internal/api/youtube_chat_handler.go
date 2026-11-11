@@ -35,7 +35,7 @@ func (a *API) HandleYouTubeChat(w http.ResponseWriter, r *http.Request) {
 		videoID = req.VideoID
 	}
 
-	// 1. Retrieve video details & segments from DB
+	// 1. Retrieve video details & segments from DB (fallback to fetching if uncached or empty)
 	title := "YouTube Video"
 	var segments []models.YouTubeSegment
 
@@ -44,6 +44,57 @@ func (a *API) HandleYouTubeChat(w http.ResponseWriter, r *http.Request) {
 		if err == nil && cached != nil {
 			title = cached.Title
 			_ = json.Unmarshal([]byte(cached.SegmentsJSON), &segments)
+		}
+
+		if len(segments) == 0 {
+			fetchedSegments, fetchErr := FetchYouTubeTranscriptSegments(ctx, videoID)
+			if fetchErr == nil && len(fetchedSegments) > 0 {
+				segments = fetchedSegments
+				channel := "YouTube"
+				if cached != nil && cached.Channel != "" {
+					channel = cached.Channel
+				} else {
+					oTitle, oAuthor := FetchYouTubeMetadata(ctx, videoID)
+					if title == "YouTube Video" && oTitle != "" {
+						title = oTitle
+					}
+					if oAuthor != "" {
+						channel = oAuthor
+					}
+				}
+
+				var maxSecs float64
+				for _, s := range segments {
+					if end := s.Start + s.Duration; end > maxSecs {
+						maxSecs = end
+					}
+				}
+				durSecs := int(maxSecs)
+				if durSecs == 0 && cached != nil && cached.DurationSeconds > 0 {
+					durSecs = cached.DurationSeconds
+					maxSecs = float64(durSecs)
+				}
+				chapters := generateSynthesizedChapters(segments, maxSecs)
+
+				chapsBytes, _ := json.Marshal(chapters)
+				segsBytes, _ := json.Marshal(segments)
+				_ = a.repo.UpsertYouTubeVideo(ctx, &database.YouTubeVideoRecord{
+					VideoID:         videoID,
+					Title:           title,
+					Channel:         channel,
+					DurationSeconds: durSecs,
+					ChaptersJSON:    string(chapsBytes),
+					SegmentsJSON:    string(segsBytes),
+					Status:          "synced",
+				})
+			}
+		}
+	} else {
+		if fetchedSegments, fetchErr := FetchYouTubeTranscriptSegments(ctx, videoID); fetchErr == nil && len(fetchedSegments) > 0 {
+			segments = fetchedSegments
+			if oTitle, _ := FetchYouTubeMetadata(ctx, videoID); oTitle != "" {
+				title = oTitle
+			}
 		}
 	}
 
