@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"sourcebook/internal/arxiv"
@@ -26,7 +25,8 @@ func (s *Sentinel) repairSources(ctx context.Context, sources []emptySource) err
 			log.Printf("[Sentinel] Repairing arXiv source directly: %s", src.URL)
 			_, content, err := arxiv.FetchSingleArxivDocument(ctx, src.URL)
 			if err == nil && content != "" {
-				if err := s.updateSourceContent(src.ID, content); err == nil {
+				cleaned := utils.CleanText(content)
+				if cleaned != "" && s.updateSourceContent(src.ID, cleaned) == nil {
 					repaired++
 				}
 			} else {
@@ -148,12 +148,12 @@ func (s *Sentinel) repairWebSources(ctx context.Context, webSources []emptySourc
 						if text == "" {
 							text = item.Content
 						}
-						text = strings.TrimSpace(text)
-						if text == "" {
+						cleaned := utils.CleanText(text)
+						if cleaned == "" {
 							continue
 						}
 						srcInfo, ok := unresolved[item.URL]
-						if ok && s.updateSourceContent(srcInfo.ID, text) == nil {
+						if ok && s.updateSourceContent(srcInfo.ID, cleaned) == nil {
 							repaired++
 							delete(unresolved, item.URL)
 						}

@@ -20,9 +20,12 @@ type Synthesizer struct {
 	llmClient *llm.Client
 }
 
-func NewSynthesizer() *Synthesizer {
+func NewSynthesizer(client *llm.Client) *Synthesizer {
+	if client == nil {
+		client = llm.NewClient()
+	}
 	return &Synthesizer{
-		llmClient: llm.NewClient(),
+		llmClient: client,
 	}
 }
 
