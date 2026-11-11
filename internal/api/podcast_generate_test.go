@@ -81,7 +81,7 @@ func TestHandleGeneratePodcast_DrainsStreamToCompletion(t *testing.T) {
 
 	api := &API{
 		repo:        repo,
-		synthesizer: synthesis.NewSynthesizer(),
+		synthesizer: synthesis.NewSynthesizer(nil),
 	}
 
 	reqBody := `{"notebook_id": "` + nb.ID + `"}`
@@ -151,7 +151,7 @@ func TestHandleGeneratePodcast_AudioServiceError(t *testing.T) {
 
 	api := &API{
 		repo:        repo,
-		synthesizer: synthesis.NewSynthesizer(),
+		synthesizer: synthesis.NewSynthesizer(nil),
 	}
 
 	reqBody := `{"notebook_id": "` + nb.ID + `"}`

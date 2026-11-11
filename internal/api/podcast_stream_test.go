@@ -75,7 +75,7 @@ func TestHandleStreamPodcast_EmitsCompleteEvent(t *testing.T) {
 
 	api := &API{
 		repo:        repo,
-		synthesizer: synthesis.NewSynthesizer(),
+		synthesizer: synthesis.NewSynthesizer(nil),
 	}
 
 	reqBody := `{"notebook_id": "` + nb.ID + `", "force": "true"}`

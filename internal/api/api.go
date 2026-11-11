@@ -37,7 +37,7 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		searchController:     c,
 		pipelineSearchSource: pipelineSearchSource,
 		pipelineStore:        pipelineStore,
-		synthesizer:          synthesis.NewSynthesizer(),
+		synthesizer:          synthesis.NewSynthesizer(llmClient),
 		repo:                 repo,
 		vectorClient:         vector.NewClient(),
 		llmClient:            llmClient,
