@@ -153,7 +153,11 @@ func (a *API) streamSynthesis(w http.ResponseWriter, r *http.Request, flusher ht
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "data:") {
-			fmt.Fprintf(w, "event: progress\n%s\n\n", line)
+			if strings.Contains(line, `"step":"complete"`) || strings.Contains(line, `"step": "complete"`) {
+				fmt.Fprintf(w, "event: complete\n%s\n\n", line)
+			} else {
+				fmt.Fprintf(w, "event: progress\n%s\n\n", line)
+			}
 			flusher.Flush()
 		}
 	}
