@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"sourcebook/internal/models"
 	"sourcebook/internal/utils"
@@ -59,7 +60,12 @@ func (a *API) handleNotebookUpdate(w http.ResponseWriter, r *http.Request, id st
 		existingIDs[src.ID] = true
 	}
 
-	req.Sources = a.enrichSources(r.Context(), id, req.Sources, existingIDs)
+	// Ensure all incoming sources have an ID before syncing
+	for i := range req.Sources {
+		if req.Sources[i].ID == "" {
+			req.Sources[i].ID = uuid.NewString()
+		}
+	}
 
 	if err := a.repo.SyncNotebookSources(id, req.Sources); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -68,6 +74,9 @@ func (a *API) handleNotebookUpdate(w http.ResponseWriter, r *http.Request, id st
 
 	// Trigger thread-safe background embedding to prevent HTTP 502 timeouts
 	a.triggerNotebookEmbedding(id, req.Sources)
+
+	// Offload heavy agentic search / source enrichment to non-blocking background worker
+	a.triggerSourceEnrichment(id, req.Sources, existingIDs)
 
 	if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -82,7 +91,25 @@ func (a *API) handleNotebookUpdate(w http.ResponseWriter, r *http.Request, id st
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (a *API) enrichSources(ctx context.Context, notebookID string, sources []models.SourceRecord, existingIDs map[string]bool) []models.SourceRecord {
+func (a *API) triggerSourceEnrichment(notebookID string, sources []models.SourceRecord, existingIDs map[string]bool) {
+	if os.Getenv("SEARCH_SERVICE_URL") == "" {
+		return
+	}
+	sourcesCopy := make([]models.SourceRecord, len(sources))
+	copy(sourcesCopy, sources)
+	existingIDsCopy := make(map[string]bool, len(existingIDs))
+	for k, v := range existingIDs {
+		existingIDsCopy[k] = v
+	}
+
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		a.enrichSourcesAsync(bgCtx, notebookID, sourcesCopy, existingIDsCopy)
+	}()
+}
+
+func (a *API) enrichSourcesAsync(ctx context.Context, notebookID string, sources []models.SourceRecord, existingIDs map[string]bool) {
 	maxResults := 2
 	if maxStr := os.Getenv("AGENTIC_INGESTION_MAX_RESULTS"); maxStr != "" {
 		if parsed, err := strconv.Atoi(maxStr); err == nil && parsed > 0 {
@@ -97,54 +124,51 @@ func (a *API) enrichSources(ctx context.Context, notebookID string, sources []mo
 		}
 	}
 
-	searchServiceURL := os.Getenv("SEARCH_SERVICE_URL")
-
-	var enriched []models.SourceRecord
 	for _, src := range sources {
 		isNew := src.ID == "" || !existingIDs[src.ID]
-		if src.ID == "" {
-			src.ID = uuid.NewString()
+		if !isNew || (src.Type != "text" && src.Provider != "text") || len(src.Content) < threshold {
+			continue
 		}
-		enriched = append(enriched, src)
 
-		// Trigger agentic ingestion only if it is a new text source, and satisfies the length threshold
-		if isNew && (src.Type == "text" || src.Provider == "text") && len(src.Content) >= threshold && searchServiceURL != "" {
-			log.Printf("[AgenticIngestion] New text source detected: %q (len=%d). Triggering planner...", src.Title, len(src.Content))
-			plan, err := utils.CallSearchServicePlanner(ctx, src.Content)
+		log.Printf("[AgenticIngestion] New text source detected: %q (len=%d). Triggering planner...", src.Title, len(src.Content))
+		plan, err := utils.CallSearchServicePlanner(ctx, src.Content)
+		if err != nil || plan == nil || len(plan.Queries) == 0 {
 			if err != nil {
 				log.Printf("[AgenticIngestion] Search planner error: %v", err)
+			}
+			continue
+		}
+
+		log.Printf("[AgenticIngestion] Planner returned %d subqueries", len(plan.Queries))
+		for _, pq := range plan.Queries {
+			if pq.Query == "" {
 				continue
 			}
-			if plan == nil || len(plan.Queries) == 0 {
+			log.Printf("[AgenticIngestion] Executing search & scrape for subquery: %q", pq.Query)
+			docs, _, err := a.fetchPipelineSources(ctx, pq.Query, maxResults, nil, "")
+			if err != nil {
+				log.Printf("[AgenticIngestion] Search/Scrape failed for %q: %v", pq.Query, err)
 				continue
 			}
-			log.Printf("[AgenticIngestion] Planner returned %d subqueries", len(plan.Queries))
-			for _, pq := range plan.Queries {
-				if pq.Query == "" {
-					continue
+			for _, doc := range docs {
+				newSrc := models.SourceRecord{
+					ID:           uuid.NewString(),
+					NotebookID:   notebookID,
+					Title:        doc.Title,
+					URL:          doc.URL,
+					CanonicalURL: doc.URL,
+					Content:      doc.Content,
+					Provider:     "web",
+					Type:         "web",
 				}
-				log.Printf("[AgenticIngestion] Executing search & scrape for subquery: %q", pq.Query)
-				docs, _, err := a.fetchPipelineSources(ctx, pq.Query, maxResults, nil, "")
-				if err != nil {
-					log.Printf("[AgenticIngestion] Search/Scrape failed for %q: %v", pq.Query, err)
-					continue
-				}
-				for _, doc := range docs {
-					newSrc := models.SourceRecord{
-						ID:           uuid.NewString(),
-						NotebookID:   notebookID,
-						Title:        doc.Title,
-						URL:          doc.URL,
-						CanonicalURL: doc.URL,
-						Content:      doc.Content,
-						Provider:     "web",
-						Type:         "web",
+				if a.repo != nil {
+					if err := a.repo.AddSource(&newSrc); err != nil {
+						log.Printf("[AgenticIngestion] Failed to add source %q: %v", newSrc.Title, err)
+					} else {
+						log.Printf("[AgenticIngestion] Ingested web source: %q (%s)", doc.Title, doc.URL)
 					}
-					enriched = append(enriched, newSrc)
-					log.Printf("[AgenticIngestion] Ingested web source: %q (%s)", doc.Title, doc.URL)
 				}
 			}
 		}
 	}
-	return enriched
 }
