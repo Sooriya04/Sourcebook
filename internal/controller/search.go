@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"sourcebook/internal/models"
 	"sourcebook/internal/providers/searx"
 	"sourcebook/internal/registry"
@@ -82,11 +83,19 @@ func (c *UnifiedSearchController) Search(ctx context.Context, query string, opti
 		}()
 
 		var combined []models.SearchResult
+		var errs []error
 		for i := 0; i < 2; i++ {
 			wrap := <-ch
+			if wrap.err != nil {
+				errs = append(errs, wrap.err)
+			}
 			if wrap.err == nil && wrap.res != nil {
 				combined = append(combined, wrap.res...)
 			}
+		}
+
+		if len(combined) == 0 && len(errs) > 0 {
+			return nil, errors.Join(errs...)
 		}
 
 		return combined, nil

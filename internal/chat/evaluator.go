@@ -52,7 +52,34 @@ func (e *SelfEvaluator) EvaluateContext(ctx context.Context, query string, docs 
 	var totalScore float32 = 0.0
 	var relevant []Document
 
-	for _, doc := range docs {
+	vecScores := make([]float32, len(docs))
+	if len(queryEmb) > 0 {
+		var textsToEmbed []string
+		var textIndices []int
+		for i, doc := range docs {
+			if len(doc.Embedding) > 0 {
+				vecScores[i] = vector.CosineSimilarity(queryEmb, doc.Embedding)
+			} else if e.vectorClient != nil {
+				textsToEmbed = append(textsToEmbed, doc.Content)
+				textIndices = append(textIndices, i)
+			}
+		}
+
+		if len(textsToEmbed) > 0 && e.vectorClient != nil {
+			docEmbs, err := e.vectorClient.GenerateBatchEmbeddings(ctx, textsToEmbed)
+			if err == nil && len(docEmbs) == len(textsToEmbed) {
+				for j, idx := range textIndices {
+					if len(docEmbs[j]) > 0 {
+						vecScores[idx] = vector.CosineSimilarity(queryEmb, docEmbs[j])
+					}
+				}
+			} else {
+				log.Printf("[SelfEvaluator] Batch embedding failed (%v), falling back to zero scores for %d docs", err, len(textsToEmbed))
+			}
+		}
+	}
+
+	for i, doc := range docs {
 		contentLower := strings.ToLower(doc.Content)
 		titleLower := strings.ToLower(doc.Title)
 
@@ -68,18 +95,8 @@ func (e *SelfEvaluator) EvaluateContext(ctx context.Context, query string, docs 
 			kwScore = float32(matchCount) / float32(len(queryTerms))
 		}
 
-		// 2. Semantic vector score
-		var vecScore float32 = 0.0
-		if len(queryEmb) > 0 {
-			if len(doc.Embedding) > 0 {
-				vecScore = vector.CosineSimilarity(queryEmb, doc.Embedding)
-			} else if e.vectorClient != nil {
-				docEmb, err := e.vectorClient.GenerateQueryEmbedding(ctx, doc.Content)
-				if err == nil {
-					vecScore = vector.CosineSimilarity(queryEmb, docEmb)
-				}
-			}
-		}
+		// 2. Semantic vector score from batch/precomputed embeddings
+		vecScore := vecScores[i]
 
 		// 3. Combined relevance score (70% Semantic + 30% Keyword)
 		score := (0.7 * vecScore) + (0.3 * kwScore)
