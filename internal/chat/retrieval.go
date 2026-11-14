@@ -2,6 +2,8 @@ package chat
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
 	"strings"
 	"sync"
@@ -166,10 +168,8 @@ func Deduplicate(docs []Document) []Document {
 			seenWebURL[urlKey] = true
 		}
 
-		contentKey := trimmedContent
-		if len(contentKey) > 120 {
-			contentKey = contentKey[:120]
-		}
+		h := sha256.Sum256([]byte(trimmedContent))
+		contentKey := hex.EncodeToString(h[:])
 		if seenContent[contentKey] {
 			continue
 		}

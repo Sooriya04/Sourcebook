@@ -42,6 +42,25 @@ func TestDeduplicate_PreservesDistinctChunks(t *testing.T) {
 	if deduped[0].Content != docs[0].Content || deduped[1].Content != docs[1].Content {
 		t.Errorf("expected both notebook chunks to be preserved")
 	}
+
+	// Chunks that share an intro prefix longer than 120 chars should NOT be dropped
+	prefix := "This is a very long common introduction and preamble text that spans across multiple chunks of documentation to test deduplication thoroughly and completely without any false matches. "
+	sharedPrefixDocs := []Document{
+		{
+			Title:      "Doc Part 1",
+			Content:    prefix + "Here is specific unique detail number one regarding neural models.",
+			SourceType: "Notebook",
+		},
+		{
+			Title:      "Doc Part 2",
+			Content:    prefix + "Here is specific unique detail number two regarding audio synthesis pipelines.",
+			SourceType: "Notebook",
+		},
+	}
+	sharedDeduped := Deduplicate(sharedPrefixDocs)
+	if len(sharedDeduped) != 2 {
+		t.Fatalf("expected 2 distinct chunks sharing >120 char prefix to be preserved, got %d", len(sharedDeduped))
+	}
 }
 
 func TestReranker_RRF_PrecomputedEmbeddings(t *testing.T) {
