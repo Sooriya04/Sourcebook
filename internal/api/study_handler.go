@@ -117,9 +117,13 @@ func (a *API) HandleFlashcards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse JSON
+	// Parse JSON with bracket slicing to strip any LLM preambles/markdown fences
 	rawJSON = strings.TrimSpace(rawJSON)
-	if strings.HasPrefix(rawJSON, "```json") {
+	if first := strings.Index(rawJSON, "["); first != -1 {
+		if last := strings.LastIndex(rawJSON, "]"); last > first {
+			rawJSON = rawJSON[first : last+1]
+		}
+	} else if strings.HasPrefix(rawJSON, "```json") {
 		rawJSON = strings.TrimPrefix(rawJSON, "```json")
 		rawJSON = strings.TrimSuffix(rawJSON, "```")
 	} else if strings.HasPrefix(rawJSON, "```") {
