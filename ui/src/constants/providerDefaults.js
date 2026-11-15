@@ -1,11 +1,11 @@
 export const DEFAULT_PROVIDER_CONFIGS = {
   openai: {
-    baseUrl: 'http://localhost:20128/v1',
-    model: 'ag/gemini-3.6-flash-low',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4o-mini',
     apiKey: '',
-    placeholderUrl: 'http://localhost:20128/v1',
-    placeholderModel: 'ag/gemini-3.6-flash-low',
-    placeholderKey: 'sk-... (optional for local proxy)'
+    placeholderUrl: 'https://api.openai.com/v1 (or local proxy)',
+    placeholderModel: 'gpt-4o-mini, gpt-4o, gh/gpt-4o-mini',
+    placeholderKey: 'sk-...'
   },
   gemini: {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',

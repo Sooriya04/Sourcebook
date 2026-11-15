@@ -37,13 +37,13 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("openai stream request failed: %w", err)
+		return fmt.Errorf("%s stream request failed: %w", c.provider, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("openai returned status %d: %s", resp.StatusCode, string(respBytes))
+		return parseAPIError(c.provider, resp.StatusCode, respBytes)
 	}
 
 	reader := bufio.NewReader(resp.Body)
@@ -107,13 +107,13 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("openai request failed: %w", err)
+		return "", fmt.Errorf("%s request failed: %w", c.provider, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("openai returned status %d: %s", resp.StatusCode, string(respBytes))
+		return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)

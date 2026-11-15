@@ -366,7 +366,22 @@ export async function testModelConfig({ provider, baseUrl, model, apiKey }) {
   });
   const data = await response.json();
   if (!response.ok || !data.valid) {
-    throw new Error(data.error || data.message || 'API Key or Model Verification failed');
+    let msg = data.error || data.message || 'API Key or Model Verification failed';
+    if (typeof msg === 'string') {
+      const jsonStart = msg.indexOf('{');
+      if (jsonStart !== -1) {
+        try {
+          const parsed = JSON.parse(msg.slice(jsonStart));
+          const inner = parsed?.error?.message || parsed?.error || parsed?.message;
+          if (inner && typeof inner === 'string') {
+            msg = `${msg.slice(0, jsonStart).trim()} ${inner}`.trim();
+          }
+        } catch {
+          // fallback to raw message
+        }
+      }
+    }
+    throw new Error(msg);
   }
   return data;
 }

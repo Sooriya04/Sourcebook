@@ -41,7 +41,7 @@ func (c *Client) generateOllamaStream(ctx context.Context, messages []Message, o
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(respBytes))
+		return parseAPIError(c.provider, resp.StatusCode, respBytes)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -100,7 +100,7 @@ func (c *Client) generateOllama(ctx context.Context, messages []Message) (string
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(respBytes))
+		return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
 	}
 
 	var res struct {
