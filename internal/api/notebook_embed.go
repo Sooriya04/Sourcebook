@@ -39,6 +39,11 @@ func (a *API) processNotebookEmbeddings(notebookID string, sources []models.Sour
 		activeNotebookEmbeddingsMu.Unlock()
 	}()
 
+	if a.vectorClient == nil {
+		log.Printf("[Embeddings] Vector client not initialized; skipping embedding for notebook %s", notebookID)
+		return
+	}
+
 	bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
