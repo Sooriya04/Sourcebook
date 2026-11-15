@@ -13,8 +13,8 @@ import (
 func (a *API) HandleListEpisodes(w http.ResponseWriter, r *http.Request) {
 	notebookID := r.URL.Query().Get("notebook_id")
 	if notebookID == "" {
-		parts := strings.Split(r.URL.Path, "/")
-		if len(parts) > 0 {
+		parts := strings.Split(strings.TrimRight(r.URL.Path, "/"), "/")
+		if len(parts) > 0 && parts[len(parts)-1] != "episodes" {
 			notebookID = parts[len(parts)-1]
 		}
 	}
@@ -62,16 +62,19 @@ func (a *API) HandleListEpisodes(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) handleDeleteEpisode(w http.ResponseWriter, r *http.Request, notebookID string) {
 	epID := r.URL.Query().Get("episode_id")
-	if notebookID != "" && epID != "" {
-		_ = os.Remove(fmt.Sprintf("database/audio/%s/%s.json", notebookID, epID))
-		_ = os.Remove(fmt.Sprintf("database/audio/%s/%s.wav", notebookID, epID))
-		rootPath := fmt.Sprintf("database/audio/%s.json", notebookID)
-		if b, err := os.ReadFile(rootPath); err == nil {
-			var rootData map[string]interface{}
-			if json.Unmarshal(b, &rootData) == nil && (rootData["id"] == epID || epID == "legacy_1") {
-				_ = os.Remove(rootPath)
-				_ = os.Remove(fmt.Sprintf("database/audio/%s.wav", notebookID))
-			}
+	if !isValidID(notebookID) || !isValidID(epID) {
+		http.Error(w, "Invalid notebook or episode ID", http.StatusBadRequest)
+		return
+	}
+
+	_ = os.Remove(fmt.Sprintf("database/audio/%s/%s.json", notebookID, epID))
+	_ = os.Remove(fmt.Sprintf("database/audio/%s/%s.wav", notebookID, epID))
+	rootPath := fmt.Sprintf("database/audio/%s.json", notebookID)
+	if b, err := os.ReadFile(rootPath); err == nil {
+		var rootData map[string]interface{}
+		if json.Unmarshal(b, &rootData) == nil && (rootData["id"] == epID || epID == "legacy_1") {
+			_ = os.Remove(rootPath)
+			_ = os.Remove(fmt.Sprintf("database/audio/%s.wav", notebookID))
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -93,6 +96,11 @@ func (a *API) handleRenameEpisode(w http.ResponseWriter, r *http.Request, notebo
 	}
 	if req.EpisodeID == "" {
 		req.EpisodeID = r.URL.Query().Get("episode_id")
+	}
+
+	if !isValidID(req.NotebookID) || !isValidID(req.EpisodeID) {
+		http.Error(w, "Invalid notebook or episode ID", http.StatusBadRequest)
+		return
 	}
 
 	target := fmt.Sprintf("database/audio/%s/%s.json", req.NotebookID, req.EpisodeID)
