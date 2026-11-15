@@ -140,9 +140,10 @@ func (al *AgentLoop) Run(
 		case "search_notebook":
 			docs, err = al.tools.ToolNotebookSearch(ctx, notebookID, reactRes.ActionInput)
 		case "fetch_arxiv":
-			doc, err := al.tools.ToolArxivFetch(ctx, reactRes.ActionInput)
-			if err == nil && doc != nil {
-				docs = []Document{*doc}
+			fetchDoc, fetchErr := al.tools.ToolArxivFetch(ctx, reactRes.ActionInput)
+			err = fetchErr
+			if fetchErr == nil && fetchDoc != nil {
+				docs = []Document{*fetchDoc}
 			}
 		default:
 			err = fmt.Errorf("unknown action: %s", reactRes.Action)
