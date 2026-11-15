@@ -7,6 +7,14 @@ export const DEFAULT_PROVIDER_CONFIGS = {
     placeholderModel: 'ag/gemini-3.6-flash-low',
     placeholderKey: 'sk-... (optional for local proxy)'
   },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    model: 'gemini-1.5-flash',
+    apiKey: '',
+    placeholderUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    placeholderModel: 'gemini-1.5-flash, gemini-2.0-flash, gemini-1.5-pro',
+    placeholderKey: 'AIzaSy...'
+  },
   ollama: {
     baseUrl: 'http://localhost:11434',
     model: 'gemma2',

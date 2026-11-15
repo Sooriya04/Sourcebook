@@ -89,6 +89,7 @@ Configure inference endpoints, credentials, and search providers directly within
 
 - **Supported LLM Protocols**:
   - **Ollama Native**: Direct local daemon at `http://localhost:11434` (`gemma2`, `phi4-mini`, `llama3.3`, `qwen2.5`).
+  - **Google Gemini**: Official OpenAI-compatible API (`gemini-1.5-flash`, `gemini-2.0-flash`, `gemini-1.5-pro`).
   - **OpenAI Compatible**: Custom local proxies, vLLM, LM Studio, or OpenAI endpoints.
   - **Groq Cloud**: Ultra-low-latency LPU inference via `api.groq.com`.
   - **NVIDIA NIM**: High-throughput cloud NIM endpoints via `integrate.api.nvidia.com`.

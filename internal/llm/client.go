@@ -27,12 +27,22 @@ func NewClient() *Client {
 
 	baseURL := os.Getenv("LLM_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:11434"
+		if provider == "gemini" {
+			baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+		} else if provider == "ollama" {
+			baseURL = "http://localhost:11434"
+		} else {
+			baseURL = "https://api.openai.com/v1"
+		}
 	}
 
 	model := os.Getenv("LLM_MODEL")
 	if model == "" {
-		model = "gemma2"
+		if provider == "gemini" {
+			model = "gemini-1.5-flash"
+		} else {
+			model = "gemma2"
+		}
 	}
 
 	return NewClientWithConfig(provider, baseURL, model, os.Getenv("LLM_API_KEY"))
@@ -46,8 +56,15 @@ func NewClientWithConfig(provider, baseURL, model, apiKey string) *Client {
 	if baseURL == "" {
 		if provider == "ollama" {
 			baseURL = "http://localhost:11434"
+		} else if provider == "gemini" {
+			baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
 		} else {
 			baseURL = "https://api.openai.com/v1"
+		}
+	}
+	if model == "" {
+		if provider == "gemini" {
+			model = "gemini-1.5-flash"
 		}
 	}
 

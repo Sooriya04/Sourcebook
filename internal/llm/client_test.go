@@ -61,3 +61,20 @@ func TestClient_IsolatedTestConnection(t *testing.T) {
 		t.Fatalf("Expected 'pong', got %q", res)
 	}
 }
+
+func TestClient_GeminiDefaultConfig(t *testing.T) {
+	client := NewClientWithConfig("gemini", "", "", "gemini-key")
+	provider, baseURL, model, apiKey := client.GetConfig()
+	if provider != "gemini" {
+		t.Errorf("expected provider gemini, got %s", provider)
+	}
+	if baseURL != "https://generativelanguage.googleapis.com/v1beta/openai" {
+		t.Errorf("expected gemini baseURL, got %s", baseURL)
+	}
+	if model != "gemini-1.5-flash" {
+		t.Errorf("expected default model gemini-1.5-flash, got %s", model)
+	}
+	if apiKey != "gemini-key" {
+		t.Errorf("expected apiKey gemini-key, got %s", apiKey)
+	}
+}
