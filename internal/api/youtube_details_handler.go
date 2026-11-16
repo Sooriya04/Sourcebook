@@ -145,8 +145,9 @@ func generateSynthesizedChapters(segments []models.YouTubeSegment, totalSecs flo
 		if len(chapters) == 0 || s.Start >= currentBucket+step {
 			currentBucket = s.Start
 			cleanTitle := strings.TrimSpace(s.Text)
-			if len(cleanTitle) > 42 {
-				cleanTitle = cleanTitle[:42] + "..."
+			r := []rune(cleanTitle)
+			if len(r) > 42 {
+				cleanTitle = string(r[:42]) + "..."
 			}
 			if len(chapters) == 0 {
 				cleanTitle = "Introduction"

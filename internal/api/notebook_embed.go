@@ -15,15 +15,17 @@ import (
 var (
 	activeNotebookEmbeddingsMu sync.Mutex
 	activeNotebookEmbeddings   = make(map[string]bool)
+	pendingNotebookEmbeddings  = make(map[string]bool)
 )
 
 // triggerNotebookEmbedding initiates background chunking and embedding for notebook sources.
-// If an embedding task is already running for notebookID, it returns immediately to avoid duplicate work.
+// If an embedding task is already running for notebookID, it queues the notebook as pending so new sources are not dropped.
 func (a *API) triggerNotebookEmbedding(notebookID string, sources []models.SourceRecord) {
 	activeNotebookEmbeddingsMu.Lock()
 	if activeNotebookEmbeddings[notebookID] {
+		pendingNotebookEmbeddings[notebookID] = true
 		activeNotebookEmbeddingsMu.Unlock()
-		log.Printf("[Embeddings] Task already active for notebook %s; skipping duplicate work", notebookID)
+		log.Printf("[Embeddings] Task already active for notebook %s; queued pending run", notebookID)
 		return
 	}
 	activeNotebookEmbeddings[notebookID] = true
@@ -32,15 +34,48 @@ func (a *API) triggerNotebookEmbedding(notebookID string, sources []models.Sourc
 	go a.processNotebookEmbeddings(notebookID, sources)
 }
 
-func (a *API) processNotebookEmbeddings(notebookID string, sources []models.SourceRecord) {
+func (a *API) processNotebookEmbeddings(notebookID string, initialSources []models.SourceRecord) {
 	defer func() {
 		activeNotebookEmbeddingsMu.Lock()
 		delete(activeNotebookEmbeddings, notebookID)
+		delete(pendingNotebookEmbeddings, notebookID)
 		activeNotebookEmbeddingsMu.Unlock()
 	}()
 
 	if a.vectorClient == nil {
 		log.Printf("[Embeddings] Vector client not initialized; skipping embedding for notebook %s", notebookID)
+		return
+	}
+
+	sources := initialSources
+	for {
+		a.embedSources(notebookID, sources)
+
+		activeNotebookEmbeddingsMu.Lock()
+		if !pendingNotebookEmbeddings[notebookID] {
+			delete(activeNotebookEmbeddings, notebookID)
+			activeNotebookEmbeddingsMu.Unlock()
+			break
+		}
+		delete(pendingNotebookEmbeddings, notebookID)
+		activeNotebookEmbeddingsMu.Unlock()
+
+		if a.repo != nil {
+			latest, err := a.repo.GetSourcesByNotebook(notebookID)
+			if err != nil {
+				log.Printf("[Embeddings] Error querying sources for notebook %s: %v", notebookID, err)
+				activeNotebookEmbeddingsMu.Lock()
+				delete(activeNotebookEmbeddings, notebookID)
+				activeNotebookEmbeddingsMu.Unlock()
+				break
+			}
+			sources = latest
+		}
+	}
+}
+
+func (a *API) embedSources(notebookID string, sources []models.SourceRecord) {
+	if a.repo == nil {
 		return
 	}
 
