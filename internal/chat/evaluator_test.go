@@ -93,3 +93,31 @@ func TestSelfEvaluator_BatchEmbedding(t *testing.T) {
 		t.Errorf("expected 3 texts embedded in total, got %d", totalTexts)
 	}
 }
+
+func TestSelfEvaluator_LowScoreThreeDocsInsufficient(t *testing.T) {
+	evaluator := NewSelfEvaluator(nil)
+
+	// Keyword match gives 0.30 score (0.30 >= 0.25 threshold, but < 0.32 sufficiency)
+	docs := []Document{
+		{Title: "Doc 1", Content: "quantum computing error correction intro"},
+		{Title: "Doc 2", Content: "quantum computing error correction overview"},
+		{Title: "Doc 3", Content: "quantum computing error correction basics"},
+	}
+
+	res, err := evaluator.EvaluateContext(context.Background(), "quantum computing error correction", docs)
+	if err != nil {
+		t.Fatalf("EvaluateContext failed: %v", err)
+	}
+
+	if len(res.RelevantDocs) != 3 {
+		t.Fatalf("expected 3 relevant docs, got %d", len(res.RelevantDocs))
+	}
+
+	if res.AverageScore >= 0.32 {
+		t.Fatalf("expected average score < 0.32, got %.2f", res.AverageScore)
+	}
+
+	if res.Sufficient {
+		t.Errorf("expected sufficient: false when avgScore (%.2f) < 0.32 with 3 docs, got sufficient: true", res.AverageScore)
+	}
+}
