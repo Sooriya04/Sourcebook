@@ -3,12 +3,11 @@ package chat
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"sourcebook/internal/utils"
+	"sort"
 	"strings"
-	"time"
+
+	"sourcebook/internal/arxiv"
 )
 
 type ToolRegistry struct {
@@ -30,53 +29,85 @@ func (tr *ToolRegistry) ToolWebSearch(ctx context.Context, query string, maxSour
 	return tr.retriever.RetrieveWeb(ctx, query, maxSources)
 }
 
-// ToolNotebookSearch executes semantic vector search inside a notebook
+// ToolNotebookSearch executes semantic search inside a notebook scored and ranked by query
 func (tr *ToolRegistry) ToolNotebookSearch(ctx context.Context, notebookID string, query string) ([]Document, error) {
 	if tr.retriever == nil {
 		return nil, fmt.Errorf("retriever not initialized")
 	}
 	log.Printf("[AgentTool] Executing NotebookSearch in %s for %q", notebookID, query)
-	return tr.retriever.RetrieveNotebook(ctx, notebookID, nil)
+	docs, err := tr.retriever.RetrieveNotebook(ctx, notebookID, nil)
+	if err != nil || len(docs) == 0 {
+		return docs, err
+	}
+
+	trimmedQuery := strings.TrimSpace(query)
+	if trimmedQuery == "" {
+		return docs, nil
+	}
+
+	scores := CalculateBM25(trimmedQuery, docs)
+	type docScore struct {
+		doc   Document
+		score float32
+	}
+	scored := make([]docScore, len(docs))
+	for i, d := range docs {
+		scored[i] = docScore{doc: d, score: scores[i]}
+	}
+
+	sort.SliceStable(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	limit := 5
+	var result []Document
+	for _, sd := range scored {
+		if sd.score > 0 {
+			result = append(result, sd.doc)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+
+	if len(result) == 0 {
+		max := len(scored)
+		if max > limit {
+			max = limit
+		}
+		for i := 0; i < max; i++ {
+			result = append(result, scored[i].doc)
+		}
+	}
+
+	return result, nil
 }
 
-// ToolArxivFetch fetches abstract / text from arXiv for a given arXiv ID or URL
+// ToolArxivFetch fetches parsed abstract / text from arXiv for a given arXiv ID or URL
 func (tr *ToolRegistry) ToolArxivFetch(ctx context.Context, arxivIDOrURL string) (*Document, error) {
-	cleanID := strings.TrimPrefix(arxivIDOrURL, "https://arxiv.org/abs/")
-	cleanID = strings.TrimPrefix(cleanID, "https://arxiv.org/pdf/")
-	cleanID = strings.TrimSuffix(cleanID, ".pdf")
-	cleanID = strings.TrimSpace(cleanID)
+	raw := strings.TrimSpace(arxivIDOrURL)
+	if raw == "" {
+		return nil, fmt.Errorf("empty arXiv identifier")
+	}
 
-	log.Printf("[AgentTool] Fetching arXiv paper %s", cleanID)
-	absURL := fmt.Sprintf("https://arxiv.org/abs/%s", cleanID)
+	absURL := raw
+	if id := arxiv.ExtractArxivID(raw); id != "" {
+		absURL = fmt.Sprintf("https://arxiv.org/abs/%s", id)
+	} else if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
+		cleanID := strings.TrimSpace(raw)
+		absURL = fmt.Sprintf("https://arxiv.org/abs/%s", cleanID)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, absURL, nil)
+	log.Printf("[AgentTool] Fetching arXiv paper %s", absURL)
+	title, content, err := arxiv.FetchSingleArxivDocument(ctx, absURL)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "SourceBook-Agent/1.0")
 
-	client := &http.Client{Timeout: 8 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("arXiv fetch failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("arXiv HTTP status %d", resp.StatusCode)
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	doc := utils.CleanText(string(bodyBytes))
-
-	title := fmt.Sprintf("arXiv Paper %s", cleanID)
 	return &Document{
 		Title:      title,
 		URL:        absURL,
-		Content:    doc,
+		Content:    content,
 		SourceType: "Arxiv",
 	}, nil
 }
