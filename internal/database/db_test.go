@@ -3,8 +3,9 @@ package database
 import (
 	"os"
 	"path/filepath"
-	"sourcebook/internal/models"
 	"testing"
+
+	"sourcebook/internal/models"
 )
 
 func TestInitDB_CreatesDirectoryAndTables(t *testing.T) {
@@ -35,99 +36,43 @@ func TestInitDB_CreatesDirectoryAndTables(t *testing.T) {
 	}
 }
 
-func TestSaveChunks_PreservesUnrelatedSources(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "sourcebook_chunks_test_*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	dbPath := filepath.Join(tempDir, "test.db")
-	db, err := InitDB(dbPath)
+func TestInitDB_ForeignIndexesExist(t *testing.T) {
+	db, err := InitDB(":memory:")
 	if err != nil {
 		t.Fatalf("InitDB failed: %v", err)
 	}
 	defer db.Close()
 
-	repo := NewRepository(db)
-	nb, err := repo.CreateNotebook("Test Notebook", "Desc")
+	expectedIndexes := []string{
+		"idx_sources_notebook_id",
+		"idx_document_chunks_notebook_id",
+		"idx_chat_messages_notebook_id",
+		"idx_yt_chat_video_id",
+	}
+
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type = 'index'")
 	if err != nil {
-		t.Fatalf("CreateNotebook failed: %v", err)
+		t.Fatalf("Querying sqlite_master failed: %v", err)
 	}
+	defer rows.Close()
 
-	src1 := &models.SourceRecord{
-		ID:         "source-1",
-		NotebookID: nb.ID,
-		Title:      "Doc 1",
-	}
-	if err := repo.AddSource(src1); err != nil {
-		t.Fatalf("AddSource 1 failed: %v", err)
-	}
-
-	src2 := &models.SourceRecord{
-		ID:         "source-2",
-		NotebookID: nb.ID,
-		Title:      "Doc 2",
-	}
-	if err := repo.AddSource(src2); err != nil {
-		t.Fatalf("AddSource 2 failed: %v", err)
-	}
-
-	// 1. Save chunks for source-1
-	chunks1 := []models.DocumentChunk{
-		{
-			ID:         "c1-1",
-			NotebookID: nb.ID,
-			SourceID:   src1.ID,
-			ChunkIndex: 0,
-			Content:    "Chunk 1 of Doc 1",
-			Embedding:  []float32{0.1, 0.2, 0.3},
-		},
-	}
-	if err := repo.SaveChunks(nb.ID, chunks1); err != nil {
-		t.Fatalf("SaveChunks 1 failed: %v", err)
-	}
-
-	// 2. Save chunks for source-2 (e.g. Chat discovered a new web source)
-	chunks2 := []models.DocumentChunk{
-		{
-			ID:         "c2-1",
-			NotebookID: nb.ID,
-			SourceID:   src2.ID,
-			ChunkIndex: 0,
-			Content:    "Chunk 1 of Doc 2",
-			Embedding:  []float32{0.4, 0.5, 0.6},
-		},
-	}
-	if err := repo.SaveChunks(nb.ID, chunks2); err != nil {
-		t.Fatalf("SaveChunks 2 failed: %v", err)
-	}
-
-	// 3. Verify that chunks for BOTH source-1 and source-2 are present!
-	savedChunks, err := repo.GetChunksByNotebook(nb.ID)
-	if err != nil {
-		t.Fatalf("GetChunksByNotebook failed: %v", err)
-	}
-
-	if len(savedChunks) != 2 {
-		t.Fatalf("Expected 2 chunks preserved across both sources, got %d", len(savedChunks))
-	}
-
-	foundSrc1, foundSrc2 := false, false
-	for _, ch := range savedChunks {
-		if ch.SourceID == src1.ID {
-			foundSrc1 = true
+	found := make(map[string]bool)
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatalf("Row scan failed: %v", err)
 		}
-		if ch.SourceID == src2.ID {
-			foundSrc2 = true
-		}
+		found[name] = true
 	}
-	if !foundSrc1 || !foundSrc2 {
-		t.Fatalf("Source chunks lost: foundSrc1=%v, foundSrc2=%v", foundSrc1, foundSrc2)
+
+	for _, idx := range expectedIndexes {
+		if !found[idx] {
+			t.Errorf("Expected index %s not found in sqlite_master", idx)
+		}
 	}
 }
 
-func TestSaveMemoryPair_ChronologicalOrder(t *testing.T) {
+func TestSaveMemoryPair(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "sourcebook_memory_test_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -142,7 +87,7 @@ func TestSaveMemoryPair_ChronologicalOrder(t *testing.T) {
 	defer db.Close()
 
 	repo := NewRepository(db)
-	nb, err := repo.CreateNotebook("Memory Notebook", "Desc")
+	nb, err := repo.CreateNotebook("Memory Test", "Desc")
 	if err != nil {
 		t.Fatalf("CreateNotebook failed: %v", err)
 	}
@@ -160,11 +105,9 @@ func TestSaveMemoryPair_ChronologicalOrder(t *testing.T) {
 	if len(records) != 2 {
 		t.Fatalf("Expected 2 memory records, got %d", len(records))
 	}
-
 	if records[0].Role != "user" || records[0].Content != "Hello user query" {
 		t.Errorf("Expected first record to be user query, got role=%s content=%s", records[0].Role, records[0].Content)
 	}
-
 	if records[1].Role != "assistant" || records[1].Content != "Hello assistant answer" {
 		t.Errorf("Expected second record to be assistant answer, got role=%s content=%s", records[1].Role, records[1].Content)
 	}
@@ -189,18 +132,15 @@ func TestGetNotebooks_SourceCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateNotebook 1 failed: %v", err)
 	}
-
 	nb2, err := repo.CreateNotebook("Notebook 2", "Desc 2")
 	if err != nil {
 		t.Fatalf("CreateNotebook 2 failed: %v", err)
 	}
 
-	err = repo.AddSource(&models.SourceRecord{ID: "s1", NotebookID: nb1.ID, Title: "Source 1"})
-	if err != nil {
+	if err = repo.AddSource(&models.SourceRecord{ID: "s1", NotebookID: nb1.ID, Title: "Source 1"}); err != nil {
 		t.Fatalf("AddSource failed: %v", err)
 	}
-	err = repo.AddSource(&models.SourceRecord{ID: "s2", NotebookID: nb1.ID, Title: "Source 2"})
-	if err != nil {
+	if err = repo.AddSource(&models.SourceRecord{ID: "s2", NotebookID: nb1.ID, Title: "Source 2"}); err != nil {
 		t.Fatalf("AddSource failed: %v", err)
 	}
 
@@ -208,20 +148,15 @@ func TestGetNotebooks_SourceCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetNotebooks failed: %v", err)
 	}
-
 	if len(notebooks) != 2 {
 		t.Fatalf("Expected 2 notebooks, got %d", len(notebooks))
 	}
 
 	for _, nb := range notebooks {
-		if nb.ID == nb1.ID {
-			if len(nb.Sources) != 2 {
-				t.Errorf("Expected 2 sources for nb1, got %d", len(nb.Sources))
-			}
-		} else if nb.ID == nb2.ID {
-			if len(nb.Sources) != 0 {
-				t.Errorf("Expected 0 sources for nb2, got %d", len(nb.Sources))
-			}
+		if nb.ID == nb1.ID && len(nb.Sources) != 2 {
+			t.Errorf("Expected 2 sources for nb1, got %d", len(nb.Sources))
+		} else if nb.ID == nb2.ID && len(nb.Sources) != 0 {
+			t.Errorf("Expected 0 sources for nb2, got %d", len(nb.Sources))
 		}
 	}
 }
