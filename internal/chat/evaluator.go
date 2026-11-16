@@ -114,7 +114,7 @@ func (e *SelfEvaluator) EvaluateContext(ctx context.Context, query string, docs 
 	}
 
 	// Sufficiency condition: at least 1 relevant doc with average score >= 0.32
-	sufficient := len(relevant) >= 1 && (avgScore >= 0.32 || len(docs) >= 3)
+	sufficient := len(relevant) >= 1 && avgScore >= 0.32
 
 	suggestedQuery := ""
 	if !sufficient {
