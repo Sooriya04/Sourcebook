@@ -1,13 +1,10 @@
 package arxiv
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -15,10 +12,13 @@ import (
 	"sourcebook/internal/utils"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/ledongthuc/pdf"
 )
 
-var arxivIDRegex = regexp.MustCompile(`arxiv\.org/(?:abs|pdf|html)/([a-zA-Z0-9.\-]+?)(?:\.pdf)?(?:/|$)`)
+var (
+	arxivIDRegex    = regexp.MustCompile(`arxiv\.org/(?:abs|pdf|html)/([a-zA-Z0-9.\-]+?)(?:\.pdf)?(?:/|$)`)
+	arxivBaseURL    = "https://arxiv.org"
+	maxArxivPDFSize int64 = 50 * 1024 * 1024
+)
 
 // ExtractArxivID extracts the paper ID from any arXiv URL.
 func ExtractArxivID(rawURL string) string {
@@ -85,7 +85,7 @@ func FetchSingleArxivDocument(ctx context.Context, rawURL string) (string, strin
 }
 
 func tryFetchArxivHTML(ctx context.Context, id string) (string, string, error) {
-	htmlURL := fmt.Sprintf("https://arxiv.org/html/%s", id)
+	htmlURL := fmt.Sprintf("%s/html/%s", arxivBaseURL, id)
 	req, err := http.NewRequestWithContext(ctx, "GET", htmlURL, nil)
 	if err != nil {
 		return "", "", err
@@ -100,7 +100,7 @@ func tryFetchArxivHTML(ctx context.Context, id string) (string, string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("HTML version returned status %d", resp.StatusCode)
+		return "", "", fmt.Errorf("HTML page status %d", resp.StatusCode)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
@@ -108,125 +108,23 @@ func tryFetchArxivHTML(ctx context.Context, id string) (string, string, error) {
 		return "", "", err
 	}
 
-	title := strings.TrimSpace(doc.Find("title").Text())
-	title = strings.TrimPrefix(title, "[arXiv] ")
-
-	bodyText := doc.Find("article, main, body").Text()
-	cleanText := utils.CleanText(bodyText)
-
-	if len(cleanText) < 200 {
-		return "", "", fmt.Errorf("extracted HTML text too short")
-	}
-
-	return title, cleanText, nil
-}
-
-func tryFetchArxivPDF(ctx context.Context, id string) (string, string, error) {
-	pdfURL := fmt.Sprintf("https://arxiv.org/pdf/%s.pdf", id)
-	req, err := http.NewRequestWithContext(ctx, "GET", pdfURL, nil)
-	if err != nil {
-		return "", "", err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-
-	client := &http.Client{Timeout: 45 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("PDF download status %d", resp.StatusCode)
-	}
-
-	tmpFile, err := os.CreateTemp("", "arxiv-*.pdf")
-	if err != nil {
-		return "", "", err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		tmpFile.Close()
-		return "", "", err
-	}
-	tmpFile.Close()
-
-	f, r, err := pdf.Open(tmpFile.Name())
-	if err != nil {
-		return "", "", err
-	}
-	defer f.Close()
-
-	var buf bytes.Buffer
-	b, err := r.GetPlainText()
-	if err != nil {
-		return "", "", err
-	}
-	buf.ReadFrom(b)
-
-	text := utils.CleanText(buf.String())
-	if len(text) < 100 {
-		return "", "", fmt.Errorf("PDF text too short or empty")
-	}
-
-	title := fmt.Sprintf("arXiv Paper %s", id)
-	return title, text, nil
-}
-
-func tryFetchArxivAbstract(ctx context.Context, id string) (string, string, error) {
-	absURL := fmt.Sprintf("https://arxiv.org/abs/%s", id)
-	req, err := http.NewRequestWithContext(ctx, "GET", absURL, nil)
-	if err != nil {
-		return "", "", err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("Abstract page status %d", resp.StatusCode)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return "", "", err
-	}
-
-	title := strings.TrimSpace(doc.Find("meta[name='citation_title']").AttrOr("content", ""))
+	title := strings.TrimSpace(doc.Find("h1.ltx_title").First().Text())
 	if title == "" {
-		title = strings.TrimSpace(doc.Find("meta[property='og:title']").AttrOr("content", ""))
+		title = strings.TrimSpace(doc.Find("title").Text())
 	}
+	title = strings.TrimPrefix(title, "Title:")
+	title = strings.TrimSpace(title)
 
-	abstract := strings.TrimSpace(doc.Find("meta[name='citation_abstract']").AttrOr("content", ""))
-	if abstract == "" {
-		abstract = strings.TrimSpace(doc.Find("blockquote.abstract").Text())
-	}
-
-	var authors []string
-	doc.Find("meta[name='citation_author']").Each(func(_ int, s *goquery.Selection) {
-		if auth := strings.TrimSpace(s.AttrOr("content", "")); auth != "" {
-			authors = append(authors, auth)
-		}
+	var body strings.Builder
+	doc.Find("article, .ltx_document").Each(func(_ int, s *goquery.Selection) {
+		s.Find("script, style, nav, footer, header").Remove()
+		body.WriteString(s.Text())
 	})
 
-	var fullContent strings.Builder
-	if title != "" {
-		fullContent.WriteString(fmt.Sprintf("# %s\n\n", title))
-	}
-	if len(authors) > 0 {
-		fullContent.WriteString(fmt.Sprintf("**Authors**: %s\n\n", strings.Join(authors, ", ")))
-	}
-	if abstract != "" {
-		fullContent.WriteString(fmt.Sprintf("## Abstract\n\n%s", abstract))
+	cleanText := utils.CleanText(body.String())
+	if len(cleanText) < 100 {
+		return "", "", fmt.Errorf("HTML content too short or empty")
 	}
 
-	cleanText := utils.CleanText(fullContent.String())
 	return title, cleanText, nil
 }

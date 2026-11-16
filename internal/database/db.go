@@ -148,6 +148,9 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_yt_chat_video_id ON youtube_chat_messages(video_id, created_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_sources_notebook_id ON sources(notebook_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_document_chunks_notebook_id ON document_chunks(notebook_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_chat_messages_notebook_id ON chat_messages(notebook_id);`,
 	}
 
 	for _, query := range queries {
