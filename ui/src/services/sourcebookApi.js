@@ -127,6 +127,42 @@ export async function generateFlashcards(notebookId) {
   return await response.json();
 }
 
+export async function generateQuiz(notebookId) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/quiz`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to generate quiz: ${response.status}`);
+  }
+  return await response.json();
+}
+
+export async function generateFAQ(notebookId) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/faq`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to generate FAQ: ${response.status}`);
+  }
+  return await response.json();
+}
+
+export async function generateBriefing(notebookId) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/briefing`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to generate briefing: ${response.status}`);
+  }
+  return await response.json();
+}
+
 export async function getPodcastVoices() {
   try {
     const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/voices`);

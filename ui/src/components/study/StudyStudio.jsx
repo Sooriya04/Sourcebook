@@ -269,7 +269,7 @@ export default function StudyStudio({
       </div>
 
       <div className="studio-tab-content">
-        {activeTab === 'briefing' && <BriefingView sources={sources} />}
+        {activeTab === 'briefing' && <BriefingView notebookId={notebookId} sources={sources} onAddNote={onAddNote} />}
         
         {activeTab === 'audio' && (
           <AudioOverviewView
@@ -282,9 +282,9 @@ export default function StudyStudio({
           />
         )}
         
-        {activeTab === 'faq' && <FaqView />}
+        {activeTab === 'faq' && <FaqView notebookId={notebookId} onAddNote={onAddNote} />}
 
-        {activeTab === 'quiz' && <QuizView />}
+        {activeTab === 'quiz' && <QuizView notebookId={notebookId} />}
 
         {activeTab === 'mindmap' && <MindMapView />}
 
