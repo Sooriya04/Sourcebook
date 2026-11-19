@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"sourcebook/internal/chat"
 	"sourcebook/internal/models"
-	"sourcebook/internal/utils"
 
 	"github.com/google/uuid"
 )
@@ -92,7 +92,7 @@ func (a *API) handleNotebookUpdate(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (a *API) triggerSourceEnrichment(notebookID string, sources []models.SourceRecord, existingIDs map[string]bool) {
-	if os.Getenv("SEARCH_SERVICE_URL") == "" {
+	if a.llmClient == nil {
 		return
 	}
 	sourcesCopy := make([]models.SourceRecord, len(sources))
@@ -131,23 +131,24 @@ func (a *API) enrichSourcesAsync(ctx context.Context, notebookID string, sources
 		}
 
 		log.Printf("[AgenticIngestion] New text source detected: %q (len=%d). Triggering planner...", src.Title, len(src.Content))
-		plan, err := utils.CallSearchServicePlanner(ctx, src.Content)
-		if err != nil || plan == nil || len(plan.Queries) == 0 {
+		planner := chat.NewQueryPlanner(a.llmClient)
+		queries, err := planner.Decompose(ctx, src.Content)
+		if err != nil || len(queries) == 0 {
 			if err != nil {
 				log.Printf("[AgenticIngestion] Search planner error: %v", err)
 			}
 			continue
 		}
 
-		log.Printf("[AgenticIngestion] Planner returned %d subqueries", len(plan.Queries))
-		for _, pq := range plan.Queries {
-			if pq.Query == "" {
+		log.Printf("[AgenticIngestion] Planner returned %d subqueries", len(queries))
+		for _, q := range queries {
+			if q == "" {
 				continue
 			}
-			log.Printf("[AgenticIngestion] Executing search & scrape for subquery: %q", pq.Query)
-			docs, _, err := a.fetchPipelineSources(ctx, pq.Query, maxResults, nil, "")
+			log.Printf("[AgenticIngestion] Executing search & scrape for subquery: %q", q)
+			docs, _, err := a.fetchPipelineSources(ctx, q, maxResults, nil, "")
 			if err != nil {
-				log.Printf("[AgenticIngestion] Search/Scrape failed for %q: %v", pq.Query, err)
+				log.Printf("[AgenticIngestion] Search/Scrape failed for %q: %v", q, err)
 				continue
 			}
 			for _, doc := range docs {

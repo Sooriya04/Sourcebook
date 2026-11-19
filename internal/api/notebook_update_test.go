@@ -5,38 +5,29 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"sourcebook/internal/database"
+	"sourcebook/internal/llm"
 	"sourcebook/internal/models"
 )
 
 func TestHandleNotebookUpdate_DecoupledAgenticSearch(t *testing.T) {
-	// Mock slow search service planner to verify handleNotebookUpdate does not block
 	var plannerCalls int32
-	mockSearchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mockLLM := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&plannerCalls, 1)
-		// Simulate heavy 200ms processing
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		w.Header().Set("Content-Type", "application/json")
 		resp := map[string]interface{}{
-			"plan": map[string]interface{}{
-				"intent": "research",
-				"queries": []map[string]string{
-					{"query": "quantum computing basics", "provider": "searxng"},
-				},
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"content": `["quantum computing basics"]`}},
 			},
 		}
 		json.NewEncoder(w).Encode(resp)
 	}))
-	defer mockSearchServer.Close()
-
-	origSearchURL := os.Getenv("SEARCH_SERVICE_URL")
-	defer os.Setenv("SEARCH_SERVICE_URL", origSearchURL)
-	os.Setenv("SEARCH_SERVICE_URL", mockSearchServer.URL)
+	defer mockLLM.Close()
 
 	db, err := database.InitDB(":memory:")
 	if err != nil {
@@ -51,7 +42,8 @@ func TestHandleNotebookUpdate_DecoupledAgenticSearch(t *testing.T) {
 	}
 
 	api := &API{
-		repo: repo,
+		repo:      repo,
+		llmClient: llm.NewClientWithConfig("openai", mockLLM.URL, "test-model", "test-key"),
 	}
 
 	// Payload with a text source > 50 chars which triggers agentic enrichment
