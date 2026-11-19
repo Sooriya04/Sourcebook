@@ -14,7 +14,6 @@ Welcome to the technical architecture and pipeline documentation for **SourceBoo
 | 📥 **Knowledge Ingestion Pipeline** | [knowledge_ingestion.md](./knowledge_ingestion.md) | `Knowledge Ingestion Pipeline.png` |
 | 💬 **Chat Pipeline** | [chat_pipeline.md](./chat_pipeline.md) | `Chat Pipeline.png` |
 | 🤖 **Agentic RAG Flow** | [agentic_rag_flow.md](./agentic_rag_flow.md) | `Agentic RAG Flow.png` |
-| 🧪 **Test Specifications & Regression Matrix** | [test_cases.md](./test_cases.md) | Quality & Resilience Matrix |
 
 ---
 

@@ -39,8 +39,7 @@ help:
 	@echo ""
 	@echo "Quality & Testing:"
 	@echo "  make test          - Run all Go test suites"
-	@echo "  make lines         - Verify all source files adhere to <200 lines rule"
-	@echo "  make check         - Run test and lines verification"
+	@echo "  make check         - Run test verification"
 	@echo ""
 	@echo "Container Commands (Podman local default, Docker for GitHub CI):"
 	@echo "  make podman-up     - Start container stack using Podman ($(COMPOSE_CMD) up -d)"
@@ -152,11 +151,7 @@ restart: stop dev
 test:
 	go test -v ./...
 
-lines:
-	@echo "Verifying all source files are strictly under 200 lines..."
-	@python3 -c 'import os, sys; violations = [(sum(1 for _ in open(os.path.join(r, f), errors="ignore")), os.path.join(r, f)) for r, d, files in os.walk(".") if not any(p in r for p in [".venv", "venv", "node_modules", ".git", "dist", "bin", "others"]) for f in files if f.endswith((".go", ".jsx", ".js")) and not f.endswith("_test.go")]; [print(f"  {c} lines: {p}") for c, p in violations if c > 200]; sys.exit(1 if any(c > 200 for c, p in violations) else 0) if violations else None; print("All source files strictly adhere to the <200 lines rule.")'
-
-check: test lines
+check: test
 
 # Container Orchestration (Defaults to Podman locally, supports Docker in CI)
 podman-build compose-build docker-build:

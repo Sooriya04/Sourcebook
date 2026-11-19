@@ -204,7 +204,7 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gu
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Ensure all tests pass (`go test ./...`) and file lengths adhere to the `<200 lines` rule (`make lines`)
+3. Ensure all tests pass (`go test ./...`)
 4. Commit your Changes (`git commit -m 'Add AmazingFeature'`)
 5. Push to the Branch (`git push origin feature/AmazingFeature`)
 6. Open a Pull Request

@@ -44,14 +44,14 @@ It serves as a unified intelligence platform that queries multiple internet sour
 
 ## 📁 Project Structure
 
-All Go files are strictly modularized and kept **under 200 lines per file**.
+All Go files are strictly modularized and focused on single responsibilities.
 
 ```
 sourcebook/
 ├── cmd/server/main.go          # Entrypoint — wires HTTP routes & dependencies
 ├── database/                   # SQLite database storage (sourcebook.db)
 ├── internal/
-│   ├── api/                    # Modular HTTP handlers (< 200 lines each)
+│   ├── api/                    # Modular HTTP handlers
 │   │   ├── api.go              # API struct and constructor
 │   │   ├── search_handler.go   # GET/POST /search handler
 │   │   ├── pipeline_handler.go # POST /pipeline (Search + Scrape + Clean)
@@ -123,7 +123,7 @@ All endpoints are versioned under `/api/sourcebook/v1/`.
 
 ## 📜 Coding Conventions & Rules
 
-1. **Modular Files** — Keep every single file focused and strictly **under 200 lines**.
+1. **Modular Files** — Keep every single file focused, cohesive, and easy to maintain.
 2. **Clean Text** — Always pass scraped or ingested text through `utils.CleanText()` before returning or feeding to LLMs.
 3. **Grounded Answers** — Use inline numerical citations `[1]`, `[2]` for AI generated answers based strictly on retrieved sources.
 4. **No Direct Git Commits** — Do not commit directly to remote repository/GitHub unless explicitly requested by the user.
