@@ -78,3 +78,13 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 
 	return api
 }
+
+// NewTestAPI wires a lightweight API instance for integration and provider mutation tests.
+func NewTestAPI(repo *database.Repository, llmClient *llm.Client, synthesizer *synthesis.Synthesizer) *API {
+	return &API{
+		repo:         repo,
+		llmClient:    llmClient,
+		synthesizer:  synthesizer,
+		vectorClient: vector.NewClient(),
+	}
+}
