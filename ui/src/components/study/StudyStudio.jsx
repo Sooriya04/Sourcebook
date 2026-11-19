@@ -286,7 +286,7 @@ export default function StudyStudio({
 
         {activeTab === 'quiz' && <QuizView notebookId={notebookId} />}
 
-        {activeTab === 'mindmap' && <MindMapView />}
+        {activeTab === 'mindmap' && <MindMapView notebookId={notebookId} onAddNote={onAddNote} />}
 
         {activeTab === 'reports' && <ReportsView sources={sources} />}
 

@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -98,5 +99,48 @@ func TestHandleParsePDF_EmptyFile(t *testing.T) {
 	resp := w.Result()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected status 400 for empty form, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandleParsePDF_ValidPDF(t *testing.T) {
+	pdfBytes, err := os.ReadFile("/tmp/test.pdf")
+	if err != nil {
+		t.Skip("skipping test: /tmp/test.pdf not found")
+	}
+
+	api := &API{}
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "paper.pdf")
+	if err != nil {
+		t.Fatalf("create form file failed: %v", err)
+	}
+	part.Write(pdfBytes)
+	writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/parse/pdf", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+
+	api.HandleParsePDF(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	var parsed DocumentParseResponse
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		t.Fatalf("decode failed: %v", err)
+	}
+
+	if parsed.Title != "paper" {
+		t.Errorf("expected title 'paper', got %q", parsed.Title)
+	}
+	if parsed.Type != "pdf" {
+		t.Errorf("expected type 'pdf', got %q", parsed.Type)
+	}
+	if !strings.Contains(parsed.Text, "Hello SourceBook PDF Parser Verification") {
+		t.Errorf("expected parsed text to contain target text, got %q", parsed.Text)
 	}
 }

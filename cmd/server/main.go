@@ -88,6 +88,7 @@ func main() {
 	mux.HandleFunc("/api/sourcebook/v1/study/quiz", apiHandler.HandleQuiz)
 	mux.HandleFunc("/api/sourcebook/v1/study/faq", apiHandler.HandleFAQ)
 	mux.HandleFunc("/api/sourcebook/v1/study/briefing", apiHandler.HandleBriefing)
+	mux.HandleFunc("/api/sourcebook/v1/study/mindmap", apiHandler.HandleMindMap)
 	mux.HandleFunc("/api/sourcebook/v1/study/podcast/generate", apiHandler.HandleGeneratePodcast)
 	mux.HandleFunc("/api/sourcebook/v1/study/podcast/stream", apiHandler.HandleStreamPodcast)
 	mux.HandleFunc("/api/sourcebook/v1/study/podcast/episodes", apiHandler.HandleListEpisodes)

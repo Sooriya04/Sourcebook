@@ -52,7 +52,7 @@ func (a *API) HandleLLMHealth(w http.ResponseWriter, r *http.Request) {
 	model := ""
 	if a.llmClient != nil {
 		model = a.llmClient.GetModel()
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 		ok, err := a.llmClient.Ping(ctx)
 		if ok && err == nil {

@@ -83,3 +83,40 @@ Rules:
 		{Role: "user", Content: userPrompt},
 	}
 }
+
+// BuildMindMapPrompt constructs prompts for generating a hierarchical concept tree.
+func BuildMindMapPrompt(docs []DocumentContext) []Message {
+	systemPrompt := `You are a strict JSON-only concept graph generator.
+Extract a clean hierarchical knowledge tree from the provided source material.
+
+Rules:
+1. ONLY output valid JSON. Do not include markdown fences or conversational preambles.
+2. Format MUST be a single root node with nested children matching this structure:
+{
+  "id": "root",
+  "label": "Short Central Domain Topic (2-4 words)",
+  "desc": "1-2 sentence core overview.",
+  "children": [
+    {
+      "id": "node_1",
+      "label": "Primary Category Name",
+      "desc": "Explanation of this category.",
+      "children": [
+        {
+          "id": "node_1_1",
+          "label": "Specific Subtopic or Mechanism",
+          "desc": "Key factual explanation from the sources."
+        }
+      ]
+    }
+  ]
+}
+3. Generate 3 to 4 primary children under root, and 2 to 3 sub-concepts under each primary child.
+4. Keep labels punchy (2-5 words). Keep descriptions informative (1-2 sentences).`
+
+	userPrompt := fmt.Sprintf("Source Material:\n%s\nGenerate the JSON mind map.", buildSourceContext(docs))
+	return []Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+}

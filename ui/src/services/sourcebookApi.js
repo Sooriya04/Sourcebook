@@ -163,6 +163,18 @@ export async function generateBriefing(notebookId) {
   return await response.json();
 }
 
+export async function generateMindMap(notebookId) {
+  const response = await fetch(`${API_BASE}/api/sourcebook/v1/study/mindmap`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to generate mind map: ${response.status}`);
+  }
+  return await response.json();
+}
+
 export async function getPodcastVoices() {
   try {
     const res = await fetch(`${API_BASE}/api/sourcebook/v1/study/podcast/voices`);

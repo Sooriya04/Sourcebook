@@ -1,231 +1,158 @@
 import React, { useState } from 'react';
-import { Network, Info, Plus, Minus, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Network, Info, Plus, Minus, ZoomIn, ZoomOut, RotateCcw, Sparkles, RefreshCw, BookmarkPlus, Check } from 'lucide-react';
+import { generateMindMap } from '../../services/sourcebookApi';
 
-const NODES_DATA = {
-  id: 'root',
-  label: 'Workspace Intelligence',
-  desc: 'Central knowledge hub combining local documents and dynamic online scraping.',
-  children: [
-    {
-      id: 'rag',
-      label: 'Grounded RAG Engine',
-      desc: 'Retrieves relevant document chunks and synthesizes answers using Ollama/OpenAI.',
-      children: [
-        { id: 'eval', label: 'Self-Evaluation', desc: 'Checks retrieved context quality and confidence score.' },
-        { id: 'react', label: 'ReAct Agent Loop', desc: 'Multi-step reasoning loops to call search tools dynamically.' }
-      ]
-    },
-    {
-      id: 'crawler',
-      label: 'Scraping & Discovery',
-      desc: 'Crawls and sanitizes web pages, PDFs, and YouTube transcripts.',
-      children: [
-        { id: 'searxng', label: 'SearXNG Provider', desc: 'Concurrent query routing to private search engines.' },
-        { id: 'searqon', label: 'Searqon Scraper', desc: 'Converts target HTML pages into cleaned Markdown text.' }
-      ]
-    },
-    {
-      id: 'db',
-      label: 'Local Storage',
-      desc: 'Handles local indexing, episodic memory, and document vectors.',
-      children: [
-        { id: 'sqlite', label: 'SQLite DB', desc: 'Stores persistent notes, source metadata, and chat history.' },
-        { id: 'vector', label: 'Vector Embeddings', desc: 'Indexes source paragraphs via Nomic embeddings.' }
-      ]
-    }
-  ]
-};
-
-export default function MindMapView() {
-  const [selectedNode, setSelectedNode] = useState(NODES_DATA);
-  const [expandedNodes, setExpandedNodes] = useState({
-    root: true,
-    rag: true,
-    crawler: true,
-    db: true
-  });
+export default function MindMapView({ notebookId, onAddNote }) {
+  const [treeData, setTreeData] = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState({ root: true });
   const [zoom, setZoom] = useState(100);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [savedNote, setSavedNote] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!notebookId || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await generateMindMap(notebookId);
+      if (resp?.root?.label) {
+        setTreeData(resp.root);
+        setSelectedNode(resp.root);
+        const autoExpanded = { root: true };
+        (resp.root.children || []).forEach(c => { autoExpanded[c.id] = true; });
+        setExpandedNodes(autoExpanded);
+      } else {
+        setError('No concept graph could be generated from current sources.');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to generate concept map');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleExpand = (nodeId, e) => {
     e.stopPropagation();
     setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));
   };
 
-  const handleResetZoom = () => setZoom(100);
-  const handleZoomIn = () => setZoom(z => Math.min(150, z + 10));
-  const handleZoomOut = () => setZoom(z => Math.max(70, z - 10));
+  const handleSaveToNotes = () => {
+    if (!selectedNode || !onAddNote) return;
+    onAddNote(`### Concept: ${selectedNode.label}\n\n${selectedNode.desc}`);
+    setSavedNote(true);
+    setTimeout(() => setSavedNote(false), 2000);
+  };
 
   return (
-    <div className="mindmap-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div className="study-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="mindmap-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="study-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            <Network size={20} style={{ color: 'var(--accent-primary)' }} /> 
-            <span>Interactive Mind Map</span>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            <Network size={20} style={{ color: 'var(--accent-primary)' }} />
+            <span>Interactive Concept Map</span>
           </h2>
-          <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Explore the conceptual hierarchy of your notebook's knowledge graphs. Click nodes to inspect.</p>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Explore the hierarchical concept graph synthesized from your sources.</p>
         </div>
-
-        {/* Pan / Zoom Canvas Controls */}
-        <div style={{ display: 'flex', gap: '4px', background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '2px' }}>
-          <button onClick={handleZoomIn} title="Zoom In" style={{ background: 'transparent', border: 'none', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '6px' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><ZoomIn size={14} /></button>
-          <button onClick={handleZoomOut} title="Zoom Out" style={{ background: 'transparent', border: 'none', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '6px' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><ZoomOut size={14} /></button>
-          <button onClick={handleResetZoom} title="Reset" style={{ background: 'transparent', border: 'none', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '6px' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><RotateCcw size={14} /></button>
-          <span style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)', padding: '6px 8px', color: 'var(--text-dim)', alignSelf: 'center' }}>{zoom}%</span>
-        </div>
-      </div>
-
-      <div 
-        className="mindmap-container glass-card"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '3fr 2fr',
-          gap: '20px',
-          background: 'var(--panel)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '16px',
-          padding: '24px',
-          minHeight: '420px',
-          boxShadow: 'var(--shadow)'
-        }}
-      >
-        {/* Left Pane: Interactive Tree Diagram */}
-        <div 
-          className="map-tree-area" 
-          style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'center', 
-            gap: '30px', 
-            borderRight: '1px solid var(--border-color)', 
-            paddingRight: '20px',
-            transform: `scale(${zoom / 100})`,
-            transformOrigin: 'center left',
-            transition: 'transform 0.2s ease-out'
-          }}
-        >
-          {/* Root Node */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={() => setSelectedNode(NODES_DATA)}
-                style={{
-                  background: selectedNode.id === NODES_DATA.id ? 'var(--accent-primary)' : 'var(--canvas-2)',
-                  color: selectedNode.id === NODES_DATA.id ? 'var(--canvas)' : 'var(--text-main)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '10px',
-                  padding: '10px 16px',
-                  fontSize: '0.8rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  boxShadow: 'var(--shadow)',
-                  transition: 'all 0.15s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                {NODES_DATA.label}
-              </button>
-              <button 
-                onClick={(e) => toggleExpand('root', e)} 
-                style={{ background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '20px', height: '20px', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                {expandedNodes.root ? <Minus size={10} /> : <Plus size={10} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Level 1 & 2 */}
-          {expandedNodes.root && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-              {NODES_DATA.children.map((child) => (
-                <div key={child.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                    <button
-                      onClick={() => setSelectedNode(child)}
-                      style={{
-                        background: selectedNode.id === child.id ? 'var(--accent-primary)' : 'var(--canvas-2)',
-                        color: selectedNode.id === child.id ? 'var(--canvas)' : 'var(--text-main)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '8px',
-                        padding: '8px 10px',
-                        fontSize: '0.74rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        flex: 1,
-                        textAlign: 'center',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {child.label}
-                    </button>
-                    <button 
-                      onClick={(e) => toggleExpand(child.id, e)} 
-                      style={{ background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
-                    >
-                      {expandedNodes[child.id] ? <Minus size={8} /> : <Plus size={8} />}
-                    </button>
-                  </div>
-
-                  {/* Level 2 Sub-children */}
-                  {expandedNodes[child.id] && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '90%' }}>
-                      {child.children.map((sub) => (
-                        <button
-                          key={sub.id}
-                          onClick={() => setSelectedNode(sub)}
-                          style={{
-                            background: selectedNode.id === sub.id ? 'var(--accent-primary)' : 'var(--canvas-2)',
-                            color: selectedNode.id === sub.id ? 'var(--canvas)' : 'var(--text-muted)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '6px',
-                            padding: '6px 10px',
-                            fontSize: '0.68rem',
-                            cursor: 'pointer',
-                            width: '100%',
-                            textAlign: 'center',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {sub.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {treeData && (
+            <div style={{ display: 'flex', gap: '2px', background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '2px' }}>
+              <button onClick={() => setZoom(z => Math.min(150, z + 10))} title="Zoom In" style={{ background: 'transparent', border: 'none', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer' }}><ZoomIn size={14} /></button>
+              <button onClick={() => setZoom(z => Math.max(70, z - 10))} title="Zoom Out" style={{ background: 'transparent', border: 'none', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer' }}><ZoomOut size={14} /></button>
+              <button onClick={() => setZoom(100)} title="Reset Zoom" style={{ background: 'transparent', border: 'none', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer' }}><RotateCcw size={14} /></button>
+              <span style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)', padding: '6px 8px', color: 'var(--text-dim)' }}>{zoom}%</span>
             </div>
           )}
-        </div>
-
-        {/* Right Pane: Inspector Panel */}
-        <div className="map-detail-area" style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
-          <div 
-            style={{ 
-              background: 'var(--canvas-2)', 
-              borderRadius: '12px', 
-              padding: '20px', 
-              border: '1px solid var(--border-color)' 
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'var(--accent-primary)' }}>
-              <Info size={16} />
-              <span style={{ fontSize: '0.74rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'var(--font-mono)' }}>
-                Node Inspector
-              </span>
-            </div>
-
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '0.92rem', color: 'var(--text-main)', fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-              {selectedNode.label}
-            </h3>
-            
-            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.6', fontFamily: 'var(--font-serif)' }}>
-              {selectedNode.desc}
-            </p>
-          </div>
+          <button onClick={handleGenerate} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', padding: '7px 12px', fontSize: '0.78rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+            {loading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            <span>{treeData ? 'Regenerate Map' : 'Generate Concept Map'}</span>
+          </button>
         </div>
       </div>
+
+      {error && <div style={{ padding: '10px 14px', background: '#451a1a', border: '1px solid #7f1d1d', borderRadius: '8px', color: '#fca5a5', fontSize: '0.8rem' }}>{error}</div>}
+
+      {!treeData && !loading && (
+        <div style={{ padding: '60px 20px', textAlign: 'center', border: '1px dashed var(--border-color)', borderRadius: '16px', background: 'var(--canvas-2)' }}>
+          <Network size={36} style={{ margin: '0 auto 12px', color: 'var(--text-dim)', opacity: 0.5 }} />
+          <h4 style={{ margin: '0 0 6px', fontSize: '1rem', color: 'var(--text-main)' }}>No Concept Map Generated</h4>
+          <p style={{ margin: '0 0 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Generate a structured mind map clustering core topics and sub-concepts from your notebook.</p>
+          <button onClick={handleGenerate} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+            <Sparkles size={14} /> Generate Concept Map
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ padding: '60px 20px', textAlign: 'center', border: '1px solid var(--border-color)', borderRadius: '16px', background: 'var(--canvas-2)' }}>
+          <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: '#3b82f6' }} />
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Analyzing sources and building concept graph...</p>
+        </div>
+      )}
+
+      {treeData && !loading && (
+        <div className="glass-card" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px', minHeight: '440px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', borderRight: '1px solid var(--border-color)', paddingRight: '20px', transform: `scale(${zoom / 100})`, transformOrigin: 'top left', overflowX: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => setSelectedNode(treeData)} style={{ background: selectedNode?.id === treeData.id ? '#2563eb' : 'var(--canvas-2)', color: selectedNode?.id === treeData.id ? '#fff' : 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '10px 16px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}>
+                {treeData.label}
+              </button>
+              <button onClick={(e) => toggleExpand('root', e)} style={{ background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '22px', height: '22px', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                {expandedNodes.root ? <Minus size={11} /> : <Plus size={11} />}
+              </button>
+            </div>
+
+            {expandedNodes.root && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingLeft: '16px', borderLeft: '2px solid var(--border-color)' }}>
+                {(treeData.children || []).map(child => (
+                  <div key={child.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button onClick={() => setSelectedNode(child)} style={{ background: selectedNode?.id === child.id ? '#2563eb' : 'var(--canvas-2)', color: selectedNode?.id === child.id ? '#fff' : 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                        {child.label}
+                      </button>
+                      {child.children?.length > 0 && (
+                        <button onClick={(e) => toggleExpand(child.id, e)} style={{ background: 'var(--canvas-2)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                          {expandedNodes[child.id] ? <Minus size={9} /> : <Plus size={9} />}
+                        </button>
+                      )}
+                    </div>
+
+                    {expandedNodes[child.id] && child.children && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingLeft: '14px', borderLeft: '2px dashed var(--border-color)' }}>
+                        {child.children.map(sub => (
+                          <button key={sub.id} onClick={() => setSelectedNode(sub)} style={{ background: selectedNode?.id === sub.id ? '#2563eb' : 'var(--canvas-2)', color: selectedNode?.id === sub.id ? '#fff' : 'var(--text-muted)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '5px 10px', fontSize: '0.72rem', cursor: 'pointer' }}>
+                            {sub.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: 'var(--canvas-2)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6' }}>
+                  <Info size={16} />
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Node Inspector</span>
+                </div>
+                {onAddNote && selectedNode && (
+                  <button onClick={handleSaveToNotes} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: savedNote ? '#16a34a' : 'transparent', color: savedNote ? '#fff' : 'var(--text-muted)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '4px 8px', fontSize: '0.72rem', cursor: 'pointer' }}>
+                    {savedNote ? <Check size={12} /> : <BookmarkPlus size={12} />}
+                    <span>{savedNote ? 'Saved!' : 'Save to Notes'}</span>
+                  </button>
+                )}
+              </div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: 600 }}>{selectedNode?.label || 'Select a node'}</h3>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>{selectedNode?.desc || 'Click any node on the left to inspect its synthesized definition and insights.'}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -69,6 +69,16 @@ export function useSettingsConfig() {
         }
       }
 
+      // Sanitize any stale proxy ports (e.g. 20128 or 8090)
+      Object.keys(DEFAULT_PROVIDER_CONFIGS).forEach((k) => {
+        if (configs[k]?.baseUrl?.includes('20128') || configs[k]?.baseUrl?.includes('8090')) {
+          configs[k].baseUrl = DEFAULT_PROVIDER_CONFIGS[k].baseUrl;
+          if (configs[k].model?.startsWith('ag/')) {
+            configs[k].model = DEFAULT_PROVIDER_CONFIGS[k].model;
+          }
+        }
+      });
+
       const modelsData = await fetchModels();
       if (modelsData && modelsData.provider) {
         setProvider(modelsData.provider);

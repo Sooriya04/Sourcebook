@@ -78,3 +78,21 @@ func (s *Synthesizer) GenerateBriefing(ctx context.Context, docs []ScrapedDoc) (
 	}
 	return answer, nil
 }
+
+// GenerateMindMap generates a hierarchical concept tree for the notebook sources.
+func (s *Synthesizer) GenerateMindMap(ctx context.Context, docs []ScrapedDoc) (string, error) {
+	docContexts := s.docContextsFromScraped(docs)
+	if len(docContexts) == 0 {
+		return "{}", nil
+	}
+
+	log.Printf("[Synthesizer] Digesting %d documents for mind map generation...", len(docContexts))
+	docContexts = s.BatchAndSummarize(ctx, "Hierarchical concept structure, core topics, subtopics, and key definitions", docContexts)
+
+	messages := llm.BuildMindMapPrompt(docContexts)
+	answer, err := s.llmClient.Generate(ctx, messages)
+	if err != nil {
+		return "", fmt.Errorf("LLM mind map error: %w", err)
+	}
+	return answer, nil
+}
