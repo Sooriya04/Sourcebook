@@ -109,9 +109,11 @@ func main() {
 	mux.HandleFunc("/parse/pdf", apiHandler.HandleParsePDF)
 	mux.HandleFunc("/parse/markdown", apiHandler.HandleParseMarkdown)
 	mux.HandleFunc("/parse/youtube", apiHandler.HandleParseYouTube)
+	mux.HandleFunc("/parse/audio", apiHandler.HandleParseAudio)
 	mux.HandleFunc("/api/sourcebook/v1/parse/pdf", apiHandler.HandleParsePDF)
 	mux.HandleFunc("/api/sourcebook/v1/parse/markdown", apiHandler.HandleParseMarkdown)
 	mux.HandleFunc("/api/sourcebook/v1/parse/youtube", apiHandler.HandleParseYouTube)
+	mux.HandleFunc("/api/sourcebook/v1/parse/audio", apiHandler.HandleParseAudio)
 
 	// Health endpoint.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

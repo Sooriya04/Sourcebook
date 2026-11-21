@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Globe, Sparkles, ExternalLink, Copy, Check, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Globe, Sparkles, ExternalLink, Copy, Check, MessageSquare, ArrowLeft, Mic } from 'lucide-react';
 
 export default function SourceInspector({ source, onClose, onExplainSource, onChatWithSource }) {
   const [copied, setCopied] = useState(false);
@@ -46,6 +46,13 @@ export default function SourceInspector({ source, onClose, onExplainSource, onCh
 
       <div className="inspector-body">
         <h3 className="inspector-title">{source.title || 'Untitled Source'}</h3>
+
+        {source.type === 'audio' && (
+          <div className="inspector-source-meta-tag flex items-center gap-1.5 text-xs text-zinc-400 mb-2">
+            <Mic size={12} className="text-zinc-300" />
+            <span>Audio Transcript</span>
+          </div>
+        )}
 
         {/* Embedded YouTube Player if YouTube Source */}
         {ytVideoId && (

@@ -41,7 +41,7 @@ export function useSourceIngestion(onAddSource, onClose) {
     if (!files || !files[0]) return;
     const file = files[0];
     const ext = file.name.split('.').pop().toLowerCase();
-    if (['pdf', 'txt', 'md', 'json', 'csv'].includes(ext)) {
+    if (['pdf', 'txt', 'md', 'json', 'csv', 'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'webm', 'opus', 'wma'].includes(ext)) {
       await simulateProgress(file, parseFileClientSide);
     } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
       await simulateProgress(file, (f) => Promise.resolve({

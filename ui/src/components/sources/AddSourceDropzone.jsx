@@ -29,7 +29,7 @@ export default function AddSourceDropzone({
       {loading ? (
         <div className="dropzone-progress-box">
           <div className="dropzone-progress-label">
-            Ingesting document... {uploadProgress}%
+            Processing & ingesting source... {uploadProgress}%
           </div>
           <div className="dropzone-progress-track">
             <div
@@ -52,7 +52,7 @@ export default function AddSourceDropzone({
               Drag & drop files here or browse
             </span>
             <span className="dropzone-sub">
-              PDF, TXT, MD, JSON, CSV, or Images
+              PDF, TXT, MD, MP3, WAV, M4A, or CSV
             </span>
           </div>
         </div>

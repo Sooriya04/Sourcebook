@@ -14,6 +14,7 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
   const [dragActive, setDragActive] = useState(false);
 
   const fileInputRef = useRef(null);
+  const audioInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
   const handleClose = () => {
@@ -58,6 +59,7 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
 
   const handleSelectOption = (type) => {
     if (type === 'pdf') fileInputRef.current?.click();
+    else if (type === 'audio') audioInputRef.current?.click();
     else if (type === 'image') imageInputRef.current?.click();
     else if (type === 'web') setActiveInputType('Website');
     else if (type === 'youtube') setActiveInputType('YouTube');
@@ -68,7 +70,8 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Add sources" maxWidth="520px">
       <div className="add-source-modal-inner">
-        <input type="file" ref={fileInputRef} onChange={(e) => e.target.files[0] && simulateProgress(e.target.files[0], parseFileClientSide)} style={{ display: 'none' }} accept=".pdf,.txt,.md,.json,.csv" />
+        <input type="file" ref={fileInputRef} onChange={(e) => e.target.files[0] && simulateProgress(e.target.files[0], parseFileClientSide)} style={{ display: 'none' }} accept=".pdf,.txt,.md,.json,.csv,.mp3,.wav,.m4a,.ogg,.flac,.aac,.webm,.opus" />
+        <input type="file" ref={audioInputRef} onChange={(e) => e.target.files[0] && simulateProgress(e.target.files[0], parseFileClientSide)} style={{ display: 'none' }} accept=".mp3,.wav,.m4a,.ogg,.flac,.aac,.webm,.opus,.wma" />
         <input type="file" ref={imageInputRef} onChange={(e) => e.target.files[0] && simulateProgress(e.target.files[0], (f) => Promise.resolve({ title: f.name, content: '[Image]', type: 'image', url: URL.createObjectURL(f) }))} style={{ display: 'none' }} accept="image/*" />
 
         {errorMessage && !activeInputType && (

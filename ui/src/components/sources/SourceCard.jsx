@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, FileText, Video, Loader2 } from 'lucide-react';
+import { Globe, FileText, Video, Mic, Loader2 } from 'lucide-react';
 
 export default function SourceCard({ 
   source, 
@@ -28,6 +28,7 @@ export default function SourceCard({
       );
     }
     if (source.type === 'pdf' || source.type === 'file') return <FileText size={14} className="text-zinc-300 shrink-0" />;
+    if (source.type === 'audio') return <Mic size={14} className="text-zinc-300 shrink-0" />;
     if (source.type === 'youtube' || source.url?.includes('youtube.com') || source.url?.includes('youtu.be')) {
       return <Video size={14} className="text-zinc-300 shrink-0" />;
     }

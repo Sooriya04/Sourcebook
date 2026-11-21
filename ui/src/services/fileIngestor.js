@@ -1,8 +1,21 @@
-import { parsePDF, parseMarkdown } from './ingestorApi';
+import { parsePDF, parseMarkdown, parseAudio } from './ingestorApi';
+
+const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.webm', '.opus', '.wma'];
 
 export async function parseFileClientSide(file) {
   try {
-    if (file.name.endsWith('.pdf')) {
+    const lowerName = file.name.toLowerCase();
+    const isAudio = AUDIO_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+
+    if (isAudio) {
+      const resp = await parseAudio(file);
+      return {
+        title: resp.title || file.name.replace(/\.[^/.]+$/, ''),
+        filename: file.name,
+        content: resp.text || resp.content || '',
+        type: 'audio'
+      };
+    } else if (lowerName.endsWith('.pdf')) {
       const resp = await parsePDF(file);
       return {
         title: resp.title || file.name.replace('.pdf', ''),

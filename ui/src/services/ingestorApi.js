@@ -34,6 +34,23 @@ export async function parseMarkdown(file) {
   return await response.json();
 }
 
+export async function parseAudio(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/parse/audio', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || `Audio transcription failed: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export async function parseYouTube(url) {
   const response = await fetch('/parse/youtube', {
     method: 'POST',
