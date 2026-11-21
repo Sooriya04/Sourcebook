@@ -47,10 +47,17 @@ func (a *API) HandleMindMap(w http.ResponseWriter, r *http.Request) {
 
 	cleaned := extractJSON(rawJSON, "{", "}")
 	var root MindMapNode
-	if err := json.Unmarshal([]byte(cleaned), &root); err != nil {
-		log.Printf("[Study] Failed to parse mind map JSON: %v. Raw: %s", err, rawJSON)
-		http.Error(w, "Failed to parse mind map format from LLM", http.StatusInternalServerError)
-		return
+	if err := json.Unmarshal([]byte(cleaned), &root); err != nil || root.Label == "" {
+		var wrapper struct {
+			Root MindMapNode `json:"root"`
+		}
+		if errWrapper := json.Unmarshal([]byte(cleaned), &wrapper); errWrapper == nil && wrapper.Root.Label != "" {
+			root = wrapper.Root
+		} else if err != nil {
+			log.Printf("[Study] Failed to parse mind map JSON: %v. Raw: %s", err, rawJSON)
+			http.Error(w, "Failed to parse mind map format from LLM", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -54,3 +54,42 @@ func TestHandleMindMap(t *testing.T) {
 		t.Errorf("unexpected children: %+v", resp.Root.Children)
 	}
 }
+
+func TestHandleMindMap_WrappedRoot(t *testing.T) {
+	mockWrappedJSON := `{
+		"root": {
+			"id": "root_wrapped",
+			"label": "Wrapped AI Concept",
+			"desc": "Wrapped root node from local LLM.",
+			"children": [
+				{
+					"id": "sub_1",
+					"label": "Sub concept",
+					"desc": "Child node."
+				}
+			]
+		}
+	}`
+
+	api, nb, cleanup := setupTestStudyEnv(t, mockWrappedJSON)
+	defer cleanup()
+
+	body, _ := json.Marshal(map[string]string{"notebook_id": nb.ID})
+	req := httptest.NewRequest(http.MethodPost, "/api/sourcebook/v1/study/mindmap", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	api.HandleMindMap(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp MindMapResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response JSON: %v", err)
+	}
+
+	if resp.Root.ID != "root_wrapped" || resp.Root.Label != "Wrapped AI Concept" {
+		t.Errorf("expected parsed wrapped root, got %+v", resp.Root)
+	}
+}

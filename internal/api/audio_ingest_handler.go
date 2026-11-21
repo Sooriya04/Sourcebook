@@ -58,6 +58,9 @@ func (a *API) HandleParseAudio(w http.ResponseWriter, r *http.Request) {
 		sendDocError(w, http.StatusBadRequest, "Audio file too large or invalid multipart form")
 		return
 	}
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
 
 	file, handler, err := r.FormFile("file")
 	if err != nil {
