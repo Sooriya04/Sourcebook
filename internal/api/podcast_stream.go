@@ -150,6 +150,8 @@ func (a *API) streamSynthesis(w http.ResponseWriter, r *http.Request, flusher ht
 	defer resp.Body.Close()
 
 	scanner := bufio.NewScanner(resp.Body)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 10*1024*1024)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "data:") {
