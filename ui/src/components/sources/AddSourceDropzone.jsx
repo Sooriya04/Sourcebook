@@ -4,6 +4,7 @@ import { UploadCloud, FileText } from 'lucide-react';
 export default function AddSourceDropzone({
   dragActive,
   loading,
+  loadingStatus = 'Processing & ingesting source...',
   uploadProgress,
   onDrag,
   onDrop,
@@ -29,7 +30,7 @@ export default function AddSourceDropzone({
       {loading ? (
         <div className="dropzone-progress-box">
           <div className="dropzone-progress-label">
-            Processing & ingesting source... {uploadProgress}%
+            {loadingStatus} {uploadProgress}%
           </div>
           <div className="dropzone-progress-track">
             <div

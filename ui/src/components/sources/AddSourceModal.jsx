@@ -27,6 +27,7 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
 
   const {
     loading,
+    loadingStatus,
     uploadProgress,
     errorMessage,
     showError,
@@ -114,6 +115,7 @@ export default function AddSourceModal({ isOpen, onClose, onAddSource, onSearchD
             <AddSourceDropzone
               dragActive={dragActive}
               loading={loading}
+              loadingStatus={loadingStatus}
               uploadProgress={uploadProgress}
               onDrag={handleDrag}
               onDrop={handleDrop}

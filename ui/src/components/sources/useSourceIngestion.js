@@ -4,6 +4,7 @@ import { fetchYouTubeTranscript } from '../../services/sourcebookApi';
 
 export function useSourceIngestion(onAddSource, onClose) {
   const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('Processing & ingesting source...');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -13,16 +14,22 @@ export function useSourceIngestion(onAddSource, onClose) {
   };
 
   const simulateProgress = async (file, parserFunc) => {
+    const isAudio = file?.name && /\.(mp3|wav|m4a|ogg|flac|aac|webm|opus|wma)$/i.test(file.name);
     setLoading(true);
+    setLoadingStatus(isAudio ? 'Transcribing audio with Whisper...' : 'Processing & ingesting source...');
     setUploadProgress(0);
+
+    const step = isAudio ? 2 : 15;
+    const intervalTime = isAudio ? 250 : 100;
     const interval = setInterval(() => {
-      setUploadProgress(p => (p >= 95 ? (clearInterval(interval), 95) : p + 15));
-    }, 100);
+      setUploadProgress(p => (p >= 92 ? (clearInterval(interval), 92) : p + step));
+    }, intervalTime);
 
     try {
       const parsedData = await parserFunc(file);
       clearInterval(interval);
       setUploadProgress(100);
+      setLoadingStatus('Complete!');
       setTimeout(() => {
         onAddSource(parsedData);
         setLoading(false);
@@ -88,6 +95,7 @@ export function useSourceIngestion(onAddSource, onClose) {
 
   return {
     loading,
+    loadingStatus,
     uploadProgress,
     errorMessage,
     showError,
