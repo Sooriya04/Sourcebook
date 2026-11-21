@@ -76,6 +76,13 @@ func (c *Client) SetConfig(url, model string) {
 	}
 }
 
+// GetConfig returns the thread-safe copy of the active service URL and model.
+func (c *Client) GetConfig() (string, string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.serviceURL, c.model
+}
+
 // GenerateEmbeddings chunks raw text and generates dense vector embeddings using bounded chunking.
 func (c *Client) GenerateEmbeddings(ctx context.Context, text string) ([]ChunkResponse, error) {
 	chunks := ChunkTextBounded(text, DefaultChunkSize, MaxChunksPerDoc)
@@ -123,7 +130,8 @@ func (c *Client) GenerateBatchEmbeddings(ctx context.Context, texts []string) ([
 	}
 
 	// 2. Microservice unavailable or errored — fallback to local Python subprocess
-	log.Printf("[Vector] Microservice at %s unavailable (%v), falling back to Python subprocess...", c.serviceURL, err)
+	serviceURL, _ := c.GetConfig()
+	log.Printf("[Vector] Microservice at %s unavailable (%v), falling back to Python subprocess...", serviceURL, err)
 	return RunEmbeddingSubprocess(ctx, texts)
 }
 
@@ -133,7 +141,8 @@ func (c *Client) callMicroservice(ctx context.Context, texts []string) ([][]floa
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf("%s/embed", strings.TrimRight(c.serviceURL, "/"))
+	serviceURL, _ := c.GetConfig()
+	endpoint := fmt.Sprintf("%s/embed", strings.TrimRight(serviceURL, "/"))
 	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err

@@ -7,9 +7,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"time"
+
 	"sourcebook/internal/synthesis"
 	"sourcebook/internal/utils"
-	"time"
 )
 
 type CrawlRequest struct {
@@ -61,6 +63,13 @@ func (a *API) HandleCrawl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	searqonURL := os.Getenv("SEARQON_URL")
+	if searqonURL == "" && a.repo != nil {
+		if s, err := a.repo.GetSettings(); err == nil && s.SearqonURL != "" {
+			searqonURL = strings.TrimSuffix(s.SearqonURL, "/scrape/batch")
+			searqonURL = strings.TrimSuffix(searqonURL, "/scrape")
+			searqonURL = strings.TrimRight(searqonURL, "/")
+		}
+	}
 	if searqonURL == "" {
 		searqonURL = "http://localhost:4001"
 	}
