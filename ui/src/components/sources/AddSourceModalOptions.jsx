@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Mic, Image as ImageIcon, Globe, Video, Copy, HardDrive } from 'lucide-react';
+import { FileText, Mic, Image as ImageIcon, Globe, Video, Copy } from 'lucide-react';
 
 export default function AddSourceModalOptions({ onSelectOption, disabled }) {
   const options = [
@@ -8,8 +8,7 @@ export default function AddSourceModalOptions({ onSelectOption, disabled }) {
     { type: 'image', label: 'Image', icon: <ImageIcon size={15} /> },
     { type: 'web', label: 'Website', icon: <Globe size={15} /> },
     { type: 'youtube', label: 'YouTube', icon: <Video size={15} /> },
-    { type: 'text', label: 'Copied text', icon: <Copy size={15} /> },
-    { type: 'drive', label: 'Drive', icon: <HardDrive size={15} /> }
+    { type: 'text', label: 'Copied text', icon: <Copy size={15} /> }
   ];
 
   return (

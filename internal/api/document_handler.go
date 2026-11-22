@@ -64,6 +64,11 @@ func (a *API) HandleParsePDF(w http.ResponseWriter, r *http.Request) {
 		sendDocError(w, http.StatusBadRequest, "File too large or invalid multipart form")
 		return
 	}
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		sendDocError(w, http.StatusBadRequest, "No file uploaded")
@@ -112,6 +117,11 @@ func (a *API) HandleParseMarkdown(w http.ResponseWriter, r *http.Request) {
 	var rawText string
 	filename := "document.md"
 	if err := r.ParseMultipartForm(50 << 20); err == nil && r.MultipartForm != nil {
+		defer func() {
+			if r.MultipartForm != nil {
+				_ = r.MultipartForm.RemoveAll()
+			}
+		}()
 		if file, handler, formErr := r.FormFile("file"); formErr == nil {
 			defer file.Close()
 			filename = handler.Filename

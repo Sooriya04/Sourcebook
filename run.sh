@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # SourceBook Unified Microservice Runner Script
-# Cleans stale processes, launches essential services (6001, 6002, 6003), and runs SourceBook Server (5000)
+# Cleans stale processes, launches essential services (4001, 6001, 6002, 6003), and runs SourceBook Server (5000)
 
 echo "🧹 Freeing up stale ports and stopping orphan processes..."
-fuser -k 5000/tcp 6001/tcp 6002/tcp 6003/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 8010/tcp 2>/dev/null || true
+fuser -k 5000/tcp 6001/tcp 6002/tcp 6003/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 8010/tcp 2>/dev/null || true
 pkill -9 -f "embed.py" 2>/dev/null || true
 sleep 0.5
 
@@ -17,12 +17,15 @@ if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
 fi
 
+# Detect Searqon binary if available
+SEARQON_BIN="${SEARQON_BIN:-$(which searqon 2>/dev/null || (test -f ../Searqon/bin/searqon && echo "../Searqon/bin/searqon") || (test -f ../../Searqon/bin/searqon && echo "../../Searqon/bin/searqon") || echo "")}"
+
 # Function to handle shutdown
 cleanup() {
   echo ""
   echo "🛑 Stopping all services..."
   kill $(jobs -p) 2>/dev/null || true
-  fuser -k 5000/tcp 6001/tcp 6002/tcp 6003/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 8010/tcp 2>/dev/null || true
+  fuser -k 5000/tcp 6001/tcp 6002/tcp 6003/tcp 4001/tcp 4002/tcp 4003/tcp 4004/tcp 4005/tcp 8010/tcp 2>/dev/null || true
   pkill -9 -f "embed.py" 2>/dev/null || true
   exit 0
 }
@@ -41,7 +44,13 @@ elif [ -d "services/youtube/.venv" ]; then
   source services/youtube/.venv/bin/activate
 fi
 
-# 2. Launch Essential Python Microservices
+# 2. Launch Essential Services
+# Port 4001: Searqon Scraper Microservice
+if [ -n "$SEARQON_BIN" ] && [ -x "$SEARQON_BIN" ]; then
+  echo "🕷️ Starting Searqon Scraper on port 4001 ($SEARQON_BIN)..."
+  PORT=4001 "$SEARQON_BIN" &
+fi
+
 # Port 6001: YouTube Transcript Microservice
 if [ -d "services/youtube" ]; then
   echo "📺 Starting YouTube Transcript Microservice on port 6001..."
