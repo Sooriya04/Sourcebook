@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"os"
 	"strings"
 	"sourcebook/internal/agent"
 	"sourcebook/internal/chat"
@@ -29,8 +30,23 @@ type API struct {
 func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource providers.SearchProvider, pipelineStore *pipeline.Store, repo *database.Repository) *API {
 	llmClient := llm.NewClient()
 	if repo != nil {
-		if s, err := repo.GetSettings(); err == nil && s != nil && s.LLMProvider != "" {
-			llmClient.SetConfig(s.LLMProvider, s.LLMBaseURL, s.LLMModel, s.LLMAPIKey)
+		if s, err := repo.GetSettings(); err == nil && s != nil {
+			envProvider := strings.TrimSpace(os.Getenv("LLM_PROVIDER"))
+			envKey := strings.TrimSpace(os.Getenv("LLM_API_KEY"))
+
+			// Check if DB settings has an unconfigured default OpenAI row (empty API key on default OpenAI endpoint)
+			isOpenAIWithoutKey := strings.EqualFold(s.LLMProvider, "openai") && strings.TrimSpace(s.LLMAPIKey) == "" && (s.LLMBaseURL == "" || s.LLMBaseURL == "https://api.openai.com/v1")
+
+			if s.LLMProvider == "" || isOpenAIWithoutKey {
+				// Don't clobber the valid env provider with an unconfigured empty-key OpenAI.
+				// If env has a configured provider or if default is ollama, sync DB to match env configuration.
+				p, u, m, k := llmClient.GetConfig()
+				if envProvider != "" || envKey != "" {
+					_ = repo.UpdateLLMSettings(p, u, m, k)
+				}
+			} else {
+				llmClient.SetConfig(s.LLMProvider, s.LLMBaseURL, s.LLMModel, s.LLMAPIKey)
+			}
 		}
 	}
 	api := &API{

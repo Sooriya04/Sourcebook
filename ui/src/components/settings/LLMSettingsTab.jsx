@@ -14,7 +14,7 @@ export default function LLMSettingsTab({
   testStatus,
   onTestConnection
 }) {
-  const meta = DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.openai;
+  const meta = DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.ollama || DEFAULT_PROVIDER_CONFIGS.openai;
   const current = (providerConfigs && providerConfigs[provider]) || meta;
 
   return (

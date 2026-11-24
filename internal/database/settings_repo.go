@@ -72,7 +72,7 @@ func (r *Repository) GetSettings() (*models.UserSettings, error) {
 func (r *Repository) UpdateSettings(s models.UserSettings) error {
 	existing, _ := r.GetSettings()
 	apiKey := s.LLMAPIKey
-	if apiKey == "" && existing != nil {
+	if apiKey == "" && existing != nil && (existing.LLMProvider == s.LLMProvider || s.LLMProvider == "") {
 		apiKey = existing.LLMAPIKey
 	}
 
@@ -96,7 +96,11 @@ func (r *Repository) UpdateSettings(s models.UserSettings) error {
 		llm_provider=CASE WHEN excluded.llm_provider != '' THEN excluded.llm_provider ELSE user_settings.llm_provider END,
 		llm_base_url=CASE WHEN excluded.llm_base_url != '' THEN excluded.llm_base_url ELSE user_settings.llm_base_url END,
 		llm_model=CASE WHEN excluded.llm_model != '' THEN excluded.llm_model ELSE user_settings.llm_model END,
-		llm_api_key=CASE WHEN excluded.llm_api_key != '' THEN excluded.llm_api_key ELSE user_settings.llm_api_key END,
+		llm_api_key=CASE 
+			WHEN excluded.llm_api_key != '' THEN excluded.llm_api_key 
+			WHEN excluded.llm_provider != '' AND excluded.llm_provider != user_settings.llm_provider THEN ''
+			ELSE user_settings.llm_api_key 
+		END,
 		searxng_url=excluded.searxng_url,
 		searqon_url=excluded.searqon_url,
 		youtube_service_url=excluded.youtube_service_url,
@@ -120,7 +124,7 @@ func (r *Repository) UpdateSettings(s models.UserSettings) error {
 // UpdateLLMSettings persists the LLM provider, endpoint, model, and API key into database.
 func (r *Repository) UpdateLLMSettings(provider, baseURL, model, apiKey string) error {
 	existing, _ := r.GetSettings()
-	if apiKey == "" && existing != nil {
+	if apiKey == "" && existing != nil && (existing.LLMProvider == provider || provider == "") {
 		apiKey = existing.LLMAPIKey
 	}
 
@@ -131,7 +135,11 @@ func (r *Repository) UpdateLLMSettings(provider, baseURL, model, apiKey string) 
 		llm_provider=excluded.llm_provider,
 		llm_base_url=excluded.llm_base_url,
 		llm_model=excluded.llm_model,
-		llm_api_key=CASE WHEN excluded.llm_api_key != '' THEN excluded.llm_api_key ELSE user_settings.llm_api_key END,
+		llm_api_key=CASE 
+			WHEN excluded.llm_api_key != '' THEN excluded.llm_api_key 
+			WHEN excluded.llm_provider != '' AND excluded.llm_provider != user_settings.llm_provider THEN ''
+			ELSE user_settings.llm_api_key 
+		END,
 		updated_at=excluded.updated_at
 	`
 	_, err := r.db.Exec(query, provider, baseURL, model, apiKey, time.Now())

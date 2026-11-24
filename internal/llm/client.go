@@ -19,60 +19,89 @@ type Client struct {
 	httpClient *http.Client
 }
 
+// DefaultBaseURL returns the standard base URL for the given provider.
+func DefaultBaseURL(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "ollama":
+		return "http://localhost:11434"
+	case "gemini":
+		return "https://generativelanguage.googleapis.com/v1beta/openai"
+	case "groq":
+		return "https://api.groq.com/openai/v1"
+	case "openrouter":
+		return "https://openrouter.ai/api/v1"
+	case "deepseek":
+		return "https://api.deepseek.com/v1"
+	case "nvidia":
+		return "https://integrate.api.nvidia.com/v1"
+	case "openai":
+		return "https://api.openai.com/v1"
+	default:
+		return "https://api.openai.com/v1"
+	}
+}
+
+// DefaultModel returns a reasonable default model identifier for the given provider.
+func DefaultModel(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "gemini":
+		return "gemini-1.5-flash"
+	case "groq":
+		return "llama-3.3-70b-versatile"
+	case "openrouter":
+		return "meta-llama/llama-3.3-70b-instruct"
+	case "deepseek":
+		return "deepseek-chat"
+	case "nvidia":
+		return "meta/llama-3.1-70b-instruct"
+	case "openai":
+		return "gpt-4o-mini"
+	case "ollama":
+		return "gemma2"
+	default:
+		return "gemma2"
+	}
+}
+
 func NewClient() *Client {
-	provider := os.Getenv("LLM_PROVIDER")
+	provider := strings.TrimSpace(os.Getenv("LLM_PROVIDER"))
 	if provider == "" {
 		provider = "ollama"
 	}
 
-	baseURL := os.Getenv("LLM_URL")
+	baseURL := strings.TrimSpace(os.Getenv("LLM_URL"))
 	if baseURL == "" {
-		if provider == "gemini" {
-			baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-		} else if provider == "ollama" {
-			baseURL = "http://localhost:11434"
-		} else {
-			baseURL = "https://api.openai.com/v1"
-		}
+		baseURL = DefaultBaseURL(provider)
 	}
 
-	model := os.Getenv("LLM_MODEL")
+	model := strings.TrimSpace(os.Getenv("LLM_MODEL"))
 	if model == "" {
-		if provider == "gemini" {
-			model = "gemini-1.5-flash"
-		} else {
-			model = "gemma2"
-		}
+		model = DefaultModel(provider)
 	}
 
-	return NewClientWithConfig(provider, baseURL, model, os.Getenv("LLM_API_KEY"))
+	return NewClientWithConfig(provider, baseURL, model, strings.TrimSpace(os.Getenv("LLM_API_KEY")))
 }
 
 // NewClientWithConfig creates an independent, thread-safe LLM client instance.
 func NewClientWithConfig(provider, baseURL, model, apiKey string) *Client {
+	provider = strings.TrimSpace(provider)
 	if provider == "" {
 		provider = "ollama"
 	}
+	baseURL = strings.TrimSpace(baseURL)
 	if baseURL == "" {
-		if provider == "ollama" {
-			baseURL = "http://localhost:11434"
-		} else if provider == "gemini" {
-			baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-		} else {
-			baseURL = "https://api.openai.com/v1"
-		}
+		baseURL = DefaultBaseURL(provider)
 	}
+	model = strings.TrimSpace(model)
 	if model == "" {
-		if provider == "gemini" {
-			model = "gemini-1.5-flash"
-		}
+		model = DefaultModel(provider)
 	}
 
 	return &Client{
 		provider: provider,
 		baseURL:  strings.TrimSuffix(baseURL, "/"),
 		model:    model,
-		apiKey:   apiKey,
+		apiKey:   strings.TrimSpace(apiKey),
 		httpClient: &http.Client{
 			Timeout: 120 * time.Second,
 		},
@@ -117,16 +146,22 @@ func (c *Client) SetConfig(provider, baseURL, model, apiKey string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if provider != "" {
-		c.provider = provider
+		c.provider = strings.TrimSpace(provider)
 	}
 	if baseURL != "" {
-		c.baseURL = strings.TrimSuffix(baseURL, "/")
+		c.baseURL = strings.TrimSuffix(strings.TrimSpace(baseURL), "/")
+	} else if provider != "" && c.baseURL == "" {
+		c.baseURL = DefaultBaseURL(c.provider)
 	}
 	if model != "" {
-		c.model = model
+		c.model = strings.TrimSpace(model)
+	} else if provider != "" && c.model == "" {
+		c.model = DefaultModel(c.provider)
 	}
 	if apiKey != "" {
-		c.apiKey = apiKey
+		c.apiKey = strings.TrimSpace(apiKey)
+	} else if strings.ToLower(c.provider) == "ollama" {
+		c.apiKey = ""
 	}
 }
 

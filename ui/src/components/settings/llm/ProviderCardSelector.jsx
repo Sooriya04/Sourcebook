@@ -2,10 +2,12 @@ import React from 'react';
 import { Check } from 'lucide-react';
 
 const PROVIDER_OPTIONS = [
+  { id: 'ollama', label: 'Ollama Native', desc: 'Local http://localhost:11434' },
   { id: 'openai', label: 'OpenAI Compatible', desc: 'Custom local / cloud endpoints' },
   { id: 'gemini', label: 'Google Gemini', desc: 'gemini-1.5-flash, gemini-2.0' },
-  { id: 'ollama', label: 'Ollama Native', desc: 'Local http://localhost:11434' },
   { id: 'groq', label: 'Groq Cloud', desc: 'Fast LPUs (api.groq.com)' },
+  { id: 'openrouter', label: 'OpenRouter', desc: 'openrouter.ai/api/v1 unified routing' },
+  { id: 'deepseek', label: 'DeepSeek', desc: 'deepseek-chat, deepseek-reasoner' },
   { id: 'nvidia', label: 'NVIDIA NIM', desc: 'Cloud NIM endpoints' }
 ];
 

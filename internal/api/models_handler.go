@@ -64,11 +64,19 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if activeModel == "" && len(modelsList) > 0 {
-			activeModel = modelsList[0].Name
+		if activeModel == "" {
+			if len(modelsList) > 0 {
+				activeModel = modelsList[0].Name
+			} else {
+				activeModel = llm.DefaultModel(provider)
+			}
 			if a.llmClient != nil {
 				a.llmClient.SetModel(activeModel)
 			}
+		}
+
+		if baseURL == "" {
+			baseURL = llm.DefaultBaseURL(provider)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -92,6 +100,13 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(bodyBytes, &req); err != nil {
 			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 			return
+		}
+
+		if req.BaseURL == "" {
+			req.BaseURL = llm.DefaultBaseURL(req.Provider)
+		}
+		if req.Model == "" {
+			req.Model = llm.DefaultModel(req.Provider)
 		}
 
 		if req.Action == "test" {

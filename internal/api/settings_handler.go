@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"sourcebook/internal/llm"
 	"sourcebook/internal/models"
 )
 
@@ -24,6 +25,15 @@ func (a *API) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
 			return
+		}
+
+		if req.LLMProvider != "" {
+			if req.LLMBaseURL == "" {
+				req.LLMBaseURL = llm.DefaultBaseURL(req.LLMProvider)
+			}
+			if req.LLMModel == "" {
+				req.LLMModel = llm.DefaultModel(req.LLMProvider)
+			}
 		}
 
 		if err := a.repo.UpdateSettings(req); err != nil {

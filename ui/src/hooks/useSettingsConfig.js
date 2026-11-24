@@ -27,7 +27,13 @@ export function useSettingsConfig() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [toast, setToast] = useState({ message: '', type: 'info' });
-  const [provider, setProvider] = useState('openai');
+  const [provider, setProvider] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sourcebook_active_provider');
+      if (saved) return saved;
+    } catch { /* ignore */ }
+    return 'ollama';
+  });
   const [providerConfigs, setProviderConfigs] = useState(() => {
     try {
       const saved = localStorage.getItem('sourcebook_provider_configs');
@@ -37,6 +43,13 @@ export function useSettingsConfig() {
   });
   const [testingKey, setTestingKey] = useState(false);
   const [testStatus, setTestStatus] = useState(null);
+
+  const handleSelectProvider = (newProvider) => {
+    setProvider(newProvider);
+    try {
+      localStorage.setItem('sourcebook_active_provider', newProvider);
+    } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     loadSettings();
@@ -51,6 +64,8 @@ export function useSettingsConfig() {
         if (local) configs = { ...configs, ...JSON.parse(local) };
       } catch { /* ignore */ }
 
+      let activeProvider = null;
+
       if (data) {
         setSettings((prev) => ({ ...prev, ...data }));
         if (data.provider_configs) {
@@ -59,7 +74,7 @@ export function useSettingsConfig() {
           } catch { /* ignore */ }
         }
         if (data.llm_provider) {
-          setProvider(data.llm_provider);
+          activeProvider = data.llm_provider;
           configs[data.llm_provider] = {
             ...configs[data.llm_provider],
             baseUrl: data.llm_base_url || configs[data.llm_provider]?.baseUrl,
@@ -81,13 +96,20 @@ export function useSettingsConfig() {
 
       const modelsData = await fetchModels();
       if (modelsData && modelsData.provider) {
-        setProvider(modelsData.provider);
+        activeProvider = modelsData.provider;
         configs[modelsData.provider] = {
           ...configs[modelsData.provider],
           baseUrl: modelsData.base_url || configs[modelsData.provider]?.baseUrl,
           model: modelsData.active || configs[modelsData.provider]?.model,
           apiKey: modelsData.api_key !== undefined ? modelsData.api_key : configs[modelsData.provider]?.apiKey,
         };
+      }
+
+      if (activeProvider) {
+        setProvider(activeProvider);
+        try {
+          localStorage.setItem('sourcebook_active_provider', activeProvider);
+        } catch { /* ignore */ }
       }
       setProviderConfigs(configs);
     } catch (err) {
@@ -112,7 +134,7 @@ export function useSettingsConfig() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-  const getCurrentConfig = () => providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.openai;
+  const getCurrentConfig = () => providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.ollama || DEFAULT_PROVIDER_CONFIGS.openai;
 
   const handleTestConnection = async () => {
     setTestingKey(true);
@@ -143,6 +165,9 @@ export function useSettingsConfig() {
     setSaveMessage('');
     const cfg = getCurrentConfig();
     try {
+      try {
+        localStorage.setItem('sourcebook_active_provider', provider);
+      } catch { /* ignore */ }
       const payload = {
         ...settings,
         llm_provider: provider,
@@ -172,7 +197,7 @@ export function useSettingsConfig() {
 
   return {
     activeTab, setActiveTab, settings, handleChange,
-    provider, setProvider, providerConfigs, handleConfigChange,
+    provider, setProvider: handleSelectProvider, providerConfigs, handleConfigChange,
     loading, saving, saveMessage, toast, setToast,
     testingKey, testStatus, handleTestConnection, handleSave
   };

@@ -78,3 +78,34 @@ func TestClient_GeminiDefaultConfig(t *testing.T) {
 		t.Errorf("expected apiKey gemini-key, got %s", apiKey)
 	}
 }
+
+func TestClient_ProviderDefaults(t *testing.T) {
+	tests := []struct {
+		provider    string
+		expectedURL string
+		expectedMod string
+	}{
+		{"ollama", "http://localhost:11434", "gemma2"},
+		{"gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-1.5-flash"},
+		{"groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"},
+		{"openrouter", "https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct"},
+		{"deepseek", "https://api.deepseek.com/v1", "deepseek-chat"},
+		{"openai", "https://api.openai.com/v1", "gpt-4o-mini"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.provider, func(t *testing.T) {
+			c := NewClientWithConfig(tt.provider, "", "", "")
+			p, u, m, _ := c.GetConfig()
+			if p != tt.provider {
+				t.Errorf("expected provider %s, got %s", tt.provider, p)
+			}
+			if u != tt.expectedURL {
+				t.Errorf("[%s] expected url %s, got %s", tt.provider, tt.expectedURL, u)
+			}
+			if m != tt.expectedMod {
+				t.Errorf("[%s] expected model %s, got %s", tt.provider, tt.expectedMod, m)
+			}
+		})
+	}
+}
