@@ -406,6 +406,47 @@ export async function switchModel(modelName) {
   return await response.json();
 }
 
+export function cleanErrorMessage(msg) {
+  if (!msg || typeof msg !== 'string') return msg;
+  const firstBrace = msg.indexOf('{');
+  const firstBracket = msg.indexOf('[');
+  let jsonStart = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    jsonStart = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    jsonStart = firstBrace;
+  } else if (firstBracket !== -1) {
+    jsonStart = firstBracket;
+  }
+
+  if (jsonStart !== -1) {
+    try {
+      const parsed = JSON.parse(msg.slice(jsonStart));
+      const extract = (obj) => {
+        if (typeof obj === 'string') return obj;
+        if (Array.isArray(obj)) {
+          for (const item of obj) {
+            const found = extract(item);
+            if (found) return found;
+          }
+        }
+        if (obj && typeof obj === 'object') {
+          return extract(obj.error) || extract(obj.message) || extract(obj.detail);
+        }
+        return null;
+      };
+      const inner = extract(parsed);
+      if (inner && typeof inner === 'string') {
+        const prefix = msg.slice(0, jsonStart).trim();
+        return prefix ? `${prefix} ${inner}`.trim() : inner;
+      }
+    } catch {
+      // fallback to original string
+    }
+  }
+  return msg;
+}
+
 export async function testModelConfig({ provider, baseUrl, model, apiKey }) {
   const response = await fetch(`${API_BASE}/api/sourcebook/v1/models`, {
     method: 'POST',
@@ -414,22 +455,8 @@ export async function testModelConfig({ provider, baseUrl, model, apiKey }) {
   });
   const data = await response.json();
   if (!response.ok || !data.valid) {
-    let msg = data.error || data.message || 'API Key or Model Verification failed';
-    if (typeof msg === 'string') {
-      const jsonStart = msg.indexOf('{');
-      if (jsonStart !== -1) {
-        try {
-          const parsed = JSON.parse(msg.slice(jsonStart));
-          const inner = parsed?.error?.message || parsed?.error || parsed?.message;
-          if (inner && typeof inner === 'string') {
-            msg = `${msg.slice(0, jsonStart).trim()} ${inner}`.trim();
-          }
-        } catch {
-          // fallback to raw message
-        }
-      }
-    }
-    throw new Error(msg);
+    const rawMsg = data.error || data.message || 'API Key or Model Verification failed';
+    throw new Error(cleanErrorMessage(rawMsg));
   }
   return data;
 }

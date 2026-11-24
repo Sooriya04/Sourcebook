@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, onToken func(string) error) error {
@@ -38,6 +39,31 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s stream request failed: %w", c.provider, err)
+	}
+
+	// Retry once on transient 503 (high demand) or 429 (rate spike) if context permits
+	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusTooManyRequests {
+		respBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		select {
+		case <-ctx.Done():
+			return parseAPIError(c.provider, resp.StatusCode, respBytes)
+		case <-time.After(1 * time.Second):
+		}
+
+		reqRetry, errRetry := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewBuffer(jsonBytes))
+		if errRetry == nil {
+			reqRetry.Header.Set("Content-Type", "application/json")
+			if apiKey != "" {
+				reqRetry.Header.Set("Authorization", "Bearer "+apiKey)
+			}
+			if respRetry, errDo := c.httpClient.Do(reqRetry); errDo == nil {
+				resp = respRetry
+			} else {
+				return parseAPIError(c.provider, resp.StatusCode, respBytes)
+			}
+		}
 	}
 	defer resp.Body.Close()
 
@@ -108,6 +134,31 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("%s request failed: %w", c.provider, err)
+	}
+
+	// Retry once on transient 503 (high demand) or 429 (rate spike) if context permits
+	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusTooManyRequests {
+		respBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		select {
+		case <-ctx.Done():
+			return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
+		case <-time.After(1 * time.Second):
+		}
+
+		reqRetry, errRetry := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewBuffer(jsonBytes))
+		if errRetry == nil {
+			reqRetry.Header.Set("Content-Type", "application/json")
+			if apiKey != "" {
+				reqRetry.Header.Set("Authorization", "Bearer "+apiKey)
+			}
+			if respRetry, errDo := c.httpClient.Do(reqRetry); errDo == nil {
+				resp = respRetry
+			} else {
+				return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
+			}
+		}
 	}
 	defer resp.Body.Close()
 
