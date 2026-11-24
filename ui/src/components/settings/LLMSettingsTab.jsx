@@ -3,6 +3,8 @@ import { Cpu } from 'lucide-react';
 import ProviderCardSelector from './llm/ProviderCardSelector';
 import ProviderInputFields from './llm/ProviderInputFields';
 import TestConnectionBar from './llm/TestConnectionBar';
+import { SettingsCard } from './common';
+import Badge from '../ui/Badge';
 import { DEFAULT_PROVIDER_CONFIGS } from '../../constants/providerDefaults';
 
 export default function LLMSettingsTab({
@@ -19,34 +21,16 @@ export default function LLMSettingsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
-      <div
-        style={{
-          backgroundColor: '#1e1f20',
-          padding: '24px',
-          borderRadius: '24px',
-          border: '1px solid rgba(255, 255, 255, 0.05)'
-        }}
+      <SettingsCard
+        icon={<Cpu size={16} />}
+        title="Inference Provider & Model Protocol"
+        description="Select the inference backend and configure connection parameters for grounded RAG synthesis."
+        badge={
+          <Badge variant="primary" size="sm">
+            Active: {provider}
+          </Badge>
+        }
       >
-        <div style={{ marginBottom: '20px' }}>
-          <h3
-            style={{
-              fontSize: '0.94rem',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#e3e3e3',
-              margin: '0 0 4px 0'
-            }}
-          >
-            <Cpu size={16} color="#a8c7fa" />
-            <span>Inference Provider & Model Protocol</span>
-          </h3>
-          <p style={{ fontSize: '0.78rem', color: '#8e918f', margin: 0 }}>
-            Select the inference backend and specify connection parameters for grounded synthesis.
-          </p>
-        </div>
-
         <ProviderCardSelector
           provider={provider}
           onSelectProvider={setProvider}
@@ -64,7 +48,7 @@ export default function LLMSettingsTab({
           testStatus={testStatus}
           onTestConnection={onTestConnection}
         />
-      </div>
+      </SettingsCard>
     </div>
   );
 }

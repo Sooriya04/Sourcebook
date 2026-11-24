@@ -1,26 +1,62 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check, Cpu, Sparkles, Zap, Network, Bot, Server } from 'lucide-react';
+import Badge from '../../ui/Badge';
 
 const PROVIDER_OPTIONS = [
-  { id: 'ollama', label: 'Ollama Native', desc: 'Local http://localhost:11434' },
-  { id: 'openai', label: 'OpenAI Compatible', desc: 'Custom local / cloud endpoints' },
-  { id: 'gemini', label: 'Google Gemini', desc: 'gemini-1.5-flash, gemini-2.0' },
-  { id: 'groq', label: 'Groq Cloud', desc: 'Fast LPUs (api.groq.com)' },
-  { id: 'openrouter', label: 'OpenRouter', desc: 'openrouter.ai/api/v1 unified routing' },
-  { id: 'deepseek', label: 'DeepSeek', desc: 'deepseek-chat, deepseek-reasoner' },
-  { id: 'nvidia', label: 'NVIDIA NIM', desc: 'Cloud NIM endpoints' }
+  {
+    id: 'ollama',
+    label: 'Ollama Native',
+    desc: 'Local daemon running on localhost:11434',
+    tag: 'Local Offline',
+    icon: <Server size={14} />
+  },
+  {
+    id: 'openai',
+    label: 'OpenAI Compatible',
+    desc: 'Direct OpenAI or local vLLM / LocalAI proxy',
+    tag: 'Standard API',
+    icon: <Bot size={14} />
+  },
+  {
+    id: 'gemini',
+    label: 'Google Gemini',
+    desc: 'gemini-1.5-flash, gemini-2.0 via OpenAI spec',
+    tag: 'Google Cloud',
+    icon: <Sparkles size={14} />
+  },
+  {
+    id: 'groq',
+    label: 'Groq Cloud',
+    desc: 'Ultra low-latency LPU inference',
+    tag: 'Fast LPUs',
+    icon: <Zap size={14} />
+  },
+  {
+    id: 'openrouter',
+    label: 'OpenRouter',
+    desc: 'Unified gateway across 200+ foundation models',
+    tag: 'Multi-Model',
+    icon: <Network size={14} />
+  },
+  {
+    id: 'deepseek',
+    label: 'DeepSeek',
+    desc: 'deepseek-chat and reasoning models',
+    tag: 'Reasoning API',
+    icon: <Cpu size={14} />
+  },
+  {
+    id: 'nvidia',
+    label: 'NVIDIA NIM',
+    desc: 'NVIDIA accelerated microservice endpoints',
+    tag: 'Enterprise NIM',
+    icon: <Cpu size={14} />
+  }
 ];
 
 export default function ProviderCardSelector({ provider, onSelectProvider }) {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '12px',
-        marginBottom: '24px'
-      }}
-    >
+    <div className="provider-grid">
       {PROVIDER_OPTIONS.map((p) => {
         const isSelected = provider === p.id;
         return (
@@ -35,62 +71,22 @@ export default function ProviderCardSelector({ provider, onSelectProvider }) {
                 onSelectProvider(p.id);
               }
             }}
-            style={{
-              padding: '14px 16px',
-              borderRadius: '16px',
-              border: isSelected ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
-              backgroundColor: isSelected ? '#282a2d' : '#131314',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              outline: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '74px'
-            }}
-            onMouseEnter={(e) => {
-              if (!isSelected) {
-                e.currentTarget.style.backgroundColor = '#1e1f20';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isSelected) {
-                e.currentTarget.style.backgroundColor = '#131314';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
-              }
-            }}
+            className={`provider-card ${isSelected ? 'selected' : ''}`}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span
-                style={{
-                  fontWeight: 600,
-                  fontSize: '0.86rem',
-                  letterSpacing: '-0.01em',
-                  color: isSelected ? '#ffffff' : '#e4e4e7'
-                }}
-              >
-                {p.label}
-              </span>
-              {isSelected && (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    backgroundColor: '#6366f1',
-                    color: '#ffffff'
-                  }}
-                >
-                  <Check size={10} strokeWidth={3} />
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: '#71717a', lineHeight: 1.3 }}>
-              {p.desc}
+            <div>
+              <div className="provider-card-header">
+                <span className="provider-card-title">{p.label}</span>
+                {isSelected ? (
+                  <span className="provider-check-pill" title="Active selection">
+                    <Check size={10} strokeWidth={3} />
+                  </span>
+                ) : (
+                  <Badge variant="neutral" size="sm">
+                    {p.tag}
+                  </Badge>
+                )}
+              </div>
+              <p className="provider-card-desc">{p.desc}</p>
             </div>
           </div>
         );
