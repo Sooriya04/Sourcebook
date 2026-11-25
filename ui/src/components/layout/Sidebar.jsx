@@ -38,7 +38,7 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="sidebar-tasteful">
+    <aside className={`sidebar-tasteful ${inspectingSource ? 'inspecting-mobile' : ''}`}>
       {inspectingSource ? (
         <SourceInspector
           source={inspectingSource}
