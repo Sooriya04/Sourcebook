@@ -25,7 +25,7 @@ export default function NotebookList({
             action={
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary compact"
                 onClick={onClearFilter}
               >
                 Clear Search Filter
@@ -57,7 +57,7 @@ export default function NotebookList({
           action={
             <button
               type="button"
-              className="btn-primary"
+              className="btn-primary compact"
               onClick={onNewNotebook}
             >
               <Plus size={14} />
@@ -71,24 +71,7 @@ export default function NotebookList({
 
   return (
     <div className="notebook-list-container">
-      {/* Table-Like Column Header */}
-      <div className="notebook-list-header" role="row">
-        <div className="col-info">
-          <span>Name & Overview</span>
-        </div>
-        <div className="col-sources">
-          <span>Grounding Sources</span>
-        </div>
-        <div className="col-time">
-          <span>Last Updated</span>
-        </div>
-        <div className="col-actions">
-          <span>Actions</span>
-        </div>
-      </div>
-
-      {/* Row Presentation */}
-      <div className="notebook-list-body" role="rowgroup">
+      <div className="notebook-list-body" role="list">
         {notebooks.map((nb) => {
           const isArchived = archivedIds.includes(nb.id);
           return (

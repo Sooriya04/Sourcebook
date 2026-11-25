@@ -532,6 +532,20 @@
   font-size: 0.84rem;
   color: var(--text-muted);
   margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.workspace-header-separator {
+  margin: 0 8px;
+  color: var(--text-dim);
+}
+
+.workspace-header-count {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-secondary);
 }
 
 .workspace-header-actions {
@@ -825,6 +839,13 @@
 
 .workspace-search-clear:hover {
   color: var(--text-primary);
+}
+
+.workspace-toolbar-middle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .workspace-view-tabs {

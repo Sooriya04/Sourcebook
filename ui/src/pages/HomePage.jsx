@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Video } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CreateNotebookModal from '../components/notebook/CreateNotebookModal';
 import CreateYouTubeNotebookModal from '../components/notebook/CreateYouTubeNotebookModal';
 import DeleteNotebookModal from '../components/notebook/DeleteNotebookModal';
 import {
-  WorkspaceLayout,
   WorkspaceToolbar,
-  RecentNotebookSection,
   NotebookList
 } from '../components/workspace';
 
@@ -15,8 +12,6 @@ export default function HomePage({
   notebooks = [],
   onCreateNotebook,
   onDeleteNotebook,
-  isMobileSidebarOpen = false,
-  setIsMobileSidebarOpen,
   isCreateModalOpen: parentCreateModalOpen,
   setIsCreateModalOpen: setParentCreateModalOpen,
   isYouTubeModalOpen: parentYouTubeModalOpen,
@@ -24,7 +19,7 @@ export default function HomePage({
 }) {
   const navigate = useNavigate();
 
-  // Internal modal states with support for parent state overrides
+  // Modal states with support for parent state overrides
   const [internalCreateOpen, setInternalCreateOpen] = useState(false);
   const [internalYouTubeOpen, setInternalYouTubeOpen] = useState(false);
   const isCreateOpen = parentCreateModalOpen !== undefined ? parentCreateModalOpen : internalCreateOpen;
@@ -34,7 +29,7 @@ export default function HomePage({
 
   const [notebookToDelete, setNotebookToDelete] = useState(null);
   const [search, setSearch] = useState('');
-  const [activeView, setActiveView] = useState('all'); // 'all' | 'recent' | 'archived'
+  const [activeView, setActiveView] = useState('all'); // 'all' | 'archived'
   const [sortBy, setSortBy] = useState('updated'); // 'updated' | 'created' | 'title' | 'sources'
 
   // Persisted archived notebook IDs
@@ -59,14 +54,13 @@ export default function HomePage({
     });
   };
 
-  // Notebook filtering and sorting
   const counts = useMemo(() => {
-    const archived = archivedIds.length;
+    const archived = archivedIds.filter(id => notebooks.some(nb => nb.id === id)).length;
     const all = Math.max(0, notebooks.length - archived);
     return {
       all,
-      recent: Math.min(all, 5),
-      archived
+      archived,
+      total: notebooks.length
     };
   }, [notebooks, archivedIds]);
 
@@ -78,11 +72,6 @@ export default function HomePage({
       result = result.filter(nb => archivedIds.includes(nb.id));
     } else {
       result = result.filter(nb => !archivedIds.includes(nb.id));
-      if (activeView === 'recent') {
-        // Recent view takes the 6 most recent
-        result.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-        result = result.slice(0, 8);
-      }
     }
 
     // Filter by search query
@@ -114,90 +103,51 @@ export default function HomePage({
     return result;
   }, [notebooks, activeView, search, sortBy, archivedIds]);
 
-  // Top 3 recently modified notebooks for the Jump Back In section
-  const recentNotebooks = useMemo(() => {
-    if (activeView === 'archived' || search.trim()) return [];
-    const active = notebooks.filter(nb => !archivedIds.includes(nb.id));
-    return [...active]
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
-      .slice(0, 3);
-  }, [notebooks, activeView, search, archivedIds]);
-
   return (
-    <WorkspaceLayout
-      notebooks={notebooks}
-      activeView={activeView}
-      onSelectView={setActiveView}
-      archivedIds={archivedIds}
-      onNewNotebook={() => setCreateOpen(true)}
-      onOpenYouTube={() => setYouTubeOpen(true)}
-      isMobileSidebarOpen={isMobileSidebarOpen}
-      onCloseMobileSidebar={() => setIsMobileSidebarOpen?.(false)}
-    >
-      <div className="workspace-content-inner">
-        {/* Workspace Landing Header */}
-        <header className="workspace-header">
-          <div className="workspace-title-group">
-            <h1>Your workspace</h1>
-            <p>Continue where your research left off.</p>
-          </div>
+    <div className="workspace-container">
+      <main className="workspace-main">
+        <div className="workspace-content-inner">
+          {/* Single, Restrained Page Heading */}
+          <header className="workspace-header">
+            <div className="workspace-title-group">
+              <h1>Notebooks</h1>
+              <p>
+                Your research, organized in one place.
+                <span className="workspace-header-separator">·</span>
+                <span className="workspace-header-count">
+                  {counts.total} {counts.total === 1 ? 'notebook' : 'notebooks'}
+                </span>
+              </p>
+            </div>
+          </header>
 
-          <div className="workspace-header-actions">
-            <button
-              type="button"
-              className="btn-secondary compact"
-              onClick={() => setYouTubeOpen(true)}
-              title="Chat directly with any YouTube video"
-            >
-              <Video size={14} className="text-accent" />
-              <span>Chat with YouTube</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn-primary compact"
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus size={14} strokeWidth={2.4} />
-              <span>New notebook</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Top 3 Recently Active Notebooks */}
-        {recentNotebooks.length > 0 && (
-          <RecentNotebookSection
-            notebooks={recentNotebooks}
-            onSelectNotebook={(nb) => navigate(`/notebook/${nb.id}`)}
+          {/* Unified Toolbar with the SINGLE entry points for New Notebook & YouTube */}
+          <WorkspaceToolbar
+            search={search}
+            onSearchChange={setSearch}
+            activeView={activeView}
+            onSelectView={setActiveView}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            onNewNotebook={() => setCreateOpen(true)}
+            onOpenYouTube={() => setYouTubeOpen(true)}
+            counts={counts}
           />
-        )}
 
-        {/* Contextual Toolbar */}
-        <WorkspaceToolbar
-          search={search}
-          onSearchChange={setSearch}
-          activeView={activeView}
-          onSelectView={setActiveView}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          onNewNotebook={() => setCreateOpen(true)}
-          onOpenYouTube={() => setYouTubeOpen(true)}
-          counts={counts}
-        />
-
-        {/* Refined List-Based Notebook Presentation */}
-        <NotebookList
-          notebooks={filteredNotebooks}
-          archivedIds={archivedIds}
-          search={search}
-          activeView={activeView}
-          onSelectNotebook={(nb) => navigate(`/notebook/${nb.id}`)}
-          onToggleArchive={handleToggleArchive}
-          onDeleteNotebook={(nb) => setNotebookToDelete(nb)}
-          onNewNotebook={() => setCreateOpen(true)}
-          onClearFilter={() => setSearch('')}
-        />
-      </div>
+          {/* Clean, Non-Duplicated Notebook List */}
+          <NotebookList
+            notebooks={filteredNotebooks}
+            archivedIds={archivedIds}
+            search={search}
+            activeView={activeView}
+            onSelectNotebook={(nb) => navigate(`/notebook/${nb.id}`)}
+            onToggleArchive={handleToggleArchive}
+            onDeleteNotebook={(nb) => setNotebookToDelete(nb)}
+            onNewNotebook={() => setCreateOpen(true)}
+            onClearFilter={() => setSearch('')}
+          />
+        </div>
+      </main>
 
       {/* Creation Modal */}
       {isCreateOpen && (
@@ -237,6 +187,6 @@ export default function HomePage({
           }}
         />
       )}
-    </WorkspaceLayout>
+    </div>
   );
 }

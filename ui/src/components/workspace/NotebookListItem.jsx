@@ -21,7 +21,7 @@ export default function NotebookListItem({
 
   return (
     <div
-      role="row"
+      role="listitem"
       tabIndex={0}
       className={`notebook-list-row ${isArchived ? 'archived' : ''}`}
       onClick={onClick}
@@ -32,7 +32,7 @@ export default function NotebookListItem({
         }
       }}
     >
-      {/* Column 1: Title & Short Description */}
+      {/* Column 1: Icon, Title & Short Description */}
       <div className="col-info">
         <div className="notebook-row-icon-box">
           <BookOpen size={16} />
@@ -62,7 +62,7 @@ export default function NotebookListItem({
         </span>
       </div>
 
-      {/* Column 3: Last Modified */}
+      {/* Column 3: Last Updated Timestamp */}
       <div className="col-time">
         <span className="notebook-time-text">{timeString}</span>
       </div>

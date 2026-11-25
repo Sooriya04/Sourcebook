@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Plus, Video, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Search, X, Plus, Video, ArrowUpDown } from 'lucide-react';
 
 export default function WorkspaceToolbar({
   search,
@@ -10,17 +10,17 @@ export default function WorkspaceToolbar({
   onSortChange,
   onNewNotebook,
   onOpenYouTube,
-  counts = { all: 0, recent: 0, archived: 0 }
+  counts = { all: 0, archived: 0 }
 }) {
   return (
     <div className="workspace-toolbar">
-      {/* Left: Search & Filter Input */}
+      {/* Left: Search Input */}
       <div className="workspace-search-box">
         <Search size={14} className="workspace-search-icon" />
         <input
           type="text"
           className="workspace-search-input"
-          placeholder="Filter research notebooks..."
+          placeholder="Search notebooks..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
@@ -36,44 +36,33 @@ export default function WorkspaceToolbar({
         )}
       </div>
 
-      {/* Center: View Filter Tabs */}
-      <div className="workspace-view-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'all'}
-          className={`workspace-view-tab ${activeView === 'all' ? 'active' : ''}`}
-          onClick={() => onSelectView('all')}
-        >
-          <span>All</span>
-          <span className="tab-badge">{counts.all}</span>
-        </button>
+      {/* Center: Archived Filter (only if archived notebooks exist) & Sort */}
+      <div className="workspace-toolbar-middle">
+        {counts.archived > 0 && (
+          <div className="workspace-view-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'all'}
+              className={`workspace-view-tab ${activeView === 'all' ? 'active' : ''}`}
+              onClick={() => onSelectView('all')}
+            >
+              <span>All</span>
+              <span className="tab-badge">{counts.all}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'archived'}
+              className={`workspace-view-tab ${activeView === 'archived' ? 'active' : ''}`}
+              onClick={() => onSelectView('archived')}
+            >
+              <span>Archived</span>
+              <span className="tab-badge">{counts.archived}</span>
+            </button>
+          </div>
+        )}
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'recent'}
-          className={`workspace-view-tab ${activeView === 'recent' ? 'active' : ''}`}
-          onClick={() => onSelectView('recent')}
-        >
-          <span>Recent</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'archived'}
-          className={`workspace-view-tab ${activeView === 'archived' ? 'active' : ''}`}
-          onClick={() => onSelectView('archived')}
-        >
-          <span>Archived</span>
-          {counts.archived > 0 && <span className="tab-badge">{counts.archived}</span>}
-        </button>
-      </div>
-
-      {/* Right: Sort and Contextual Actions */}
-      <div className="workspace-toolbar-actions">
-        {/* Sort Selector */}
         <div className="workspace-sort-wrapper">
           <ArrowUpDown size={13} className="workspace-sort-icon" />
           <select
@@ -88,26 +77,28 @@ export default function WorkspaceToolbar({
             <option value="sources">Most Sources</option>
           </select>
         </div>
+      </div>
 
-        {/* Chat with YouTube Action */}
+      {/* Right: The SINGLE Action Area */}
+      <div className="workspace-toolbar-actions">
         <button
           type="button"
           className="btn-secondary compact"
           onClick={onOpenYouTube}
           title="Chat directly with any YouTube video"
         >
-          <Video size={13} className="text-accent" />
-          <span>YouTube Chat</span>
+          <Video size={14} className="text-accent" />
+          <span>Chat with YouTube</span>
         </button>
 
-        {/* Primary New Notebook Action */}
         <button
           type="button"
           className="btn-primary compact"
           onClick={onNewNotebook}
+          title="Create a new research notebook"
         >
           <Plus size={14} strokeWidth={2.4} />
-          <span>New Notebook</span>
+          <span>New notebook</span>
         </button>
       </div>
     </div>
