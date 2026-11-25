@@ -7,6 +7,30 @@ export const DEFAULT_PROVIDER_CONFIGS = {
     placeholderModel: 'gemma2, llama3, qwen2.5',
     placeholderKey: 'Not required for local Ollama'
   },
+  lmstudio: {
+    baseUrl: 'http://localhost:1234/v1',
+    model: 'local-model',
+    apiKey: '',
+    placeholderUrl: 'http://localhost:1234/v1',
+    placeholderModel: 'local-model or model identifier from LM Studio',
+    placeholderKey: 'Not required for local LM Studio'
+  },
+  localai: {
+    baseUrl: 'http://localhost:8080/v1',
+    model: 'gpt-4',
+    apiKey: '',
+    placeholderUrl: 'http://localhost:8080/v1',
+    placeholderModel: 'gpt-4, llama-3',
+    placeholderKey: 'Optional local API key'
+  },
+  vllm: {
+    baseUrl: 'http://localhost:8000/v1',
+    model: 'mistralai/Mistral-7B-Instruct-v0.2',
+    apiKey: '',
+    placeholderUrl: 'http://localhost:8000/v1',
+    placeholderModel: 'Model repository ID (e.g. meta-llama/Llama-3-8B-Instruct)',
+    placeholderKey: 'Optional vLLM API key'
+  },
   openai: {
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-4o-mini',
@@ -54,5 +78,13 @@ export const DEFAULT_PROVIDER_CONFIGS = {
     placeholderUrl: 'https://integrate.api.nvidia.com/v1',
     placeholderModel: 'meta/llama-3.1-70b-instruct',
     placeholderKey: 'nvapi-...'
+  },
+  anthropic: {
+    baseUrl: 'https://api.anthropic.com/v1',
+    model: 'claude-3-5-sonnet-20241022',
+    apiKey: '',
+    placeholderUrl: 'https://api.anthropic.com/v1 (or OpenAI-spec proxy)',
+    placeholderModel: 'claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022',
+    placeholderKey: 'sk-ant-api03-...'
   }
 };

@@ -24,6 +24,12 @@ func DefaultBaseURL(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "ollama":
 		return "http://localhost:11434"
+	case "lmstudio":
+		return "http://localhost:1234/v1"
+	case "localai":
+		return "http://localhost:8080/v1"
+	case "vllm":
+		return "http://localhost:8000/v1"
 	case "gemini":
 		return "https://generativelanguage.googleapis.com/v1beta/openai"
 	case "groq":
@@ -34,6 +40,8 @@ func DefaultBaseURL(provider string) string {
 		return "https://api.deepseek.com/v1"
 	case "nvidia":
 		return "https://integrate.api.nvidia.com/v1"
+	case "anthropic":
+		return "https://api.anthropic.com/v1"
 	case "openai":
 		return "https://api.openai.com/v1"
 	default:
@@ -54,6 +62,14 @@ func DefaultModel(provider string) string {
 		return "deepseek-chat"
 	case "nvidia":
 		return "meta/llama-3.1-70b-instruct"
+	case "anthropic":
+		return "claude-3-5-sonnet-20241022"
+	case "lmstudio":
+		return "local-model"
+	case "localai":
+		return "gpt-4"
+	case "vllm":
+		return "mistralai/Mistral-7B-Instruct-v0.2"
 	case "openai":
 		return "gpt-4o-mini"
 	case "ollama":
