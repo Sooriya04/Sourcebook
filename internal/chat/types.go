@@ -5,12 +5,14 @@ import (
 )
 
 type ChatRequest struct {
-	Query           string        `json:"query"`
-	NotebookID      string        `json:"notebook_id,omitempty"`
-	MaxSources      int           `json:"max_sources,omitempty"`
-	ScopedSourceIDs []string      `json:"scoped_source_ids,omitempty"`
-	Mode            string        `json:"mode"` // "notebook", "web", "hybrid"
-	History         []llm.Message `json:"history,omitempty"`
+	Query              string        `json:"query"`
+	NotebookID         string        `json:"notebook_id,omitempty"`
+	MaxSources         int           `json:"max_sources,omitempty"`
+	ScopedSourceIDs    []string      `json:"scoped_source_ids,omitempty"`
+	Mode               string        `json:"mode"` // "notebook", "web", "hybrid", "general"
+	ExecutionMode      string        `json:"execution_mode,omitempty"` // "standard", "custom_priority"
+	CustomInstructions string        `json:"custom_instructions,omitempty"`
+	History            []llm.Message `json:"history,omitempty"`
 }
 
 type ChatResponse struct {

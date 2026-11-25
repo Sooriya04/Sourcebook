@@ -14,6 +14,7 @@ export default function MessageBubble({
   onSaveNote,
   onSendMessage,
   onRegenerate,
+  onEditPrompt,
   isLatest
 }) {
   const isUser = message.role === 'user';
@@ -59,6 +60,7 @@ export default function MessageBubble({
         onSaveNote={onSaveNote}
         onSendMessage={onSendMessage}
         onRegenerate={onRegenerate}
+        onEditPrompt={message.promptMeta && onEditPrompt ? () => onEditPrompt(message.promptMeta) : undefined}
       />
     </article>
   );

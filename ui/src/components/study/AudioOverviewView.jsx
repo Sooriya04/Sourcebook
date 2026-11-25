@@ -1,17 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Headphones, Plus } from 'lucide-react';
 import { getPodcastVoices, getPodcastEpisodes, streamPodcastGeneration } from '../../services/sourcebookApi';
-import PodcastConfigBar from './PodcastConfigBar';
+import AudioOverviewDialog from './AudioOverviewDialog';
 import PodcastPlayerCard from './PodcastPlayerCard';
 import PodcastEpisodeList from './PodcastEpisodeList';
 import OverviewStudioDetail from './OverviewStudioDetail';
 
-export default function AudioOverviewView({ 
-  notebookId, 
+export default function AudioOverviewView({
+  notebookId,
   sources = [],
   audioPlayer,
   parentEpisodes,
-  onEpisodesChange
+  onEpisodesChange,
+  isDialogOpen = false,
+  onOpenDialog,
+  onCloseDialog,
+  pendingAudioGen = null,
+  onClearPendingAudioGen
 }) {
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const dialogOpen = onOpenDialog ? isDialogOpen : internalDialogOpen;
+  const openDialog = onOpenDialog || (() => setInternalDialogOpen(true));
+  const closeDialog = useCallback(() => {
+    if (onCloseDialog) onCloseDialog();
+    else setInternalDialogOpen(false);
+  }, [onCloseDialog]);
+
   const [loading, setLoading] = useState(false);
   const [statusInfo, setStatusInfo] = useState(null);
   const [error, setError] = useState(null);
@@ -32,9 +46,9 @@ export default function AudioOverviewView({
   const applyEpisode = useCallback((ep) => {
     if (!ep) return;
     setActiveEpId(ep.id);
-    if (ep.turns) setTurns(ep.turns);
-    if (ep.summary) setSummary(ep.summary);
-    if (ep.takeaways) setTakeaways(ep.takeaways);
+    setTurns(ep.turns || []);
+    setSummary(ep.summary || '');
+    setTakeaways(ep.takeaways || []);
     setStatusInfo(null);
     setLoading(false);
   }, []);
@@ -62,34 +76,6 @@ export default function AudioOverviewView({
     getPodcastVoices().then(setVoices);
   }, [notebookId, parentEpisodes, onEpisodesChange, applyEpisode]);
 
-  const handleGenerate = async () => {
-    if (!notebookId || loading) return;
-    setLoading(true);
-    setError(null);
-    setStatusInfo({ step: 'drafting', message: 'Starting deep dive synthesis...' });
-
-    await streamPodcastGeneration({
-      notebookId,
-      options: { ...options, force: 'true' },
-      onStatus: (st) => setStatusInfo(st),
-      onOverview: (ov) => {
-        if (ov.summary) setSummary(ov.summary);
-        if (ov.takeaways) setTakeaways(ov.takeaways);
-      },
-      onDialogue: (dTurns) => setTurns(dTurns),
-      onProgress: (prog) => {
-        if (prog.step === 'complete') handleComplete(prog);
-        else setStatusInfo(prog);
-      },
-      onComplete: (data) => handleComplete(data),
-      onError: (err) => {
-        setError(err.message || 'Failed to synthesize audio overview');
-        setStatusInfo(null);
-        setLoading(false);
-      }
-    });
-  };
-
   const handleComplete = (data) => {
     const epId = data.id || `ep_${Date.now()}`;
     const cleanUrl = data.audio_url || `/api/sourcebook/v1/study/audio/${notebookId}?episode=${epId}`;
@@ -112,7 +98,52 @@ export default function AudioOverviewView({
     if (audioPlayer) audioPlayer.playEpisode(newEp);
   };
 
-  const activeEp = episodes.find((e) => e.id === activeEpId) || episodes[0] || {};
+  const handleGenerate = async (overrideOptions) => {
+    const genOpts = overrideOptions && overrideOptions.length ? overrideOptions : options;
+    if (!notebookId || loading || sources.length === 0) return;
+    if (overrideOptions && overrideOptions.length) {
+      const { _ts, ...cleanOpts } = overrideOptions;
+      setOptions(cleanOpts);
+    }
+    closeDialog();
+    setLoading(true);
+    setError(null);
+    setStatusInfo({ step: 'drafting', message: 'Drafting two-host dialogue from sources...' });
+
+    await streamPodcastGeneration({
+      notebookId,
+      options: { ...genOpts, force: 'true' },
+      onStatus: (st) => setStatusInfo(st),
+      onOverview: (ov) => {
+        if (ov.summary) setSummary(ov.summary);
+        if (ov.takeaways) setTakeaways(ov.takeaways);
+      },
+      onDialogue: (dTurns) => setTurns(dTurns),
+      onProgress: (prog) => {
+        if (prog.step === 'complete') handleComplete(prog);
+        else setStatusInfo(prog);
+      },
+      onComplete: (data) => handleComplete(data),
+      onError: (err) => {
+        setError(err.message || 'Failed to synthesize audio overview');
+        setStatusInfo(null);
+        setLoading(false);
+      }
+    });
+  };
+
+  const handleGenerateRef = useRef(null);
+  handleGenerateRef.current = handleGenerate;
+
+  useEffect(() => {
+    if (!pendingAudioGen) return;
+    onClearPendingAudioGen?.();
+    handleGenerateRef.current?.(pendingAudioGen);
+  }, [pendingAudioGen, onClearPendingAudioGen]);
+
+  const activeEpIndex = episodes.findIndex((e) => e.id === activeEpId);
+  const activeEp = (activeEpIndex >= 0 ? episodes[activeEpIndex] : episodes[0]) || {};
+  const epNumber = activeEpIndex >= 0 ? episodes.length - activeEpIndex : episodes.length;
   const isCurrentActive = audioPlayer?.currentEpisode?.id === activeEp.id;
   const isPlaying = isCurrentActive && audioPlayer.isPlaying;
   const currentTime = isCurrentActive ? audioPlayer.currentTime : 0;
@@ -147,31 +178,89 @@ export default function AudioOverviewView({
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const hasResult = episodes.length > 0 || loading || Boolean(error) || Boolean(statusInfo);
+
+  const lengthLabel =
+    activeEp.length === 'short' ? 'Quick' : activeEp.length === 'standard' ? 'Standard' : 'Deep Dive';
+
   return (
-    <div className="audio-overview-view" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <PodcastConfigBar options={options} setOptions={setOptions} voices={voices} sources={sources} disabled={loading} />
+    <div className="audio-overview-workspace">
+      {!hasResult ? (
+        <div className="audio-empty-state">
+          <div className="audio-empty-icon">
+            <Headphones size={20} />
+          </div>
+          <h3 className="audio-empty-title">Audio Overview</h3>
+          <p className="audio-empty-desc">
+            Turn your notebook sources into a concise two-host audio discussion with synchronized transcript.
+          </p>
+          <button
+            type="button"
+            onClick={openDialog}
+            disabled={sources.length === 0}
+            className="audio-generate-primary-btn"
+          >
+            <Plus size={14} />
+            <span>Create Audio Overview</span>
+          </button>
+          {sources.length === 0 && (
+            <span className="audio-empty-hint">Add at least one source first.</span>
+          )}
+        </div>
+      ) : (
+        <>
+          <PodcastPlayerCard
+            notebookId={notebookId}
+            audioUrl={activeEp.audio_url || `/api/sourcebook/v1/study/audio/${notebookId}`}
+            episodeTitle={epNumber > 0 ? `Audio Overview · Episode ${epNumber}` : 'Audio Overview'}
+            episodeSubtitle={`${lengthLabel} · Austin & Taylor`}
+            duration={duration}
+            currentTime={currentTime}
+            isPlaying={isPlaying}
+            speed={audioPlayer?.speed || 1.0}
+            loading={loading}
+            sources={sources}
+            statusInfo={statusInfo}
+            error={error}
+            onTogglePlay={togglePlay}
+            onSeek={handleSeek}
+            onSpeedChange={handleSpeedChange}
+            onOpenGenerate={openDialog}
+            onRetry={handleGenerate}
+            formatTime={formatTime}
+          />
 
-      <PodcastPlayerCard
-        notebookId={notebookId}
-        audioUrl={activeEp.audio_url || `/api/sourcebook/v1/study/audio/${notebookId}`}
-        duration={duration}
-        currentTime={currentTime}
-        isPlaying={isPlaying}
-        speed={audioPlayer?.speed || 1.0}
-        loading={loading}
-        sources={sources}
-        statusInfo={statusInfo}
-        error={error}
-        onTogglePlay={togglePlay}
-        onSeek={handleSeek}
-        onSpeedChange={handleSpeedChange}
-        onGenerate={handleGenerate}
-        formatTime={formatTime}
-      />
+          {episodes.length > 1 && (
+            <PodcastEpisodeList
+              episodes={episodes}
+              activeEpisodeId={activeEpId}
+              onSelectEpisode={applyEpisode}
+              formatTime={formatTime}
+            />
+          )}
 
-      <PodcastEpisodeList episodes={episodes} activeEpisodeId={activeEpId} onSelectEpisode={applyEpisode} formatTime={formatTime} />
+          <OverviewStudioDetail
+            summary={summary}
+            takeaways={takeaways}
+            turns={turns}
+            onJumpToTime={jumpToTime}
+            formatTime={formatTime}
+          />
+        </>
+      )}
 
-      <OverviewStudioDetail summary={summary} takeaways={takeaways} turns={turns} sources={sources} onJumpToTime={jumpToTime} formatTime={formatTime} />
+      {!onOpenDialog && (
+        <AudioOverviewDialog
+          isOpen={dialogOpen}
+          onClose={closeDialog}
+          options={options}
+          setOptions={setOptions}
+          voices={voices}
+          sources={sources}
+          loading={loading}
+          onGenerate={handleGenerate}
+        />
+      )}
     </div>
   );
 }

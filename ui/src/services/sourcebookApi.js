@@ -320,19 +320,23 @@ export async function streamPodcastGeneration({ notebookId, options = {}, onStat
   }
 }
 
-export async function chatQueryStream({ query, notebookId, maxSources = 5, scopedSourceIds = [], mode = 'web', history = [], onChunk, onMetadata, onError, abortSignal }) {
+export async function chatQueryStream({ query, notebookId, maxSources = 5, scopedSourceIds = [], mode = 'web', history = [], executionMode, customInstructions, onChunk, onMetadata, onError, abortSignal }) {
   try {
+    const payload = {
+      query,
+      notebook_id: notebookId,
+      max_sources: maxSources,
+      scoped_source_ids: scopedSourceIds,
+      mode,
+      history
+    };
+    if (executionMode) payload.execution_mode = executionMode;
+    if (customInstructions) payload.custom_instructions = customInstructions;
+
     const response = await fetch(`${API_BASE}/api/sourcebook/v1/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        query, 
-        notebook_id: notebookId, 
-        max_sources: maxSources, 
-        scoped_source_ids: scopedSourceIds,
-        mode,
-        history
-      }),
+      body: JSON.stringify(payload),
       signal: abortSignal
     });
 

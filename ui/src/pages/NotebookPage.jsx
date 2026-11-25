@@ -5,6 +5,8 @@ import { Moon, Terminal, Check, Eye } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import ChatStudio from '../components/chat/ChatStudio';
 import StudyStudio from '../components/study/StudyStudio';
+import AudioOverviewDialog from '../components/study/AudioOverviewDialog';
+import PromptStudioModal from '../components/prompt/PromptStudioModal';
 import NotesPanel from '../components/layout/NotesPanel';
 import NotebookHeader from '../components/notebook/NotebookHeader';
 import CommandPaletteModal from '../components/notebook/CommandPaletteModal';
@@ -17,6 +19,7 @@ import { useChat } from '../hooks/useChat';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { parseFileClientSide, parseYouTubeURL } from '../services/fileIngestor';
 import { runPipeline, fetchNotebookDetail, updateNotebookOnServer, exportNotebook, fetchYouTubeTranscript, getPodcastEpisodes, deletePodcastEpisode, renamePodcastEpisode, fetchNotebookGuide, fetchLLMHealth } from '../services/sourcebookApi';
+import { recordPromptExecution, updatePromptExecutionStatus } from '../services/promptStudioApi';
 
 const EMPTY_ARR = [];
 
@@ -38,6 +41,17 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
   
   const [notes, setNotes] = useState(EMPTY_ARR);
   const [episodes, setEpisodes] = useState(EMPTY_ARR);
+  const [isAudioDialogOpen, setIsAudioDialogOpen] = useState(false);
+  const [isPromptStudioOpen, setIsPromptStudioOpen] = useState(false);
+  const [promptDraft, setPromptDraft] = useState(null);
+  const [audioOptions, setAudioOptions] = useState({
+    length: 'deep',
+    format: 'banter',
+    voice_host1: 'am_michael',
+    voice_host2: 'af_sarah',
+    focus_source: ''
+  });
+  const [pendingAudioGen, setPendingAudioGen] = useState(null);
   const [guide, setGuide] = useState(null);
   const audioPlayer = useAudioPlayer(id);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -351,6 +365,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 setChatMode={setChatMode}
                 llmHealth={llmHealth}
                 onSaveNote={(note) => setNotes((prev) => [{ id: note.id || crypto.randomUUID(), ...note }, ...prev])}
+                onEditPrompt={(meta) => { setPromptDraft(meta); setIsPromptStudioOpen(true); }}
                 chatEndRef={chatEndRef}
                 notebookTitle={notebook.title}
                 notebookDescription={notebook.description}
@@ -387,6 +402,12 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 audioPlayer={audioPlayer}
                 episodes={episodes}
                 onEpisodesChange={setEpisodes}
+                isAudioDialogOpen={isAudioDialogOpen}
+                onOpenAudioDialog={() => setIsAudioDialogOpen(true)}
+              onOpenPromptStudio={() => { setPromptDraft(null); setIsPromptStudioOpen(true); }}
+                onCloseAudioDialog={() => setIsAudioDialogOpen(false)}
+                pendingAudioGen={pendingAudioGen}
+                onClearPendingAudioGen={() => setPendingAudioGen(null)}
                 onAddNote={(n) => setNotes((prev) => [{ id: n.id || crypto.randomUUID(), ...n }, ...prev])}
               />
             )}
@@ -401,6 +422,8 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
               notebookTitle={notebook?.title || ''}
               sourcesCount={sources?.length || 0}
               audioPlayer={audioPlayer}
+              onOpenAudioDialog={() => setIsAudioDialogOpen(true)}
+              onOpenPromptStudio={() => { setPromptDraft(null); setIsPromptStudioOpen(true); }}
               onAddNote={(n) => setNotes((prev) => [{ id: n.id || crypto.randomUUID(), ...n }, ...prev])}
               onUpdateNote={(n) => setNotes((prev) => prev.map((item) => (item.id === n.id ? n : item)))}
               onDeleteNote={(nId) => setNotes((prev) => prev.filter((item) => item.id !== nId))}
@@ -434,6 +457,55 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         commands={commands}
+      />
+
+      <AudioOverviewDialog
+        isOpen={isAudioDialogOpen}
+        onClose={() => setIsAudioDialogOpen(false)}
+        options={audioOptions}
+        setOptions={setAudioOptions}
+        sources={sources}
+        onGenerate={() => {
+          setIsAudioDialogOpen(false);
+          setPendingAudioGen({ ...audioOptions, _ts: Date.now() });
+          setActiveMode('study');
+          setStudyTab('audio');
+        }}
+      />
+
+      <PromptStudioModal
+        isOpen={isPromptStudioOpen}
+        onClose={() => setIsPromptStudioOpen(false)}
+        notebookId={id}
+        sources={sources}
+        scopedSourceIds={scopedSourceIds}
+        initialDraft={promptDraft}
+        onRunPrompt={async (payload) => {
+          setIsPromptStudioOpen(false);
+          setActiveMode('chat');
+          const { item } = await recordPromptExecution({
+            ...payload,
+            notebookId: id,
+            notebookTitle: notebook?.title || 'Untitled Notebook',
+            status: 'running'
+          });
+          const resolvedScopedIds =
+            payload.sourceMode === 'selected' ? Array.from(scopedSourceIds || []) : [];
+          const targetMode = payload.sourceMode === 'none' ? 'general' : 'notebook';
+          const ok = await sendMessage(
+            payload.instructions,
+            targetMode,
+            null,
+            resolvedScopedIds,
+            null,
+            {
+              executionMode: payload.executionMode,
+              customInstructions: payload.instructions,
+              promptMeta: payload
+            }
+          );
+          await updatePromptExecutionStatus(item.id, ok ? 'completed' : 'error');
+        }}
       />
     </div>
   );

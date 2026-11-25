@@ -14,6 +14,23 @@ import (
 func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	startTime := time.Now()
 
+	if req.Mode == "general" {
+		historyMessages := c.getConversationHistory(req)
+		messages := c.historyMgr.BuildUngroundedMessages(req.Query, historyMessages, req.ExecutionMode, req.CustomInstructions)
+		answer, err := c.llmClient.Generate(ctx, messages)
+		if err != nil {
+			return nil, fmt.Errorf("synthesis failed: %w", err)
+		}
+		c.persistTurn(req, answer)
+		return &ChatResponse{
+			Query:      req.Query,
+			Answer:     answer,
+			Sources:    []SourceCitationDetail{},
+			DurationMs: time.Since(startTime).Milliseconds(),
+			Context:    "General (Ungrounded)",
+		}, nil
+	}
+
 	docs, contextMeta, err := c.RetrieveAndRerank(ctx, req, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieval failed: %w", err)
@@ -55,7 +72,7 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		docs = c.BatchAndSummarize(ctx, req.Query, docs, nil)
 	}
 
-	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, historyMessages, semanticHistory)
+	messages := c.historyMgr.BuildPromptMessages(req.Query, docs, historyMessages, semanticHistory, req.ExecutionMode, req.CustomInstructions)
 	answer, err := c.llmClient.Generate(ctx, messages)
 	if err != nil {
 		return nil, fmt.Errorf("synthesis failed: %w", err)
@@ -97,6 +114,24 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 
 // GenerateStream synthesizes a streaming grounded response calling onToken for each chunk
 func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToken func(string) error, onStatus func(string)) ([]SourceCitationDetail, []models.SourceRecord, string, error) {
+	if req.Mode == "general" {
+		if onStatus != nil {
+			onStatus("Synthesizing response (ungrounded)...")
+		}
+		historyMessages := c.getConversationHistory(req)
+		messages := c.historyMgr.BuildUngroundedMessages(req.Query, historyMessages, req.ExecutionMode, req.CustomInstructions)
+		var fullAnswer strings.Builder
+		err := c.llmClient.GenerateStream(ctx, messages, func(token string) error {
+			fullAnswer.WriteString(token)
+			return onToken(token)
+		})
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("synthesis stream failed: %w", err)
+		}
+		c.persistTurn(req, fullAnswer.String())
+		return []SourceCitationDetail{}, nil, "General (Ungrounded)", nil
+	}
+
 	docs, contextMeta, err := c.RetrieveAndRerank(ctx, req, onStatus)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("retrieval failed: %w", err)
@@ -145,7 +180,7 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 		docs = c.BatchAndSummarize(ctx, req.Query, docs, onStatus)
 	}
 
-	messages := c.historyMgr.BuildConversationHistory(req.Query, docs, historyMessages, semanticHistory)
+	messages := c.historyMgr.BuildPromptMessages(req.Query, docs, historyMessages, semanticHistory, req.ExecutionMode, req.CustomInstructions)
 
 	var fullAnswer strings.Builder
 	onTokenWrapper := func(token string) error {
@@ -169,6 +204,19 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 	}
 
 	return citations, newSources, contextMeta, nil
+}
+
+func (c *Controller) persistTurn(req ChatRequest, answer string) {
+	if req.NotebookID == "" {
+		return
+	}
+	if c.repo != nil {
+		_, _ = c.repo.AddMessage(req.NotebookID, "user", req.Query)
+		_, _ = c.repo.AddMessage(req.NotebookID, "assistant", answer)
+	}
+	if c.memoryRetriever != nil {
+		c.memoryRetriever.SaveTurn(req.NotebookID, req.Query, answer)
+	}
 }
 
 func (c *Controller) getConversationHistory(req ChatRequest) []llm.Message {

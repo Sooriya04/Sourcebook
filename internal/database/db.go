@@ -155,6 +155,31 @@ func createTables(db *sql.DB) error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS custom_prompts (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT DEFAULT '',
+			instructions TEXT NOT NULL,
+			category TEXT DEFAULT 'Saved',
+			tags_json TEXT DEFAULT '[]',
+			execution_mode TEXT DEFAULT 'standard',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE TABLE IF NOT EXISTS prompt_executions (
+			id TEXT PRIMARY KEY,
+			notebook_id TEXT DEFAULT '',
+			notebook_title TEXT DEFAULT '',
+			prompt_name TEXT NOT NULL,
+			description TEXT DEFAULT '',
+			instructions TEXT NOT NULL,
+			execution_mode TEXT DEFAULT 'standard',
+			source_mode TEXT DEFAULT 'all',
+			source_count INTEGER DEFAULT 0,
+			status TEXT DEFAULT 'completed',
+			executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_prompt_exec_time ON prompt_executions(executed_at DESC);`,
 		`CREATE INDEX IF NOT EXISTS idx_yt_chat_video_id ON youtube_chat_messages(video_id, created_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_sources_notebook_id ON sources(notebook_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_document_chunks_notebook_id ON document_chunks(notebook_id);`,

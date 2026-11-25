@@ -6,10 +6,19 @@ import {
   Network, 
   FileText, 
   HelpCircle, 
-  FileBarChart
+  FileBarChart,
+  Terminal
 } from 'lucide-react';
 
-export default function StudioToolsGrid({ activeMode, setActiveMode, studyTab, setStudyTab }) {
+export default function StudioToolsGrid({
+  activeMode,
+  setActiveMode,
+  studyTab,
+  setStudyTab,
+  hasAudioOverview = false,
+  onOpenAudioDialog,
+  onOpenPromptStudio
+}) {
   const tools = [
     {
       id: 'chat',
@@ -21,12 +30,26 @@ export default function StudioToolsGrid({ activeMode, setActiveMode, studyTab, s
       isActive: activeMode === 'chat'
     },
     {
+      id: 'prompt',
+      title: 'Prompt Studio',
+      icon: <Terminal size={14} color="#818cf8" />,
+      action: () => {
+        onOpenPromptStudio?.();
+      },
+      isActive: false
+    },
+    {
       id: 'audio',
       title: 'Audio Overview',
       icon: <Headphones size={14} color="#34d399" />,
+      badge: hasAudioOverview,
       action: () => {
-        setActiveMode?.('study');
-        setStudyTab?.('audio');
+        if (hasAudioOverview) {
+          setActiveMode?.('study');
+          setStudyTab?.('audio');
+        } else {
+          onOpenAudioDialog?.();
+        }
       },
       isActive: activeMode === 'study' && studyTab === 'audio'
     },
@@ -116,9 +139,22 @@ export default function StudioToolsGrid({ activeMode, setActiveMode, studyTab, s
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {tool.icon}
           </span>
-          <span style={{ fontSize: '0.76rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: '0.76rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
             {tool.title}
           </span>
+          {tool.badge && (
+            <span
+              title="Generated"
+              aria-label="Generated"
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '9999px',
+                backgroundColor: '#34d399',
+                flexShrink: 0
+              }}
+            />
+          )}
         </button>
       ))}
     </div>

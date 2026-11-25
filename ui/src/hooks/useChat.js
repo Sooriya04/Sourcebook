@@ -28,14 +28,17 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }
   };
 
-  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null, scopedSourceIds = [], baseMessages = null) => {
-    if (!queryText?.trim() || loading) return;
+  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null, scopedSourceIds = [], baseMessages = null, extraOptions = null) => {
+    if (!queryText?.trim() || loading) return false;
 
     // Abort any existing stream
     stopStream();
 
+    const promptMeta = extraOptions?.promptMeta || null;
     const currentMessages = baseMessages || messages;
-    const userMessage = { role: 'user', content: queryText };
+    const userMessage = promptMeta
+      ? { role: 'user', content: queryText, promptMeta }
+      : { role: 'user', content: queryText };
     const history = overrideHistory || currentMessages.map(m => ({
       role: m.role,
       content: m.content
@@ -47,13 +50,14 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     
     setMessages([
       ...newMessages,
-      { role: 'assistant', content: '', sources: [], context: '', loading: true }
+      { role: 'assistant', content: '', sources: [], context: '', loading: true, ...(promptMeta ? { promptMeta } : {}) }
     ]);
     setLoading(true);
     setStreamPhase('retrieving');
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    let hadError = false;
 
     try {
       await chatQueryStream({
@@ -63,6 +67,8 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
         scopedSourceIds: Array.isArray(scopedSourceIds) ? scopedSourceIds : [],
         mode,
         history,
+        executionMode: extraOptions?.executionMode,
+        customInstructions: extraOptions?.customInstructions,
         abortSignal: controller.signal,
         onChunk: (token) => {
           setStreamPhase('synthesizing');
@@ -100,6 +106,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
           }
         },
         onError: (errMsg) => {
+          hadError = true;
           setMessages(prev => {
             const next = [...prev];
             if (next[assistantIndex]) {
@@ -116,8 +123,10 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
           });
         }
       });
+      return !hadError;
     } catch (err) {
       console.error('SSE Error:', err);
+      return false;
     } finally {
       setLoading(false);
       abortControllerRef.current = null;

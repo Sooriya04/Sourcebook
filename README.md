@@ -102,7 +102,8 @@ Configure inference endpoints, credentials, and search providers directly within
 ## 🎨 Interactive Capabilities
 
 - **Resilient 3-Panel Workspace**: Dynamic layout with collapsible panels for Sources, Chat, and Study Studio.
-- **Deep Dive Audio Podcast**: Synthesizes 2-host conversational dialogues from your notebook sources using local Kokoro-82M TTS with real-time progress streaming.
+- **Prompt Studio (Custom Research Instructions)**: Write and run custom instructions directly against all sources, checked sources, or ungrounded general mode, with Standard vs. Custom Priority execution modes, a searchable Prompt Library (9 built-in templates + saved prompts), and persistent execution history.
+- **Audio Overview**: Lightweight modal configuration for 2-host Kokoro-82M TTS discussions, honest real-time SSE generation progress, a compact audio player, and collapsible summary, takeaways, and clickable transcript sections.
 - **YouTube Watch & Chat Cockpit (`/youtube/:videoId`)**: Watch YouTube videos with interactive chapter navigation and ask questions with exact timestamp-grounded citations.
 - **Executive Notebook Briefings**: Instant executive summaries, key topics, and suggested exploration prompts generated for each notebook.
 - **Global Drag & Drop**: Drop `.pdf`, `.md`, or `.txt` files anywhere onto the workspace to ingest immediately.
@@ -130,6 +131,9 @@ All core API endpoints are versioned under `/api/sourcebook/v1/`:
 | `GET` | `/api/sourcebook/v1/notebooks/{id}/guide` | Get executive summary briefing and exploration questions |
 | `POST` | `/api/sourcebook/v1/chat` | Grounded RAG query synthesis (JSON response) |
 | `POST` | `/api/sourcebook/v1/chat/stream` | Real-time grounded RAG synthesis via SSE |
+| `GET/POST` | `/api/sourcebook/v1/prompts` | List and save custom Prompt Studio templates |
+| `PUT/DELETE` | `/api/sourcebook/v1/prompts/{id}` | Update or delete a saved custom prompt |
+| `GET/POST/PATCH` | `/api/sourcebook/v1/prompts/history` | List, record, or update Prompt Studio execution history |
 | `POST` | `/api/sourcebook/v1/study/podcast/stream` | Stream 2-host audio podcast synthesis via SSE |
 | `GET` | `/api/sourcebook/v1/study/podcast/episodes`| List generated podcast episodes for a notebook |
 | `GET` | `/api/sourcebook/v1/study/audio/{id}` | Stream generated `.wav` audio or episode metadata |

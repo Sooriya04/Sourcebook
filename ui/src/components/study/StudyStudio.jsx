@@ -54,6 +54,11 @@ export default function StudyStudio({
   audioPlayer,
   episodes,
   onEpisodesChange,
+  isAudioDialogOpen,
+  onOpenAudioDialog,
+  onCloseAudioDialog,
+  pendingAudioGen,
+  onClearPendingAudioGen,
   onAddNote
 }) {
   const [flashcards, setFlashcards] = useState([]);
@@ -274,6 +279,11 @@ export default function StudyStudio({
             audioPlayer={audioPlayer}
             parentEpisodes={episodes}
             onEpisodesChange={onEpisodesChange}
+            isDialogOpen={isAudioDialogOpen}
+            onOpenDialog={onOpenAudioDialog}
+            onCloseDialog={onCloseAudioDialog}
+            pendingAudioGen={pendingAudioGen}
+            onClearPendingAudioGen={onClearPendingAudioGen}
             onAddNote={onAddNote}
           />
         )}

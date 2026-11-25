@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Bookmark, RotateCcw } from 'lucide-react';
+import { Copy, Check, Bookmark, RotateCcw, Terminal } from 'lucide-react';
 
 const FOLLOW_UPS = [
   'Summarize key takeaways',
@@ -12,7 +12,8 @@ export default function MessageActions({
   isLatest,
   onSaveNote,
   onSendMessage,
-  onRegenerate
+  onRegenerate,
+  onEditPrompt
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -65,6 +66,18 @@ export default function MessageActions({
           {saved ? <Check size={12} /> : <Bookmark size={12} />}
           <span>{saved ? 'Saved' : 'Save Note'}</span>
         </button>
+
+        {onEditPrompt && (
+          <button
+            type="button"
+            onClick={onEditPrompt}
+            title="Edit prompt in Prompt Studio"
+            className="chat-action-btn"
+          >
+            <Terminal size={12} />
+            <span>Edit Prompt</span>
+          </button>
+        )}
 
         {isLatest && onRegenerate && (
           <button

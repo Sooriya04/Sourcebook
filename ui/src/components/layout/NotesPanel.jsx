@@ -6,7 +6,7 @@ import SavedNotesList from './SavedNotesList';
 
 export default function NotesPanel({ 
   notes = [], episodes = [], notebookTitle = '', sourcesCount = 0, audioPlayer = {},
-  onAddNote, onUpdateNote, onDeleteNote, onDeleteEpisode, onRenameEpisode,
+  onAddNote, onUpdateNote, onDeleteNote, onDeleteEpisode, onRenameEpisode, onOpenAudioDialog, onOpenPromptStudio,
   activeMode, setActiveMode, isCollapsed, onToggleCollapse, studyTab, setStudyTab
 }) {
   const [editorNote, setEditorNote] = useState(null);
@@ -113,6 +113,9 @@ export default function NotesPanel({
               setActiveMode={setActiveMode}
               studyTab={studyTab}
               setStudyTab={setStudyTab}
+              hasAudioOverview={episodes.length > 0}
+              onOpenAudioDialog={onOpenAudioDialog}
+              onOpenPromptStudio={onOpenPromptStudio}
             />
 
             <SavedNotesList
