@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getPodcastVoices, getPodcastEpisodes, streamPodcastGeneration } from '../../services/sourcebookApi';
 import PodcastConfigBar from './PodcastConfigBar';
 import PodcastPlayerCard from './PodcastPlayerCard';
@@ -19,9 +19,6 @@ export default function AudioOverviewView({
   const [summary, setSummary] = useState('');
   const [takeaways, setTakeaways] = useState([]);
   const [episodes, setEpisodes] = useState(() => parentEpisodes || []);
-  useEffect(() => {
-    if (parentEpisodes) setEpisodes(parentEpisodes);
-  }, [parentEpisodes]);
   const [activeEpId, setActiveEpId] = useState('');
   const [voices, setVoices] = useState([]);
   const [options, setOptions] = useState({
@@ -32,12 +29,24 @@ export default function AudioOverviewView({
     focus_source: ''
   });
 
+  const applyEpisode = useCallback((ep) => {
+    if (!ep) return;
+    setActiveEpId(ep.id);
+    if (ep.turns) setTurns(ep.turns);
+    if (ep.summary) setSummary(ep.summary);
+    if (ep.takeaways) setTakeaways(ep.takeaways);
+    setStatusInfo(null);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (parentEpisodes && parentEpisodes.length > 0) {
       setEpisodes(parentEpisodes);
-      if (!activeEpId) applyEpisode(parentEpisodes[0]);
+      if (!activeEpId || !parentEpisodes.some((e) => e.id === activeEpId)) {
+        applyEpisode(parentEpisodes[0]);
+      }
     }
-  }, [parentEpisodes]);
+  }, [parentEpisodes, activeEpId, applyEpisode]);
 
   useEffect(() => {
     if (!notebookId) return;
@@ -51,17 +60,7 @@ export default function AudioOverviewView({
       });
     }
     getPodcastVoices().then(setVoices);
-  }, [notebookId]);
-
-  const applyEpisode = (ep) => {
-    if (!ep) return;
-    setActiveEpId(ep.id);
-    if (ep.turns) setTurns(ep.turns);
-    if (ep.summary) setSummary(ep.summary);
-    if (ep.takeaways) setTakeaways(ep.takeaways);
-    setStatusInfo(null);
-    setLoading(false);
-  };
+  }, [notebookId, parentEpisodes, onEpisodesChange, applyEpisode]);
 
   const handleGenerate = async () => {
     if (!notebookId || loading) return;

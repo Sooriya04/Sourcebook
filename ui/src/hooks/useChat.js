@@ -21,14 +21,6 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     setMessages(initialMessages);
   }, [initialMessages]);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
-
   const stopStream = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
