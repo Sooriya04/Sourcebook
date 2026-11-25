@@ -2,25 +2,17 @@ import React from 'react';
 import { ArrowUp, Square, X } from 'lucide-react';
 
 export default function PromptActionButtons({ query, loading, onClear, onStop }) {
+  const canSend = Boolean(query?.trim());
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+    <div className="chat-composer-actions">
       {query && !loading && (
         <button
           type="button"
           onClick={onClear}
-          title="Clear text"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: '#71717a',
-            cursor: 'pointer',
-            padding: '4px',
-            borderRadius: '50%',
-            display: 'grid',
-            placeItems: 'center',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#f4f4f5'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = '#71717a'; }}
+          title="Clear input"
+          aria-label="Clear input"
+          className="chat-composer-clear-btn"
         >
           <X size={14} />
         </button>
@@ -31,45 +23,20 @@ export default function PromptActionButtons({ query, loading, onClear, onStop })
           type="button"
           onClick={onStop}
           title="Stop generating (Esc)"
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#ef4444',
-            color: '#ffffff',
-            border: 'none',
-            display: 'grid',
-            placeItems: 'center',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
-          onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+          aria-label="Stop generating"
+          className="chat-composer-stop-btn"
         >
-          <Square size={12} fill="#ffffff" />
+          <Square size={11} fill="currentColor" />
         </button>
       ) : (
         <button
           type="submit"
-          disabled={!query?.trim()}
+          disabled={!canSend}
           title="Send query (Enter)"
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            border: 'none',
-            background: query?.trim() ? '#ffffff' : '#2b2d35',
-            color: query?.trim() ? '#111215' : '#717582',
-            display: 'grid',
-            placeItems: 'center',
-            cursor: query?.trim() ? 'pointer' : 'default',
-            outline: 'none',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseDown={(e) => { if (query?.trim()) e.currentTarget.style.transform = 'scale(0.92)'; }}
-          onMouseUp={(e) => { if (query?.trim()) e.currentTarget.style.transform = 'scale(1)'; }}
+          aria-label="Send query"
+          className={`chat-composer-send-btn ${canSend ? 'enabled' : ''}`}
         >
-          <ArrowUp size={16} strokeWidth={2.5} />
+          <ArrowUp size={15} strokeWidth={2.4} />
         </button>
       )}
     </div>

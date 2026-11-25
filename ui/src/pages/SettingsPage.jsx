@@ -137,7 +137,7 @@ export default function SettingsPage() {
       </div>
 
       {toast.message && (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1200 }}>
+        <div style={{ position: 'fixed', bottom: '20px', left: '20px', zIndex: 1200 }}>
           <Toast
             message={toast.message}
             type={toast.type}

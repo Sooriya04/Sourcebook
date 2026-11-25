@@ -14,7 +14,7 @@ import { fetchLLMHealth } from '../../services/sourcebookApi';
 export default function ChatStudio(props) {
   const {
     messages = [], loading = false, streamPhase = 'retrieving', onSendMessage, onStopStream,
-    onClearChat, allSources = [], scopedSourceIds, onCitationClick, activeCitation, onSaveNote,
+    onRegenerate, onClearChat, allSources = [], scopedSourceIds, onCitationClick, activeCitation, onSaveNote,
     chatEndRef, notebookTitle, notebookDescription, isSourcesCollapsed, onToggleSources,
     isStudioCollapsed, onToggleStudio, onAddUrl, onOpenAddSources, guide
   } = props;
@@ -120,6 +120,7 @@ export default function ChatStudio(props) {
                 activeCitation={activeCitation}
                 onSaveNote={(note) => { onSaveNote?.(note); showToast('Saved to Studio notes!', 'success'); }}
                 onSendMessage={handleSend}
+                onRegenerate={onRegenerate ? () => onRegenerate(idx) : undefined}
                 isLatest={idx === messages.length - 1}
               />
             ))}

@@ -1,5 +1,17 @@
-import React from 'react';
-import { Home, Plus, Settings, Download, BookOpen, Globe, Sparkles, Keyboard, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Home,
+  Plus,
+  Settings,
+  Download,
+  BookOpen,
+  Globe,
+  Sparkles,
+  Keyboard,
+  Trash2,
+  Check,
+  X
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import SentinelStatus from '../layout/SentinelStatus';
 
@@ -9,9 +21,9 @@ const MODES = [
   { id: 'hybrid', label: 'Hybrid', icon: <Sparkles size={13} /> }
 ];
 
-export default function NotebookHeader({ 
-  title, 
-  notebookId, 
+export default function NotebookHeader({
+  title,
+  notebookId,
   onExport,
   mode,
   setMode,
@@ -21,44 +33,49 @@ export default function NotebookHeader({
   onCreateNotebook
 }) {
   const navigate = useNavigate();
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const isOnline = llmHealth?.status === 'online';
   const isChecking = llmHealth?.status === 'checking';
   const statusColor = isOnline ? '#10b981' : isChecking ? '#f59e0b' : '#ef4444';
-  const modelName = isOnline ? (llmHealth.model?.split('/')?.pop() || 'Online') : 'Offline';
+  const modelName = isOnline ? (llmHealth.model?.split('/')?.pop() || 'Online') : isChecking ? 'Checking' : 'Offline';
 
   return (
-    <header className="notebook-header-tasteful">
-      {/* Left: Home Button + Notebook Title + Synced badge */}
-      <div className="header-left-cluster">
-        <Link 
-          to="/" 
-          className="header-brand-icon" 
-          title="Home — Back to Notebooks"
-          aria-label="Back to notebooks"
+    <header className="nb-header">
+      {/* LEFT — Notebook Identity */}
+      <div className="nb-header-left">
+        <Link
+          to="/"
+          className="nb-home-btn"
+          title="Back to Workspace"
+          aria-label="Back to Workspace"
         >
-          <div className="brand-logo-glow">
-            <Home size={18} color="#c4c7c5" />
-          </div>
+          <Home size={15} />
         </Link>
-        <h2 className="header-notebook-title">{title}</h2>
+
+        <h1 className="nb-header-title" title={title}>
+          {title || 'Untitled Notebook'}
+        </h1>
+
         <SentinelStatus notebookId={notebookId} />
       </div>
 
-      {/* Center: Sources | Web | Hybrid & LLM controls */}
-      <div className="header-center-controls">
+      {/* CENTER — Research Mode & Model */}
+      <div className="nb-header-center">
         {setMode && (
-          <div className="header-mode-switcher">
-            {MODES.map(item => {
+          <div className="nb-mode-segmented" role="tablist" aria-label="Research mode">
+            {MODES.map((item) => {
               const isActive = mode === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setMode(item.id)}
-                  className={`header-mode-btn ${isActive ? 'active' : ''}`}
+                  className={`nb-mode-btn ${isActive ? 'active' : ''}`}
                 >
-                  {React.cloneElement(item.icon, { color: isActive ? '#38bdf8' : '#8e918f' })}
+                  <span className="nb-mode-icon">{item.icon}</span>
                   <span>{item.label}</span>
                 </button>
               );
@@ -67,70 +84,107 @@ export default function NotebookHeader({
         )}
 
         {llmHealth && (
-          <div
-            onClick={() => navigate('/settings')}
-            title={isOnline ? `${llmHealth.model} (Online)` : 'LLM Offline (Click to configure)'}
-            className="header-llm-badge"
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor }} />
-            <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {modelName}
-            </span>
-          </div>
-        )}
-
-        {onOpenShortcuts && (
-          <button 
-            type="button" 
-            onClick={onOpenShortcuts} 
-            title="Keyboard shortcuts (⌘?)" 
-            className="header-icon-btn"
-          >
-            <Keyboard size={15} />
-          </button>
-        )}
-
-        {onClearChat && (
-          <button
-            type="button"
-            onClick={onClearChat}
-            title="Clear chat history"
-            className="header-icon-btn clear"
-          >
-            <Trash2 size={15} />
-          </button>
+          <>
+            <span className="nb-header-divider" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              title={isOnline ? `Active model: ${llmHealth.model} (Click to configure)` : 'Model offline (Click to configure)'}
+              className="nb-model-selector"
+            >
+              <span className="nb-model-dot" style={{ backgroundColor: statusColor }} />
+              <span className="nb-model-name">{modelName}</span>
+            </button>
+          </>
         )}
       </div>
 
-      {/* Right: + Create notebook + Download + Settings */}
-      <div className="header-right-actions">
-        <button 
+      {/* RIGHT — Notebook Actions */}
+      <div className="nb-header-right">
+        <button
           type="button"
-          className="header-action-pill" 
+          className="nb-create-btn"
           onClick={onCreateNotebook || (() => navigate('/'))}
           title="Create new notebook"
         >
-          <Plus size={15} />
-          <span>Create notebook</span>
+          <Plus size={14} strokeWidth={2.2} />
+          <span>New Notebook</span>
         </button>
 
-        <button 
-          type="button"
-          className="header-icon-btn" 
-          onClick={onExport}
-          title="Export Markdown"
-        >
-          <Download size={16} />
-        </button>
+        <span className="nb-header-divider" aria-hidden="true" />
 
-        <button 
-          type="button"
-          className="header-icon-btn" 
-          onClick={() => navigate('/settings')}
-          title="Settings"
-        >
-          <Settings size={16} />
-        </button>
+        <div className="nb-secondary-actions">
+          {onOpenShortcuts && (
+            <button
+              type="button"
+              onClick={onOpenShortcuts}
+              title="Keyboard shortcuts (⌘?)"
+              aria-label="Keyboard shortcuts"
+              className="nb-icon-btn"
+            >
+              <Keyboard size={15} />
+            </button>
+          )}
+
+          {onClearChat && (
+            confirmClear ? (
+              <div className="nb-clear-confirm" role="group" aria-label="Confirm clear chat">
+                <span className="nb-clear-confirm-label">Clear?</span>
+                <button
+                  type="button"
+                  className="nb-icon-btn danger"
+                  title="Confirm clear chat"
+                  aria-label="Confirm clear chat"
+                  onClick={() => {
+                    onClearChat();
+                    setConfirmClear(false);
+                  }}
+                >
+                  <Check size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="nb-icon-btn"
+                  title="Cancel"
+                  aria-label="Cancel clear chat"
+                  onClick={() => setConfirmClear(false)}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmClear(true)}
+                title="Clear conversation"
+                aria-label="Clear conversation"
+                className="nb-icon-btn danger"
+              >
+                <Trash2 size={15} />
+              </button>
+            )
+          )}
+
+          <button
+            type="button"
+            className="nb-icon-btn"
+            onClick={onExport}
+            title="Export Markdown"
+            aria-label="Export Markdown"
+          >
+            <Download size={15} />
+          </button>
+
+          <button
+            type="button"
+            className="nb-icon-btn"
+            onClick={() => navigate('/settings')}
+            title="Settings"
+            aria-label="Settings"
+          >
+            <Settings size={15} />
+          </button>
+        </div>
       </div>
     </header>
   );
