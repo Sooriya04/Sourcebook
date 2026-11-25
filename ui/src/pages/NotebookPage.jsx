@@ -56,6 +56,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const syncTimeoutRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const skipNextSyncRef = useRef(false);
 
   // Sources & Chat hooks
   const {
@@ -74,6 +75,8 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
   // Load notebook data
   useEffect(() => {
     let isMounted = true;
+    hasLoadedRef.current = false;
+    skipNextSyncRef.current = false;
     if (!id || id === 'undefined') {
       setLoadingNotebook(false);
       return;
@@ -87,6 +90,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
         setNotes(userNotes);
         setMessages(data.messages || EMPTY_ARR);
         hasLoadedRef.current = true;
+        skipNextSyncRef.current = true;
         setLoadingNotebook(false);
       })
       .catch((err) => {
@@ -110,6 +114,10 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
   // Auto-sync debounced
   useEffect(() => {
     if (!hasLoadedRef.current || !notebook?.title) return;
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     syncTimeoutRef.current = setTimeout(() => {
       updateNotebookOnServer(id, {
@@ -342,7 +350,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 chatMode={chatMode}
                 setChatMode={setChatMode}
                 llmHealth={llmHealth}
-                onSaveNote={(note) => setNotes((prev) => [note, ...prev])}
+                onSaveNote={(note) => setNotes((prev) => [{ id: note.id || crypto.randomUUID(), ...note }, ...prev])}
                 chatEndRef={chatEndRef}
                 notebookTitle={notebook.title}
                 notebookDescription={notebook.description}
@@ -383,7 +391,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 audioPlayer={audioPlayer}
                 episodes={episodes}
                 onEpisodesChange={setEpisodes}
-                onAddNote={(n) => setNotes((prev) => [n, ...prev])}
+                onAddNote={(n) => setNotes((prev) => [{ id: n.id || crypto.randomUUID(), ...n }, ...prev])}
               />
             )}
           </ErrorBoundary>
@@ -397,7 +405,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
               notebookTitle={notebook?.title || ''}
               sourcesCount={sources?.length || 0}
               audioPlayer={audioPlayer}
-              onAddNote={(n) => setNotes((prev) => [n, ...prev])}
+              onAddNote={(n) => setNotes((prev) => [{ id: n.id || crypto.randomUUID(), ...n }, ...prev])}
               onUpdateNote={(n) => setNotes((prev) => prev.map((item) => (item.id === n.id ? n : item)))}
               onDeleteNote={(nId) => setNotes((prev) => prev.filter((item) => item.id !== nId))}
               onDeleteEpisode={(epId) => {
