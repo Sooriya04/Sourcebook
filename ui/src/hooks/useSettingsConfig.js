@@ -27,6 +27,7 @@ export function useSettingsConfig() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [toast, setToast] = useState({ message: '', type: 'info' });
+
   const [provider, setProvider] = useState(() => {
     try {
       const saved = localStorage.getItem('sourcebook_active_provider');
@@ -34,6 +35,15 @@ export function useSettingsConfig() {
     } catch { /* ignore */ }
     return 'ollama';
   });
+
+  const [savedProvider, setSavedProvider] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sourcebook_active_provider');
+      if (saved) return saved;
+    } catch { /* ignore */ }
+    return 'ollama';
+  });
+
   const [providerConfigs, setProviderConfigs] = useState(() => {
     try {
       const saved = localStorage.getItem('sourcebook_provider_configs');
@@ -41,14 +51,12 @@ export function useSettingsConfig() {
     } catch { /* ignore */ }
     return { ...DEFAULT_PROVIDER_CONFIGS };
   });
+
   const [testingKey, setTestingKey] = useState(false);
   const [testStatus, setTestStatus] = useState(null);
 
   const handleSelectProvider = (newProvider) => {
     setProvider(newProvider);
-    try {
-      localStorage.setItem('sourcebook_active_provider', newProvider);
-    } catch { /* ignore */ }
   };
 
   useEffect(() => {
@@ -94,23 +102,38 @@ export function useSettingsConfig() {
         }
       });
 
-      const modelsData = await fetchModels();
-      if (modelsData && modelsData.provider) {
-        activeProvider = modelsData.provider;
-        configs[modelsData.provider] = {
-          ...configs[modelsData.provider],
-          baseUrl: modelsData.base_url || configs[modelsData.provider]?.baseUrl,
-          model: modelsData.active || configs[modelsData.provider]?.model,
-          apiKey: modelsData.api_key !== undefined ? modelsData.api_key : configs[modelsData.provider]?.apiKey,
-        };
+      try {
+        const modelsData = await fetchModels();
+        if (modelsData && modelsData.provider) {
+          if (!activeProvider) {
+            activeProvider = modelsData.provider;
+          }
+          configs[modelsData.provider] = {
+            ...configs[modelsData.provider],
+            baseUrl: modelsData.base_url || configs[modelsData.provider]?.baseUrl,
+            model: modelsData.active || configs[modelsData.provider]?.model,
+            apiKey: modelsData.api_key !== undefined ? modelsData.api_key : configs[modelsData.provider]?.apiKey,
+          };
+        }
+      } catch (e) {
+        console.warn('fetchModels warning:', e);
       }
 
-      if (activeProvider) {
-        setProvider(activeProvider);
+      if (!activeProvider) {
         try {
-          localStorage.setItem('sourcebook_active_provider', activeProvider);
+          activeProvider = localStorage.getItem('sourcebook_active_provider');
         } catch { /* ignore */ }
       }
+      if (!activeProvider) {
+        activeProvider = 'ollama';
+      }
+
+      setProvider(activeProvider);
+      setSavedProvider(activeProvider);
+      try {
+        localStorage.setItem('sourcebook_active_provider', activeProvider);
+        localStorage.setItem('sourcebook_provider_configs', JSON.stringify(configs));
+      } catch { /* ignore */ }
       setProviderConfigs(configs);
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -165,17 +188,25 @@ export function useSettingsConfig() {
     setSaveMessage('');
     const cfg = getCurrentConfig();
     try {
-      try {
-        localStorage.setItem('sourcebook_active_provider', provider);
-      } catch { /* ignore */ }
+      const updatedConfigs = {
+        ...providerConfigs,
+        [provider]: {
+          ...(providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider] || {}),
+          baseUrl: cfg.baseUrl,
+          model: cfg.model,
+          apiKey: cfg.apiKey
+        }
+      };
+
       const payload = {
         ...settings,
         llm_provider: provider,
         llm_base_url: cfg.baseUrl,
         llm_model: cfg.model,
         llm_api_key: cfg.apiKey,
-        provider_configs: JSON.stringify(providerConfigs)
+        provider_configs: JSON.stringify(updatedConfigs)
       };
+
       await updateSettings(payload);
       await updateModelConfig({
         provider,
@@ -183,6 +214,14 @@ export function useSettingsConfig() {
         model: cfg.model,
         apiKey: cfg.apiKey
       });
+
+      setSavedProvider(provider);
+      setProviderConfigs(updatedConfigs);
+      try {
+        localStorage.setItem('sourcebook_active_provider', provider);
+        localStorage.setItem('sourcebook_provider_configs', JSON.stringify(updatedConfigs));
+      } catch { /* ignore */ }
+
       setSaveMessage('Settings saved successfully!');
       setToast({ message: 'Configuration saved to SQLite persistent store', type: 'success' });
       setTimeout(() => setSaveMessage(''), 3000);
@@ -197,7 +236,7 @@ export function useSettingsConfig() {
 
   return {
     activeTab, setActiveTab, settings, handleChange,
-    provider, setProvider: handleSelectProvider, providerConfigs, handleConfigChange,
+    provider, savedProvider, setProvider: handleSelectProvider, providerConfigs, handleConfigChange,
     loading, saving, saveMessage, toast, setToast,
     testingKey, testStatus, handleTestConnection, handleSave
   };

@@ -16,6 +16,7 @@ export default function SettingsPage() {
     settings,
     handleChange,
     provider,
+    savedProvider,
     setProvider,
     providerConfigs,
     handleConfigChange,
@@ -68,6 +69,7 @@ export default function SettingsPage() {
           {activeTab === 'llm' && (
             <LLMSettingsTab
               provider={provider}
+              savedProvider={savedProvider}
               setProvider={setProvider}
               providerConfigs={providerConfigs}
               onChangeConfig={handleConfigChange}

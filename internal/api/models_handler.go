@@ -37,8 +37,32 @@ func (a *API) HandleModels(w http.ResponseWriter, r *http.Request) {
 		activeModel := ""
 		apiKey := ""
 
+		if a.repo != nil {
+			if s, err := a.repo.GetSettings(); err == nil && s != nil && s.LLMProvider != "" {
+				provider = s.LLMProvider
+				baseURL = s.LLMBaseURL
+				activeModel = s.LLMModel
+				apiKey = s.LLMAPIKey
+				if a.llmClient != nil {
+					a.llmClient.SetConfig(provider, baseURL, activeModel, apiKey)
+				}
+			}
+		}
+
 		if a.llmClient != nil {
-			provider, baseURL, activeModel, apiKey = a.llmClient.GetConfig()
+			p, u, m, k := a.llmClient.GetConfig()
+			if p != "" {
+				provider = p
+			}
+			if u != "" {
+				baseURL = u
+			}
+			if m != "" {
+				activeModel = m
+			}
+			if k != "" {
+				apiKey = k
+			}
 		}
 
 		var modelsList []modelInfo

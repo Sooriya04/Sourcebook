@@ -54,11 +54,13 @@ const PROVIDER_OPTIONS = [
   }
 ];
 
-export default function ProviderCardSelector({ provider, onSelectProvider }) {
+export default function ProviderCardSelector({ provider, savedProvider, onSelectProvider }) {
   return (
     <div className="provider-grid">
       {PROVIDER_OPTIONS.map((p) => {
         const isSelected = provider === p.id;
+        const isActive = savedProvider === p.id;
+
         return (
           <div
             key={p.id}
@@ -76,15 +78,24 @@ export default function ProviderCardSelector({ provider, onSelectProvider }) {
             <div>
               <div className="provider-card-header">
                 <span className="provider-card-title">{p.label}</span>
-                {isSelected ? (
-                  <span className="provider-check-pill" title="Active selection">
-                    <Check size={10} strokeWidth={3} />
-                  </span>
-                ) : (
-                  <Badge variant="neutral" size="sm">
-                    {p.tag}
-                  </Badge>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {isActive && (
+                    <Badge variant="primary" size="sm">
+                      Active
+                    </Badge>
+                  )}
+                  {isSelected ? (
+                    <span className="provider-check-pill" title="Selected for editing">
+                      <Check size={10} strokeWidth={3} />
+                    </span>
+                  ) : (
+                    !isActive && (
+                      <Badge variant="neutral" size="sm">
+                        {p.tag}
+                      </Badge>
+                    )
+                  )}
+                </div>
               </div>
               <p className="provider-card-desc">{p.desc}</p>
             </div>

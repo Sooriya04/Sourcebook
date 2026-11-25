@@ -145,21 +145,29 @@ func (c *Client) GetModel() string {
 func (c *Client) SetConfig(provider, baseURL, model, apiKey string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if provider != "" {
-		c.provider = strings.TrimSpace(provider)
+
+	providerTrimmed := strings.TrimSpace(provider)
+	providerChanged := providerTrimmed != "" && !strings.EqualFold(c.provider, providerTrimmed)
+
+	if providerTrimmed != "" {
+		c.provider = providerTrimmed
 	}
 	if baseURL != "" {
 		c.baseURL = strings.TrimSuffix(strings.TrimSpace(baseURL), "/")
-	} else if provider != "" && c.baseURL == "" {
+	} else if providerChanged || c.baseURL == "" {
 		c.baseURL = DefaultBaseURL(c.provider)
 	}
 	if model != "" {
 		c.model = strings.TrimSpace(model)
-	} else if provider != "" && c.model == "" {
+	} else if providerChanged || c.model == "" {
 		c.model = DefaultModel(c.provider)
 	}
 	if apiKey != "" {
 		c.apiKey = strings.TrimSpace(apiKey)
+	} else if providerChanged {
+		if strings.ToLower(c.provider) == "ollama" {
+			c.apiKey = ""
+		}
 	} else if strings.ToLower(c.provider) == "ollama" {
 		c.apiKey = ""
 	}

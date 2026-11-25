@@ -9,6 +9,7 @@ import { DEFAULT_PROVIDER_CONFIGS } from '../../constants/providerDefaults';
 
 export default function LLMSettingsTab({
   provider,
+  savedProvider,
   setProvider,
   providerConfigs,
   onChangeConfig,
@@ -18,6 +19,7 @@ export default function LLMSettingsTab({
 }) {
   const meta = DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.ollama || DEFAULT_PROVIDER_CONFIGS.openai;
   const current = (providerConfigs && providerConfigs[provider]) || meta;
+  const isPending = savedProvider && provider !== savedProvider;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
@@ -26,13 +28,21 @@ export default function LLMSettingsTab({
         title="Inference Provider & Model Protocol"
         description="Select the inference backend and configure connection parameters for grounded RAG synthesis."
         badge={
-          <Badge variant="primary" size="sm">
-            Active: {provider}
-          </Badge>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Badge variant="primary" size="sm">
+              Active: {savedProvider || provider}
+            </Badge>
+            {isPending && (
+              <Badge variant="warning" size="sm">
+                Selected: {provider} (Unsaved)
+              </Badge>
+            )}
+          </div>
         }
       >
         <ProviderCardSelector
           provider={provider}
+          savedProvider={savedProvider}
           onSelectProvider={setProvider}
         />
 
