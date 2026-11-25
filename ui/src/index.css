@@ -1603,8 +1603,10 @@
 /* --- Settings Page Introduction --- */
 .settings-intro {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding-bottom: 14px;
   flex-shrink: 0;
 }
@@ -1613,62 +1615,31 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0;
-  margin-bottom: 10px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
+  height: 30px;
+  padding: 0 10px;
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
-  transition: color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .settings-back-btn-top:hover {
   color: var(--text-primary);
-}
-
-.settings-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.74rem;
-  color: var(--text-dim);
-  margin-bottom: 4px;
-}
-
-.settings-breadcrumb-link {
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.settings-breadcrumb-link:hover {
-  color: var(--text-primary);
-}
-
-.settings-breadcrumb-sep {
-  color: var(--text-dim);
-}
-
-.settings-breadcrumb-current {
-  color: var(--text-secondary);
+  background-color: var(--surface-2);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .settings-main-title {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 600;
   letter-spacing: -0.025em;
   color: var(--text-primary);
   margin: 0;
-  line-height: 1.25;
-}
-
-.settings-main-desc {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  margin: 2px 0 0;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
 /* --- Minimal Horizontal Tab Navigation --- */

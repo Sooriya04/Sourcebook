@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSettingsConfig } from '../hooks/useSettingsConfig';
 import LLMSettingsTab from '../components/settings/LLMSettingsTab';
 import SearchSettingsTab from '../components/settings/SearchSettingsTab';
@@ -53,29 +53,17 @@ export default function SettingsPage() {
   return (
     <div className="settings-page-container">
       <div className="settings-page-inner">
-        {/* Exact Settings Introduction Hierarchy */}
+        {/* Clean Aligned Header: Settings + Back to Workspace */}
         <header className="settings-intro">
+          <h1 className="settings-main-title">Settings</h1>
           <button
             type="button"
             onClick={() => navigate('/')}
             className="settings-back-btn-top"
           >
-            <ArrowLeft size={13} />
+            <ArrowLeft size={14} />
             <span>Back to Workspace</span>
           </button>
-
-          <nav className="settings-breadcrumb" aria-label="Breadcrumb">
-            <Link to="/" className="settings-breadcrumb-link">
-              Workspace
-            </Link>
-            <span className="settings-breadcrumb-sep">/</span>
-            <span className="settings-breadcrumb-current">Settings</span>
-          </nav>
-
-          <h1 className="settings-main-title">Settings</h1>
-          <p className="settings-main-desc">
-            Manage your research infrastructure, providers, and integrations.
-          </p>
         </header>
 
         {/* Minimal Horizontal Category Navigation */}
