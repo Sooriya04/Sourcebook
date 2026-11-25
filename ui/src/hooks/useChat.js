@@ -18,7 +18,7 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
   }, []);
 
   useEffect(() => {
-    setMessages(initialMessages);
+    setMessages((prev) => (prev.length === 0 && initialMessages.length === 0 ? prev : initialMessages));
   }, [initialMessages]);
 
   const stopStream = () => {

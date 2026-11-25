@@ -47,12 +47,6 @@ func (a *API) HandleParseAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	whisperBin := findWhisperBinary()
-	if whisperBin == "" {
-		sendDocError(w, http.StatusServiceUnavailable, "Whisper CLI is not installed or available on the host system")
-		return
-	}
-
 	// 200MB max upload for audio files
 	if err := r.ParseMultipartForm(200 << 20); err != nil {
 		sendDocError(w, http.StatusBadRequest, "Audio file too large or invalid multipart form")
@@ -83,6 +77,12 @@ func (a *API) HandleParseAudio(w http.ResponseWriter, r *http.Request) {
 	}
 	if !allowedExts[ext] {
 		sendDocError(w, http.StatusBadRequest, fmt.Sprintf("Unsupported audio format '%s'. Supported: .mp3, .wav, .m4a, .ogg, .flac, .aac, .webm, .opus", ext))
+		return
+	}
+
+	whisperBin := findWhisperBinary()
+	if whisperBin == "" {
+		sendDocError(w, http.StatusServiceUnavailable, "Whisper CLI is not installed or available on the host system")
 		return
 	}
 
