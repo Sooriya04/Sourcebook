@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Layers, Server, Bot, Save } from 'lucide-react';
-import { 
-  SettingsWorkspace, 
-  ServiceDirectory, 
-  ConfigurationPanel 
+import {
+  SettingsWorkspace,
+  ServiceDirectory,
+  ConfigurationPanel,
+  ConnectionStatus
 } from './workspace';
 import { SettingsField, SettingsInput } from './common';
-import Badge from '../ui/Badge';
 import Spinner from '../ui/Spinner';
 
 const EMBEDDING_GROUPS = [
@@ -16,29 +16,26 @@ const EMBEDDING_GROUPS = [
       {
         id: 'local',
         name: 'Local Sentence-Transformers',
-        desc: 'Built-in Python embedding engine running entirely offline on CPU/GPU',
-        tag: 'Built-in',
-        icon: <Layers size={14} />
+        desc: 'Built-in Python embedding engine running completely offline on CPU or GPU.',
+        icon: <Layers size={15} />
       },
       {
         id: 'ollama',
         name: 'Ollama Embeddings API',
-        desc: 'Dense embeddings generated via local Ollama daemon (/api/embeddings)',
-        tag: 'Local Ollama',
-        icon: <Server size={14} />
+        desc: 'Dense vector embeddings generated via local Ollama daemon (/api/embeddings).',
+        icon: <Server size={15} />
       },
       {
         id: 'openai',
         name: 'OpenAI Embeddings API',
-        desc: 'Cloud or proxy embeddings using text-embedding-3-small or custom specs',
-        tag: 'Cloud / Proxy',
-        icon: <Bot size={14} />
+        desc: 'Cloud or proxy embeddings using text-embedding-3-small or custom endpoints.',
+        icon: <Bot size={15} />
       }
     ]
   }
 ];
 
-export default function EmbeddingSettingsTab({ settings, onChange, onSave, saving }) {
+export default function EmbeddingSettingsTab({ settings, onChange, onSave, saving, isDirty }) {
   const [selectedService, setSelectedService] = useState(() => settings.embedding_provider || 'local');
   const [showMobileConfig, setShowMobileConfig] = useState(false);
 
@@ -56,18 +53,17 @@ export default function EmbeddingSettingsTab({ settings, onChange, onSave, savin
 
   return (
     <SettingsWorkspace>
-      {/* Left Panel: Embeddings Directory */}
       <div className={`settings-workspace-left ${showMobileConfig ? 'mobile-hidden' : ''}`}>
         <ServiceDirectory
-          searchPlaceholder="Search embedding backends..."
+          searchPlaceholder="Search integrations..."
           groups={EMBEDDING_GROUPS}
           selectedId={selectedService}
           onSelectItem={handleSelectService}
           activeId={activeProvider}
+          getItemStatus={(id) => (id === activeProvider ? 'active' : 'configured')}
         />
       </div>
 
-      {/* Right Panel: Configuration Workspace */}
       <div className={`settings-workspace-right ${!showMobileConfig ? 'mobile-hidden' : ''}`}>
         <ConfigurationPanel
           title={currentItem.name}
@@ -75,36 +71,24 @@ export default function EmbeddingSettingsTab({ settings, onChange, onSave, savin
           icon={currentItem.icon}
           showBackButton={showMobileConfig}
           onBack={() => setShowMobileConfig(false)}
-          badge={
-            isActive ? (
-              <Badge variant="primary" size="sm">
-                Active Provider
-              </Badge>
-            ) : (
-              <Badge variant="neutral" size="sm">
-                Configuring
-              </Badge>
-            )
-          }
+          isDirty={isDirty}
+          statusIndicator={<ConnectionStatus state={isActive ? 'active' : 'configured'} />}
           actions={
-            <div className="settings-form-actions-cluster">
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={saving}
-                className="btn-primary compact"
-              >
-                {saving ? <Spinner size={13} color="var(--text-primary)" /> : <Save size={14} />}
-                <span>{saving ? 'Saving...' : 'Save Settings'}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="btn-primary compact"
+            >
+              {saving ? <Spinner size={13} color="var(--text-primary)" /> : <Save size={14} />}
+              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+            </button>
           }
         >
-          <div className="settings-fields-stack">
-            {/* Model Name */}
+          <div className="config-fields-group">
             <SettingsField
               label="Embedding Model Name"
-              hint="Target model weights (e.g. nomic-embed-text, all-MiniLM-L6-v2, text-embedding-3-small)"
+              hint="Target model identifier (e.g. nomic-embed-text, all-MiniLM-L6-v2, text-embedding-3-small)"
             >
               <SettingsInput
                 type="text"
@@ -115,11 +99,14 @@ export default function EmbeddingSettingsTab({ settings, onChange, onSave, savin
               />
             </SettingsField>
 
-            {/* Endpoint URL (if not built-in local) */}
             {selectedService !== 'local' && (
               <SettingsField
                 label="Embedding Endpoint URL"
-                hint={selectedService === 'ollama' ? 'Ollama endpoint (e.g. http://localhost:11434)' : 'OpenAI-compatible embeddings URL'}
+                hint={
+                  selectedService === 'ollama'
+                    ? 'Ollama endpoint (e.g. http://localhost:11434)'
+                    : 'OpenAI-compatible embeddings URL'
+                }
               >
                 <SettingsInput
                   type="text"
@@ -132,8 +119,8 @@ export default function EmbeddingSettingsTab({ settings, onChange, onSave, savin
             )}
 
             {selectedService === 'local' && (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.5, marginTop: '8px' }}>
-                Note: Built-in sentence-transformers runs locally without requiring an external daemon or API key.
+              <p className="config-helper-note">
+                Built-in sentence-transformers runs locally without requiring an external daemon or API key.
               </p>
             )}
           </div>

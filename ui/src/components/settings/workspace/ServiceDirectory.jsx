@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, Check } from 'lucide-react';
-import Badge from '../../ui/Badge';
+import { Search, X } from 'lucide-react';
 import DirectoryEmptyState from './DirectoryEmptyState';
 
 export default function ServiceDirectory({
-  searchPlaceholder = 'Search providers...',
+  searchPlaceholder = 'Search integrations...',
   groups = [],
   selectedId,
   onSelectItem,
-  activeId
+  activeId,
+  getItemStatus
 }) {
   const [search, setSearch] = useState('');
 
@@ -35,22 +35,23 @@ export default function ServiceDirectory({
   const totalMatches = filteredGroups.reduce((acc, g) => acc + g.items.length, 0);
 
   return (
-    <aside className="settings-directory-panel" aria-label="Services directory">
+    <aside className="integration-directory" aria-label="Integrations directory">
       {/* Sticky Search Header */}
-      <div className="settings-directory-search-wrapper">
-        <div className="settings-directory-search-box">
-          <Search size={14} className="settings-directory-search-icon" />
+      <div className="integration-search-header">
+        <div className="integration-search-box">
+          <Search size={14} className="integration-search-icon" />
           <input
             type="text"
-            className="settings-directory-search-input"
+            className="integration-search-input"
             placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={searchPlaceholder}
           />
           {search && (
             <button
               type="button"
-              className="settings-directory-search-clear"
+              className="integration-search-clear"
               onClick={() => setSearch('')}
               aria-label="Clear search"
             >
@@ -60,25 +61,26 @@ export default function ServiceDirectory({
         </div>
       </div>
 
-      {/* Independently Scrollable Directory Body */}
-      <div className="settings-directory-scroll">
+      {/* Scrollable Directory List */}
+      <div className="integration-directory-scroll">
         {totalMatches === 0 ? (
           <DirectoryEmptyState query={search} onClear={() => setSearch('')} />
         ) : (
           filteredGroups.map((group) => (
-            <div key={group.group} className="settings-directory-group">
-              <div className="settings-directory-group-label">{group.group}</div>
-              <div className="settings-directory-group-list" role="list">
+            <div key={group.group} className="integration-group">
+              <div className="integration-group-label">{group.group}</div>
+              <div className="integration-group-list" role="list">
                 {group.items.map((item) => {
                   const isSelected = selectedId === item.id;
                   const isActive = activeId === item.id;
+                  const status = getItemStatus ? getItemStatus(item.id) : null;
 
                   return (
                     <div
                       key={item.id}
                       role="listitem"
                       tabIndex={0}
-                      className={`settings-directory-item ${isSelected ? 'selected' : ''}`}
+                      className={`integration-row ${isSelected ? 'selected' : ''}`}
                       onClick={() => onSelectItem(item.id)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -87,34 +89,35 @@ export default function ServiceDirectory({
                         }
                       }}
                     >
-                      <div className="settings-directory-item-left">
-                        <div className="settings-directory-item-icon">
-                          {item.icon}
-                        </div>
-                        <div className="settings-directory-item-text">
-                          <div className="settings-directory-item-name-line">
-                            <span className="settings-directory-item-name">{item.name}</span>
-                            {isActive && (
-                              <Badge variant="primary" size="sm">
-                                Active
-                              </Badge>
-                            )}
-                          </div>
-                          {item.desc && (
-                            <p className="settings-directory-item-desc">{item.desc}</p>
-                          )}
-                        </div>
+                      <div className="integration-row-icon">
+                        {item.icon}
                       </div>
 
-                      <div className="settings-directory-item-right">
-                        {isSelected ? (
-                          <span className="settings-directory-item-check" title="Selected">
-                            <Check size={11} strokeWidth={3} />
-                          </span>
-                        ) : (
-                          item.tag && (
-                            <span className="settings-directory-item-tag">{item.tag}</span>
-                          )
+                      <div className="integration-row-content">
+                        <div className="integration-row-top">
+                          <span className="integration-row-name">{item.name}</span>
+                          <div className="integration-row-indicators">
+                            {status === 'connected' && (
+                              <span
+                                className="integration-status-dot connected"
+                                title="Connected"
+                              />
+                            )}
+                            {status === 'error' && (
+                              <span
+                                className="integration-status-dot error"
+                                title="Connection error"
+                              />
+                            )}
+                            {isActive && (
+                              <span className="integration-active-pill" title="Active engine">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {item.desc && (
+                          <p className="integration-row-desc">{item.desc}</p>
                         )}
                       </div>
                     </div>

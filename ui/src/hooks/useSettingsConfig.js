@@ -14,10 +14,15 @@ export function useSettingsConfig() {
     search_provider: 'duckduckgo',
     searxng_url: 'http://localhost:8080',
     max_sources: 5,
+    searxng_split: 3,
+    ddg_split: 2,
     searqon_url: 'http://127.0.0.1:4001/scrape/batch',
     youtube_enabled: false,
     youtube_service_url: 'http://127.0.0.1:6001',
+    youtube_max_sources: 3,
     deep_crawl_enabled: false,
+    deep_crawl_limit: 5,
+    deep_crawl_depth: 1,
     embedding_provider: 'local',
     embedding_url: '',
     embedding_model: 'nomic-embed-text'
@@ -27,6 +32,7 @@ export function useSettingsConfig() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [toast, setToast] = useState({ message: '', type: 'info' });
+  const [isDirty, setIsDirty] = useState(false);
 
   const [provider, setProvider] = useState(() => {
     try {
@@ -53,10 +59,13 @@ export function useSettingsConfig() {
   });
 
   const [testingKey, setTestingKey] = useState(false);
-  const [testStatus, setTestStatus] = useState(null);
+  const [testStatuses, setTestStatuses] = useState({});
 
   const handleSelectProvider = (newProvider) => {
     setProvider(newProvider);
+    if (newProvider !== savedProvider) {
+      setIsDirty(true);
+    }
   };
 
   useEffect(() => {
@@ -130,6 +139,7 @@ export function useSettingsConfig() {
 
       setProvider(activeProvider);
       setSavedProvider(activeProvider);
+      setIsDirty(false);
       try {
         localStorage.setItem('sourcebook_active_provider', activeProvider);
         localStorage.setItem('sourcebook_provider_configs', JSON.stringify(configs));
@@ -143,6 +153,7 @@ export function useSettingsConfig() {
   };
 
   const handleConfigChange = (pId, field, value) => {
+    setIsDirty(true);
     setProviderConfigs((prev) => {
       const updated = {
         ...prev,
@@ -154,6 +165,7 @@ export function useSettingsConfig() {
   };
 
   const handleChange = (field, value) => {
+    setIsDirty(true);
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -161,23 +173,28 @@ export function useSettingsConfig() {
 
   const handleTestConnection = async () => {
     setTestingKey(true);
-    setTestStatus(null);
+    const targetProvider = provider;
     const cfg = getCurrentConfig();
+    setTestStatuses((prev) => ({ ...prev, [targetProvider]: { status: 'connecting' } }));
     try {
       const result = await testModelConfig({
-        provider,
+        provider: targetProvider,
         baseUrl: cfg.baseUrl,
         model: cfg.model,
         apiKey: cfg.apiKey
       });
       const successMsg = result.message || 'Connected successfully!';
-      setTestStatus({ valid: true, message: successMsg });
+      setTestStatuses((prev) => ({
+        ...prev,
+        [targetProvider]: { status: 'connected', valid: true, message: successMsg }
+      }));
       setToast({ message: successMsg, type: 'success' });
-      setTimeout(() => setTestStatus(null), 4000);
     } catch (err) {
-      setTestStatus({ valid: false, error: err.message });
+      setTestStatuses((prev) => ({
+        ...prev,
+        [targetProvider]: { status: 'error', valid: false, error: err.message }
+      }));
       setToast({ message: `Connection test failed: ${err.message}`, type: 'error' });
-      setTimeout(() => setTestStatus(null), 4000);
     } finally {
       setTestingKey(false);
     }
@@ -194,7 +211,8 @@ export function useSettingsConfig() {
           ...(providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider] || {}),
           baseUrl: cfg.baseUrl,
           model: cfg.model,
-          apiKey: cfg.apiKey
+          apiKey: cfg.apiKey,
+          orgId: cfg.orgId || ''
         }
       };
 
@@ -217,12 +235,13 @@ export function useSettingsConfig() {
 
       setSavedProvider(provider);
       setProviderConfigs(updatedConfigs);
+      setIsDirty(false);
       try {
         localStorage.setItem('sourcebook_active_provider', provider);
         localStorage.setItem('sourcebook_provider_configs', JSON.stringify(updatedConfigs));
       } catch { /* ignore */ }
 
-      setSaveMessage('Settings saved successfully!');
+      setSaveMessage('Settings saved');
       setToast({ message: 'Configuration saved to SQLite persistent store', type: 'success' });
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
@@ -237,7 +256,7 @@ export function useSettingsConfig() {
   return {
     activeTab, setActiveTab, settings, handleChange,
     provider, savedProvider, setProvider: handleSelectProvider, providerConfigs, handleConfigChange,
-    loading, saving, saveMessage, toast, setToast,
-    testingKey, testStatus, handleTestConnection, handleSave
+    loading, saving, saveMessage, isDirty, toast, setToast,
+    testingKey, testStatus: testStatuses[provider] || null, testStatuses, handleTestConnection, handleSave
   };
 }

@@ -14,7 +14,6 @@ export default function AppShell({
   const isNotebookPage = location.pathname.startsWith('/notebook/');
   const isYouTubeChatPage = location.pathname.startsWith('/youtube/');
   const isSettingsPage = location.pathname === '/settings';
-  const isHomePage = location.pathname === '/';
 
   const [engineStatus, setEngineStatus] = useState('checking');
   const [isChecking, setIsChecking] = useState(false);
@@ -22,13 +21,8 @@ export default function AppShell({
   const checkStatus = async () => {
     setIsChecking(true);
     try {
-      // Check the backend server health directly
       const res = await fetch('/health');
-      if (res.ok) {
-        setEngineStatus('online');
-      } else {
-        setEngineStatus('offline');
-      }
+      setEngineStatus(res.ok ? 'online' : 'offline');
     } catch {
       setEngineStatus('offline');
     } finally {
@@ -54,12 +48,13 @@ export default function AppShell({
         <header className="top-nav-bar">
           <div className="nav-left">
             <Link to="/" className="brand-link" title="SourceBook Workspace">
-              <BookOpen size={16} className="text-accent" />
-              <span className="brand-name font-medium tracking-tight text-[#e3e3e3]">SourceBook</span>
+              <span className="brand-icon-box">
+                <BookOpen size={14} />
+              </span>
+              <span className="brand-name">SourceBook</span>
             </Link>
           </div>
 
-          {/* Global Search Entry Point */}
           <div className="nav-center">
             <GlobalSearch
               notebooks={notebooks}
@@ -69,18 +64,25 @@ export default function AppShell({
           </div>
 
           <div className="nav-right">
-            {/* Live Engine Status Pill with Check Status button */}
             <div
-              className="pipeline-status flex items-center gap-2 rounded-full border border-white/5 bg-[#18191c] px-3.5 py-1 text-xs text-[#c4c7c5] cursor-pointer hover:bg-[#282a2d] transition-all"
+              className="pipeline-status"
+              role="button"
+              tabIndex={0}
               onClick={() => navigate('/settings')}
-              title={`Engine: ${isOnline ? 'Active' : 'Offline'}. Click to configure settings`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate('/settings');
+                }
+              }}
+              title={`Engine: ${isOnline ? 'Online' : 'Offline'}. Click to configure`}
             >
               <span
-                style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: statusColor, flexShrink: 0 }}
-                className={isOnline ? 'shadow-[0_0_8px_rgba(16,185,129,0.5)]' : ''}
+                className={`pipeline-status-dot ${isOnline ? 'online' : ''}`}
+                style={{ backgroundColor: statusColor }}
               />
-              <span className="text-[11px] font-medium font-mono text-[#e3e3e3]">
-                {isOnline ? 'Local Engine' : 'Engine Offline'}
+              <span className="pipeline-status-label">
+                {isOnline ? 'Local Engine' : isPending ? 'Checking...' : 'Engine Offline'}
               </span>
               <button
                 type="button"
@@ -88,8 +90,9 @@ export default function AppShell({
                   e.stopPropagation();
                   checkStatus();
                 }}
-                title="Check status"
-                className="ml-1 p-0.5 rounded-full hover:bg-white/10 text-[#8e918f] hover:text-white transition-all flex items-center justify-center"
+                title="Refresh engine status"
+                aria-label="Refresh engine status"
+                className="pipeline-refresh-btn"
               >
                 <RefreshCw size={11} className={isChecking ? 'animate-spin' : ''} />
               </button>
@@ -99,9 +102,7 @@ export default function AppShell({
               to="/settings"
               title="Application Settings"
               aria-label="Application Settings"
-              className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/5 bg-[#18191c] text-[#c4c7c5] transition-all hover:bg-[#282a2d] hover:text-white ${
-                isSettingsPage ? 'border-white/20 text-white bg-[#282a2d]' : ''
-              }`}
+              className={`nav-settings-btn ${isSettingsPage ? 'active' : ''}`}
             >
               <Settings size={15} />
             </Link>
@@ -109,7 +110,10 @@ export default function AppShell({
         </header>
       )}
 
-      <main className="app-workspace-body" style={{ height: (isNotebookPage || isYouTubeChatPage) ? '100%' : 'calc(100% - 56px)' }}>
+      <main
+        className="app-workspace-body"
+        style={{ height: (isNotebookPage || isYouTubeChatPage) ? '100%' : 'calc(100% - 52px)' }}
+      >
         {children}
       </main>
     </div>

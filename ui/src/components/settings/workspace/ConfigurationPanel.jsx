@@ -1,59 +1,88 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 export default function ConfigurationPanel({
   title,
   description,
   icon,
-  badge,
+  statusIndicator,
+  docsUrl,
   children,
   actions,
   onBack,
-  showBackButton = false
+  showBackButton = false,
+  isDirty = false
 }) {
   return (
-    <section className="settings-config-panel" aria-label="Configuration workspace">
-      {/* Configuration Header */}
-      <div className="settings-config-header">
-        <div className="settings-config-header-left">
+    <section className="config-workspace" aria-label="Configuration workspace">
+      <div className="config-workspace-scroll">
+        <div className="config-workspace-inner">
+          {/* Mobile Back Navigation */}
           {showBackButton && (
             <button
               type="button"
-              className="settings-config-back-btn"
+              className="config-mobile-back-btn"
               onClick={onBack}
-              aria-label="Back to providers directory"
             >
               <ArrowLeft size={14} />
-              <span>Directory</span>
+              <span>All Integrations</span>
             </button>
           )}
 
-          <div className="settings-config-icon-box">
-            {icon}
-          </div>
-
-          <div className="settings-config-title-group">
-            <div className="settings-config-title-line">
-              <h2 className="settings-config-title">{title}</h2>
-              {badge}
+          {/* Configuration Header */}
+          <header className="config-header">
+            <div className="config-header-main">
+              <div className="config-header-icon">
+                {icon}
+              </div>
+              <div className="config-header-text">
+                <div className="config-header-title-row">
+                  <h2 className="config-header-title">{title}</h2>
+                  {statusIndicator}
+                </div>
+                {description && (
+                  <p className="config-header-desc">{description}</p>
+                )}
+              </div>
             </div>
-            {description && (
-              <p className="settings-config-desc">{description}</p>
+
+            {docsUrl && (
+              <a
+                href={docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="config-docs-link"
+              >
+                <span>Docs</span>
+                <ExternalLink size={12} />
+              </a>
             )}
+          </header>
+
+          {/* Configuration Form Body */}
+          <div className="config-form-body">
+            {children}
           </div>
         </div>
       </div>
 
-      {/* Configuration Form Body */}
-      <div className="settings-config-body">
-        {children}
-      </div>
-
-      {/* Configuration Actions */}
+      {/* Persistent Bottom Action Bar */}
       {actions && (
-        <div className="settings-config-actions-bar">
-          {actions}
-        </div>
+        <footer className="config-actions-footer">
+          <div className="config-actions-inner">
+            <div className="config-actions-meta">
+              {isDirty && (
+                <span className="config-dirty-indicator">
+                  <span className="config-dirty-dot" />
+                  Unsaved changes
+                </span>
+              )}
+            </div>
+            <div className="config-actions-buttons">
+              {actions}
+            </div>
+          </div>
+        </footer>
       )}
     </section>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
-import { ArrowLeft, Cpu, Search, Globe, Layers, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Cpu, Search, Globe, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useSettingsConfig } from '../hooks/useSettingsConfig';
 import LLMSettingsTab from '../components/settings/LLMSettingsTab';
 import SearchSettingsTab from '../components/settings/SearchSettingsTab';
@@ -17,8 +17,6 @@ const SETTINGS_CATEGORIES = [
 ];
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
-
   const {
     activeTab,
     setActiveTab,
@@ -31,71 +29,46 @@ export default function SettingsPage() {
     handleConfigChange,
     loading,
     saving,
-    saveMessage,
+    isDirty,
     toast,
     setToast,
     testingKey,
     testStatus,
+    testStatuses,
     handleTestConnection,
     handleSave
   } = useSettingsConfig();
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          height: '100%',
-          width: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#0e0f12',
-          color: '#8e918f',
-          gap: '12px'
-        }}
-      >
-        <Spinner size={18} color="#a8c7fa" />
-        <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>
-          LOADING SETTINGS...
-        </p>
+      <div className="settings-loading-state">
+        <Spinner size={18} color="var(--accent)" />
+        <span>Loading settings...</span>
       </div>
     );
   }
 
-  const isError = saveMessage && (saveMessage.includes('Error') || saveMessage.includes('fail'));
-
   return (
     <div className="settings-page-container">
       <div className="settings-page-inner">
-        {/* Top Header: Branding, Back Link, and Page Title */}
-        <header className="settings-top-header">
-          <div className="settings-title-cluster">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="settings-back-link"
-              title="Return to notebooks"
-            >
-              <ArrowLeft size={13} />
-              <span>Back to Notebooks</span>
-            </button>
+        {/* Settings Introduction */}
+        <header className="settings-intro">
+          <nav className="settings-breadcrumb" aria-label="Breadcrumb">
+            <Link to="/" className="settings-breadcrumb-link">
+              Workspace
+            </Link>
+            <span className="settings-breadcrumb-sep">/</span>
+            <span className="settings-breadcrumb-current">Settings</span>
+          </nav>
 
-            <h1 className="settings-main-title">Settings</h1>
-            <p className="settings-main-desc">
-              Manage your research infrastructure, providers, and integrations.
-            </p>
-          </div>
-
-          {saveMessage && (
-            <div className={`settings-status-banner ${isError ? 'error' : 'success'}`}>
-              {isError ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
-              <span>{saveMessage}</span>
-            </div>
-          )}
+          <h1 className="settings-main-title">Settings</h1>
+          <p className="settings-main-desc">
+            Manage your research infrastructure, providers, and integrations.
+          </p>
         </header>
 
-        {/* Compact Horizontal Category Navigation */}
-        <nav className="settings-category-nav" role="tablist" aria-label="Settings categories">
+        {/* Refined Horizontal Category Navigation */}
+        <nav className="settings-tabs-bar" role="tablist" aria-label="Settings categories">
           {SETTINGS_CATEGORIES.map((cat) => {
             const isActive = activeTab === cat.id;
             return (
@@ -104,10 +77,10 @@ export default function SettingsPage() {
                 type="button"
                 role="tab"
                 aria-selected={isActive}
-                className={`settings-category-tab ${isActive ? 'active' : ''}`}
+                className={`settings-tab-item ${isActive ? 'active' : ''}`}
                 onClick={() => setActiveTab(cat.id)}
               >
-                <span className="tab-icon">{cat.icon}</span>
+                <span className="settings-tab-icon">{cat.icon}</span>
                 <span>{cat.label}</span>
               </button>
             );
@@ -125,9 +98,11 @@ export default function SettingsPage() {
               onChangeConfig={handleConfigChange}
               testingKey={testingKey}
               testStatus={testStatus}
+              testStatuses={testStatuses}
               onTestConnection={handleTestConnection}
               onSave={handleSave}
               saving={saving}
+              isDirty={isDirty}
             />
           )}
 
@@ -137,6 +112,7 @@ export default function SettingsPage() {
               onChange={handleChange}
               onSave={handleSave}
               saving={saving}
+              isDirty={isDirty}
             />
           )}
 
@@ -146,6 +122,7 @@ export default function SettingsPage() {
               onChange={handleChange}
               onSave={handleSave}
               saving={saving}
+              isDirty={isDirty}
             />
           )}
 
@@ -155,12 +132,12 @@ export default function SettingsPage() {
               onChange={handleChange}
               onSave={handleSave}
               saving={saving}
+              isDirty={isDirty}
             />
           )}
         </div>
       </div>
 
-      {/* Floating feedback toast */}
       {toast.message && (
         <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1200 }}>
           <Toast

@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
-import { Globe, PlayCircle, Network, ShieldCheck, Save } from 'lucide-react';
+import { Globe, PlayCircle, Network, ShieldCheck, Save, ChevronRight } from 'lucide-react';
 import { pingSourceURL } from '../../services/sourcebookApi';
-import { 
-  SettingsWorkspace, 
-  ServiceDirectory, 
-  ConfigurationPanel 
+import {
+  SettingsWorkspace,
+  ServiceDirectory,
+  ConfigurationPanel,
+  ConnectionStatus
 } from './workspace';
-import { 
-  SettingsField, 
-  SettingsInput, 
-  SettingsToggleRow, 
-  SettingsActionBtn, 
-  SettingsStatusBanner 
-} from './common';
-import Badge from '../ui/Badge';
+import { SettingsField, SettingsInput, SettingsToggleRow } from './common';
 import Spinner from '../ui/Spinner';
 
 const MEDIA_GROUPS = [
@@ -23,35 +17,33 @@ const MEDIA_GROUPS = [
       {
         id: 'searqon',
         name: 'Searqon Batch Scraper',
-        desc: 'High-throughput parallel Go microservice extracting markdown from web pages',
-        tag: 'Core Scraper',
-        icon: <Globe size={14} />
+        desc: 'Parallel Go microservice extracting clean markdown from web URLs.',
+        icon: <Globe size={15} />
       },
       {
         id: 'youtube',
         name: 'YouTube Transcript Service',
-        desc: 'Direct YouTube video extraction and Whisper audio transcript pipeline',
-        tag: 'Media Ingestion',
-        icon: <PlayCircle size={14} />
+        desc: 'Extract video captions and audio transcripts via Whisper pipeline.',
+        icon: <PlayCircle size={15} />
       },
       {
         id: 'deep_crawl',
         name: 'Deep Web Crawler',
-        desc: 'Multi-hop recursive hyperlink discovery and citation tree indexing',
-        tag: 'Crawl Engine',
-        icon: <Network size={14} />
+        desc: 'Recursive multi-hop link discovery and citation tree indexing.',
+        icon: <Network size={15} />
       }
     ]
   }
 ];
 
-export default function MediaSettingsTab({ settings, onChange, onSave, saving }) {
+export default function MediaSettingsTab({ settings, onChange, onSave, saving, isDirty }) {
   const [selectedService, setSelectedService] = useState('searqon');
   const [testingSearqon, setTestingSearqon] = useState(false);
   const [searqonResult, setSearqonResult] = useState(null);
   const [testingYt, setTestingYt] = useState(false);
   const [ytResult, setYtResult] = useState(null);
   const [showMobileConfig, setShowMobileConfig] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const handleTestSearqon = async () => {
     const url = settings.searqon_url || 'http://127.0.0.1:4001/scrape/batch';
@@ -109,19 +101,36 @@ export default function MediaSettingsTab({ settings, onChange, onSave, saving })
   const allServices = MEDIA_GROUPS.flatMap((g) => g.items);
   const currentItem = allServices.find((s) => s.id === selectedService) || allServices[0];
 
+  const getStatusState = () => {
+    if (selectedService === 'searqon') {
+      if (testingSearqon) return 'connecting';
+      if (searqonResult?.ok) return 'connected';
+      if (searqonResult?.ok === false) return 'error';
+      return settings.searqon_url ? 'configured' : 'not_configured';
+    }
+    if (selectedService === 'youtube') {
+      if (testingYt) return 'connecting';
+      if (ytResult?.ok) return 'connected';
+      if (ytResult?.ok === false) return 'error';
+      return settings.youtube_enabled ? 'active' : 'disconnected';
+    }
+    return settings.deep_crawl_enabled ? 'active' : 'disconnected';
+  };
+
+  const activeBanner = selectedService === 'searqon' ? searqonResult : selectedService === 'youtube' ? ytResult : null;
+  const isTesting = selectedService === 'searqon' ? testingSearqon : testingYt;
+
   return (
     <SettingsWorkspace>
-      {/* Left Panel: Media Services Directory */}
       <div className={`settings-workspace-left ${showMobileConfig ? 'mobile-hidden' : ''}`}>
         <ServiceDirectory
-          searchPlaceholder="Search scraping & media services..."
+          searchPlaceholder="Search integrations..."
           groups={MEDIA_GROUPS}
           selectedId={selectedService}
           onSelectItem={handleSelectService}
         />
       </div>
 
-      {/* Right Panel: Configuration Workspace */}
       <div className={`settings-workspace-right ${!showMobileConfig ? 'mobile-hidden' : ''}`}>
         <ConfigurationPanel
           title={currentItem.name}
@@ -129,13 +138,26 @@ export default function MediaSettingsTab({ settings, onChange, onSave, saving })
           icon={currentItem.icon}
           showBackButton={showMobileConfig}
           onBack={() => setShowMobileConfig(false)}
-          badge={
-            <Badge variant="neutral" size="sm">
-              Service
-            </Badge>
-          }
+          isDirty={isDirty}
+          statusIndicator={<ConnectionStatus state={getStatusState()} />}
           actions={
-            <div className="settings-form-actions-cluster">
+            <>
+              {(selectedService === 'searqon' || selectedService === 'youtube') && (
+                <button
+                  type="button"
+                  onClick={selectedService === 'searqon' ? handleTestSearqon : handleTestYouTube}
+                  disabled={isTesting}
+                  className="btn-secondary compact"
+                >
+                  {isTesting ? (
+                    <Spinner size={13} color="var(--text-primary)" />
+                  ) : (
+                    <ShieldCheck size={14} style={{ color: 'var(--accent)' }} />
+                  )}
+                  <span>{isTesting ? 'Testing...' : 'Test Connection'}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={onSave}
@@ -143,43 +165,34 @@ export default function MediaSettingsTab({ settings, onChange, onSave, saving })
                 className="btn-primary compact"
               >
                 {saving ? <Spinner size={13} color="var(--text-primary)" /> : <Save size={14} />}
-                <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+                <span>{saving ? 'Saving...' : 'Save Changes'}</span>
               </button>
-            </div>
+            </>
           }
         >
-          <div className="settings-fields-stack">
-            {/* Searqon Scraper Config */}
-            {selectedService === 'searqon' && (
-              <>
-                <SettingsField
-                  label="Searqon Batch Scrape URL"
-                  hint="Endpoint for parallel web scraping daemon (default: http://127.0.0.1:4001/scrape/batch)"
-                >
-                  <SettingsInput
-                    type="text"
-                    value={settings.searqon_url || ''}
-                    onChange={(e) => onChange('searqon_url', e.target.value)}
-                    placeholder="http://127.0.0.1:4001/scrape/batch"
-                    mono
-                  />
-                </SettingsField>
+          {activeBanner && (
+            <div className={`settings-inline-banner ${activeBanner.ok ? 'success' : 'error'}`}>
+              <span className="banner-dot" />
+              <span>{activeBanner.message}</span>
+            </div>
+          )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <SettingsActionBtn
-                    onClick={handleTestSearqon}
-                    disabled={testingSearqon}
-                    loading={testingSearqon}
-                    icon={<ShieldCheck size={14} style={{ color: 'var(--accent)' }} />}
-                  >
-                    {testingSearqon ? 'Verifying Searqon...' : 'Test Scraper Connection'}
-                  </SettingsActionBtn>
-                  <SettingsStatusBanner status={searqonResult} />
-                </div>
-              </>
+          <div className="config-fields-group">
+            {selectedService === 'searqon' && (
+              <SettingsField
+                label="Searqon Batch Scrape URL"
+                hint="Endpoint for parallel web scraping daemon (default: http://127.0.0.1:4001/scrape/batch)"
+              >
+                <SettingsInput
+                  type="text"
+                  value={settings.searqon_url || ''}
+                  onChange={(e) => onChange('searqon_url', e.target.value)}
+                  placeholder="http://127.0.0.1:4001/scrape/batch"
+                  mono
+                />
+              </SettingsField>
             )}
 
-            {/* YouTube Service Config */}
             {selectedService === 'youtube' && (
               <>
                 <SettingsToggleRow
@@ -202,18 +215,6 @@ export default function MediaSettingsTab({ settings, onChange, onSave, saving })
                   />
                 </SettingsField>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <SettingsActionBtn
-                    onClick={handleTestYouTube}
-                    disabled={testingYt}
-                    loading={testingYt}
-                    icon={<ShieldCheck size={14} style={{ color: 'var(--accent)' }} />}
-                  >
-                    {testingYt ? 'Verifying YouTube Service...' : 'Test YouTube Connection'}
-                  </SettingsActionBtn>
-                  <SettingsStatusBanner status={ytResult} />
-                </div>
-
                 <SettingsField
                   label="Max Video Results Ingested"
                   hint="Upper bound of video captions extracted per search query"
@@ -229,7 +230,6 @@ export default function MediaSettingsTab({ settings, onChange, onSave, saving })
               </>
             )}
 
-            {/* Deep Crawler Config */}
             {selectedService === 'deep_crawl' && (
               <>
                 <SettingsToggleRow
@@ -239,26 +239,42 @@ export default function MediaSettingsTab({ settings, onChange, onSave, saving })
                   onChange={(e) => onChange('deep_crawl_enabled', e.target.checked)}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <SettingsField label="Crawl Page Limit" hint="Maximum linked pages per crawl">
-                    <SettingsInput
-                      type="number"
-                      value={settings.deep_crawl_limit || 5}
-                      onChange={(e) => onChange('deep_crawl_limit', parseInt(e.target.value, 10) || 5)}
-                      min={1}
-                      max={20}
-                    />
-                  </SettingsField>
+                <div className="config-advanced-section">
+                  <button
+                    type="button"
+                    className="config-advanced-toggle"
+                    onClick={() => setAdvancedOpen((prev) => !prev)}
+                    aria-expanded={advancedOpen}
+                  >
+                    <ChevronRight size={14} className={`config-advanced-chevron ${advancedOpen ? 'open' : ''}`} />
+                    <span>Crawl Limits & Depth</span>
+                  </button>
 
-                  <SettingsField label="Crawl Depth" hint="Recursion depth limit (hops)">
-                    <SettingsInput
-                      type="number"
-                      value={settings.deep_crawl_depth || 1}
-                      onChange={(e) => onChange('deep_crawl_depth', parseInt(e.target.value, 10) || 1)}
-                      min={1}
-                      max={3}
-                    />
-                  </SettingsField>
+                  {advancedOpen && (
+                    <div className="config-advanced-body">
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <SettingsField label="Crawl Page Limit" hint="Maximum linked pages per crawl">
+                          <SettingsInput
+                            type="number"
+                            value={settings.deep_crawl_limit || 5}
+                            onChange={(e) => onChange('deep_crawl_limit', parseInt(e.target.value, 10) || 5)}
+                            min={1}
+                            max={20}
+                          />
+                        </SettingsField>
+
+                        <SettingsField label="Crawl Depth" hint="Recursion depth limit (hops)">
+                          <SettingsInput
+                            type="number"
+                            value={settings.deep_crawl_depth || 1}
+                            onChange={(e) => onChange('deep_crawl_depth', parseInt(e.target.value, 10) || 1)}
+                            min={1}
+                            max={3}
+                          />
+                        </SettingsField>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

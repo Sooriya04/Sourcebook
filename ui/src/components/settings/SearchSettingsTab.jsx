@@ -1,54 +1,48 @@
 import React, { useState } from 'react';
-import { Search, Globe, ShieldCheck, Save, Layers } from 'lucide-react';
+import { Search, Globe, ShieldCheck, Save, Layers, ChevronRight } from 'lucide-react';
 import { pingSourceURL } from '../../services/sourcebookApi';
-import { 
-  SettingsWorkspace, 
-  ServiceDirectory, 
-  ConfigurationPanel 
+import {
+  SettingsWorkspace,
+  ServiceDirectory,
+  ConfigurationPanel,
+  ConnectionStatus
 } from './workspace';
-import { 
-  SettingsField, 
-  SettingsInput, 
-  SettingsActionBtn, 
-  SettingsStatusBanner 
-} from './common';
-import Badge from '../ui/Badge';
+import { SettingsField, SettingsInput } from './common';
 import Spinner from '../ui/Spinner';
 
 const SEARCH_GROUPS = [
   {
-    group: 'Discovery Engines',
+    group: 'Metasearch & Web Discovery',
     items: [
       {
         id: 'searxng',
         name: 'SearXNG Metasearch',
-        desc: 'Private metasearch container aggregating 70+ search engines',
-        tag: 'Recommended',
-        icon: <Search size={14} />
+        desc: 'Private self-hosted metasearch container aggregating 70+ web engines.',
+        docsUrl: 'https://docs.searxng.org/',
+        icon: <Search size={15} />
       },
       {
         id: 'duckduckgo',
         name: 'DuckDuckGo Scraper',
-        desc: 'Direct HTML search scraper without local container requirements',
-        tag: 'Fallback',
-        icon: <Globe size={14} />
+        desc: 'Fast HTML search fallback requiring no local container.',
+        icon: <Globe size={15} />
       },
       {
         id: 'both',
         name: 'Dual Hybrid Search',
-        desc: 'Parallel discovery dispatch querying SearXNG and DDG simultaneously',
-        tag: 'Hybrid',
-        icon: <Layers size={14} />
+        desc: 'Parallel query dispatch merging SearXNG and DuckDuckGo results.',
+        icon: <Layers size={15} />
       }
     ]
   }
 ];
 
-export default function SearchSettingsTab({ settings, onChange, onSave, saving }) {
+export default function SearchSettingsTab({ settings, onChange, onSave, saving, isDirty }) {
   const [selectedService, setSelectedService] = useState(() => settings.search_provider || 'searxng');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showMobileConfig, setShowMobileConfig] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const activeProvider = settings.search_provider || 'searxng';
 
@@ -80,40 +74,57 @@ export default function SearchSettingsTab({ settings, onChange, onSave, saving }
   const currentItem = allServices.find((s) => s.id === selectedService) || allServices[0];
   const isActive = activeProvider === selectedService;
 
+  const statusState = testing
+    ? 'connecting'
+    : testResult?.ok
+      ? 'connected'
+      : testResult?.ok === false
+        ? 'error'
+        : isActive
+          ? 'active'
+          : 'configured';
+
   return (
     <SettingsWorkspace>
-      {/* Left Panel: Search Directory */}
       <div className={`settings-workspace-left ${showMobileConfig ? 'mobile-hidden' : ''}`}>
         <ServiceDirectory
-          searchPlaceholder="Search discovery engines..."
+          searchPlaceholder="Search integrations..."
           groups={SEARCH_GROUPS}
           selectedId={selectedService}
           onSelectItem={handleSelectService}
           activeId={activeProvider}
+          getItemStatus={(id) => (id === activeProvider ? 'active' : 'configured')}
         />
       </div>
 
-      {/* Right Panel: Configuration Workspace */}
       <div className={`settings-workspace-right ${!showMobileConfig ? 'mobile-hidden' : ''}`}>
         <ConfigurationPanel
           title={currentItem.name}
           description={currentItem.desc}
           icon={currentItem.icon}
+          docsUrl={currentItem.docsUrl}
           showBackButton={showMobileConfig}
           onBack={() => setShowMobileConfig(false)}
-          badge={
-            isActive ? (
-              <Badge variant="primary" size="sm">
-                Active Provider
-              </Badge>
-            ) : (
-              <Badge variant="neutral" size="sm">
-                Configuring
-              </Badge>
-            )
-          }
+          isDirty={isDirty}
+          statusIndicator={<ConnectionStatus state={statusState} />}
           actions={
-            <div className="settings-form-actions-cluster">
+            <>
+              {(selectedService === 'searxng' || selectedService === 'both') && (
+                <button
+                  type="button"
+                  onClick={handleTestSearxng}
+                  disabled={testing}
+                  className="btn-secondary compact"
+                >
+                  {testing ? (
+                    <Spinner size={13} color="var(--text-primary)" />
+                  ) : (
+                    <ShieldCheck size={14} style={{ color: 'var(--accent)' }} />
+                  )}
+                  <span>{testing ? 'Testing...' : 'Test Connection'}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={onSave}
@@ -121,44 +132,34 @@ export default function SearchSettingsTab({ settings, onChange, onSave, saving }
                 className="btn-primary compact"
               >
                 {saving ? <Spinner size={13} color="var(--text-primary)" /> : <Save size={14} />}
-                <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+                <span>{saving ? 'Saving...' : 'Save Changes'}</span>
               </button>
-            </div>
+            </>
           }
         >
-          <div className="settings-fields-stack">
-            {/* SearXNG Specific Endpoint Settings */}
+          {testResult && (
+            <div className={`settings-inline-banner ${testResult.ok ? 'success' : 'error'}`}>
+              <span className="banner-dot" />
+              <span>{testResult.message}</span>
+            </div>
+          )}
+
+          <div className="config-fields-group">
             {(selectedService === 'searxng' || selectedService === 'both') && (
-              <>
-                <SettingsField
-                  label="SearXNG Instance URL"
-                  hint="Metasearch container address (default: http://localhost:8080)"
-                >
-                  <SettingsInput
-                    type="text"
-                    value={settings.searxng_url || ''}
-                    onChange={(e) => onChange('searxng_url', e.target.value)}
-                    placeholder="http://localhost:8080"
-                    mono
-                  />
-                </SettingsField>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <SettingsActionBtn
-                    onClick={handleTestSearxng}
-                    disabled={testing}
-                    loading={testing}
-                    icon={<ShieldCheck size={14} style={{ color: 'var(--accent)' }} />}
-                  >
-                    {testing ? 'Verifying SearXNG...' : 'Test SearXNG Connection'}
-                  </SettingsActionBtn>
-
-                  <SettingsStatusBanner status={testResult} />
-                </div>
-              </>
+              <SettingsField
+                label="SearXNG Instance URL"
+                hint="Metasearch container address (default: http://localhost:8080)"
+              >
+                <SettingsInput
+                  type="text"
+                  value={settings.searxng_url || ''}
+                  onChange={(e) => onChange('searxng_url', e.target.value)}
+                  placeholder="http://localhost:8080"
+                  mono
+                />
+              </SettingsField>
             )}
 
-            {/* Max Scraped Pages per Query */}
             <SettingsField
               label="Max Scraped Pages per Query"
               hint="Upper bound of search result pages ingested into RAG context (Range: 1 - 25)"
@@ -171,32 +172,47 @@ export default function SearchSettingsTab({ settings, onChange, onSave, saving }
                 max={25}
               />
             </SettingsField>
-
-            {/* Split controls if dual hybrid */}
-            {selectedService === 'both' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <SettingsField label="SearXNG Quota" hint="Sources allocated to SearXNG">
-                  <SettingsInput
-                    type="number"
-                    value={settings.searxng_split || 3}
-                    onChange={(e) => onChange('searxng_split', parseInt(e.target.value, 10) || 3)}
-                    min={1}
-                    max={15}
-                  />
-                </SettingsField>
-
-                <SettingsField label="DuckDuckGo Quota" hint="Sources allocated to DuckDuckGo">
-                  <SettingsInput
-                    type="number"
-                    value={settings.ddg_split || 2}
-                    onChange={(e) => onChange('ddg_split', parseInt(e.target.value, 10) || 2)}
-                    min={1}
-                    max={15}
-                  />
-                </SettingsField>
-              </div>
-            )}
           </div>
+
+          {selectedService === 'both' && (
+            <div className="config-advanced-section">
+              <button
+                type="button"
+                className="config-advanced-toggle"
+                onClick={() => setAdvancedOpen((prev) => !prev)}
+                aria-expanded={advancedOpen}
+              >
+                <ChevronRight size={14} className={`config-advanced-chevron ${advancedOpen ? 'open' : ''}`} />
+                <span>Advanced Split Quotas</span>
+              </button>
+
+              {advancedOpen && (
+                <div className="config-advanced-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <SettingsField label="SearXNG Quota" hint="Sources allocated to SearXNG">
+                      <SettingsInput
+                        type="number"
+                        value={settings.searxng_split || 3}
+                        onChange={(e) => onChange('searxng_split', parseInt(e.target.value, 10) || 3)}
+                        min={1}
+                        max={15}
+                      />
+                    </SettingsField>
+
+                    <SettingsField label="DuckDuckGo Quota" hint="Sources allocated to DuckDuckGo">
+                      <SettingsInput
+                        type="number"
+                        value={settings.ddg_split || 2}
+                        onChange={(e) => onChange('ddg_split', parseInt(e.target.value, 10) || 2)}
+                        min={1}
+                        max={15}
+                      />
+                    </SettingsField>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </ConfigurationPanel>
       </div>
     </SettingsWorkspace>
