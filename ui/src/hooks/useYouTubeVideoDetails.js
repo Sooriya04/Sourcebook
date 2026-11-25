@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { DEFAULT_MOCK_VIDEO } from '../pages/ytchat/ytMockData';
 
 export function useYouTubeVideoDetails(activeId) {
   const [videoMeta, setVideoMeta] = useState({
