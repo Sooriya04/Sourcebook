@@ -16,10 +16,10 @@ export default function ChatStudio(props) {
     messages = [], loading = false, streamPhase = 'retrieving', onSendMessage, onStopStream,
     onRegenerate, onClearChat, allSources = [], scopedSourceIds, onCitationClick, activeCitation, onSaveNote,
     chatEndRef, notebookTitle, notebookDescription, isSourcesCollapsed, onToggleSources,
-    isStudioCollapsed, onToggleStudio, onAddUrl, onOpenAddSources, guide
+    isStudioCollapsed, onToggleStudio, onAddUrl, onOpenAddSources, guide,
+    chatMode = 'notebook', setChatMode
   } = props;
 
-  const [mode, setMode] = useState('notebook');
   const [llmHealth, setLlmHealth] = useState({ status: 'checking', model: '', embeddings: '' });
   const [showOfflineBanner, setShowOfflineBanner] = useState(false);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -69,7 +69,7 @@ export default function ChatStudio(props) {
 
   const handleSend = (query) => {
     setIsScrolledUp(false);
-    onSendMessage(query, mode, []);
+    onSendMessage(query, chatMode, []);
   };
 
   const scrollToBottom = () => {
@@ -90,8 +90,8 @@ export default function ChatStudio(props) {
         onToggleSources={onToggleSources}
         isStudioCollapsed={isStudioCollapsed}
         onToggleStudio={onToggleStudio}
-        mode={mode}
-        setMode={setMode}
+        mode={chatMode}
+        setMode={setChatMode}
         llmHealth={llmHealth}
         onOpenShortcuts={() => setShowShortcuts(true)}
         onClearChat={() => { onClearChat?.(); showToast('Chat history cleared', 'info'); }}
