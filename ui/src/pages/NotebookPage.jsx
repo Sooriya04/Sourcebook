@@ -384,10 +384,6 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 activeTab={studyTab}
                 setActiveTab={setStudyTab}
                 setActiveMode={setActiveMode}
-                isSourcesCollapsed={isSourcesCollapsed}
-                onToggleSources={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
-                isStudioCollapsed={isStudioCollapsed}
-                onToggleStudio={() => setIsStudioCollapsed(!isStudioCollapsed)}
                 audioPlayer={audioPlayer}
                 episodes={episodes}
                 onEpisodesChange={setEpisodes}
