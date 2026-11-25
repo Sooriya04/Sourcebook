@@ -36,20 +36,21 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     }
   };
 
-  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null, scopedSourceIds = []) => {
+  const sendMessage = async (queryText, mode = 'notebook', overrideHistory = null, scopedSourceIds = [], baseMessages = null) => {
     if (!queryText?.trim() || loading) return;
 
     // Abort any existing stream
     stopStream();
 
+    const currentMessages = baseMessages || messages;
     const userMessage = { role: 'user', content: queryText };
-    const history = overrideHistory || messages.map(m => ({
+    const history = overrideHistory || currentMessages.map(m => ({
       role: m.role,
       content: m.content
     }));
 
     // Add User message and placeholder Assistant message
-    const newMessages = [...messages, userMessage];
+    const newMessages = [...currentMessages, userMessage];
     const assistantIndex = newMessages.length;
     
     setMessages([
@@ -140,26 +141,26 @@ export function useChat(initialMessages = [], onNewSourcesRetrieved, notebookId 
     const lastQuery = messages[actualIdx].content;
 
     // Slice messages to exclude last assistant answer and last user query to recreate clean history
-    const historySlice = messages.slice(0, actualIdx).map(m => ({
+    const cleanBase = messages.slice(0, actualIdx);
+    const historySlice = cleanBase.map(m => ({
       role: m.role,
       content: m.content
     }));
 
-    setMessages(prev => prev.slice(0, actualIdx));
-    sendMessage(lastQuery, mode, historySlice);
+    sendMessage(lastQuery, mode, historySlice, [], cleanBase);
   };
 
   const editAndResendMessage = (index, newText, mode = 'notebook') => {
     if (index < 0 || index >= messages.length) return;
 
     // Slice up to edited index
-    const historySlice = messages.slice(0, index).map(m => ({
+    const cleanBase = messages.slice(0, index);
+    const historySlice = cleanBase.map(m => ({
       role: m.role,
       content: m.content
     }));
 
-    setMessages(prev => prev.slice(0, index));
-    sendMessage(newText, mode, historySlice);
+    sendMessage(newText, mode, historySlice, [], cleanBase);
   };
 
   const clearChat = () => {

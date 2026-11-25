@@ -86,5 +86,13 @@ export const DEFAULT_PROVIDER_CONFIGS = {
     placeholderUrl: 'https://api.anthropic.com/v1 (or OpenAI-spec proxy)',
     placeholderModel: 'claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022',
     placeholderKey: 'sk-ant-api03-...'
+  },
+  openai_compatible: {
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4o-mini',
+    apiKey: '',
+    placeholderUrl: 'https://api.openai.com/v1 (or custom proxy)',
+    placeholderModel: 'gpt-4o-mini, llama-3.1, or custom model',
+    placeholderKey: 'Optional API key / Bearer token'
   }
 };
