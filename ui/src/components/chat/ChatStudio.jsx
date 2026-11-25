@@ -120,7 +120,7 @@ export default function ChatStudio(props) {
                 activeCitation={activeCitation}
                 onSaveNote={(note) => { onSaveNote?.(note); showToast('Saved to Studio notes!', 'success'); }}
                 onSendMessage={handleSend}
-                onRegenerate={onRegenerate ? () => onRegenerate(idx) : undefined}
+                onRegenerate={onRegenerate ? () => onRegenerate(chatMode) : undefined}
                 isLatest={idx === messages.length - 1}
               />
             ))}
