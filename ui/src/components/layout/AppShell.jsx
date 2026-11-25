@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, RefreshCw } from 'lucide-react';
+import { Settings, RefreshCw, BookOpen, Menu } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import GlobalSearch from '../workspace/GlobalSearch';
 
-export default function AppShell({ children }) {
+export default function AppShell({
+  children,
+  notebooks = [],
+  onNewNotebook,
+  onOpenYouTube,
+  onToggleMobileSidebar
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const isNotebookPage = location.pathname.startsWith('/notebook/');
   const isYouTubeChatPage = location.pathname.startsWith('/youtube/');
   const isSettingsPage = location.pathname === '/settings';
+  const isHomePage = location.pathname === '/';
 
   const [engineStatus, setEngineStatus] = useState('checking');
   const [isChecking, setIsChecking] = useState(false);
@@ -46,9 +54,31 @@ export default function AppShell({ children }) {
       {!isNotebookPage && !isYouTubeChatPage && (
         <header className="top-nav-bar">
           <div className="nav-left">
+            {isHomePage && (
+              <button
+                type="button"
+                className="mobile-sidebar-toggle-btn"
+                onClick={onToggleMobileSidebar}
+                aria-label="Toggle workspace navigation"
+                title="Toggle workspace navigation"
+              >
+                <Menu size={16} />
+              </button>
+            )}
+
             <Link to="/" className="brand-link" title="SourceBook Workspace">
+              <BookOpen size={16} className="text-accent" />
               <span className="brand-name font-medium tracking-tight text-[#e3e3e3]">SourceBook</span>
             </Link>
+          </div>
+
+          {/* Global Search Entry Point */}
+          <div className="nav-center">
+            <GlobalSearch
+              notebooks={notebooks}
+              onNewNotebook={onNewNotebook}
+              onOpenYouTube={onOpenYouTube}
+            />
           </div>
 
           <div className="nav-right">
