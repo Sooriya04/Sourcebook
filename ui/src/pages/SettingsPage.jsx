@@ -1,6 +1,6 @@
 import React from 'react';
-import { Cpu, Search, Globe, Layers } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSettingsConfig } from '../hooks/useSettingsConfig';
 import LLMSettingsTab from '../components/settings/LLMSettingsTab';
 import SearchSettingsTab from '../components/settings/SearchSettingsTab';
@@ -10,13 +10,15 @@ import Toast from '../components/ui/Toast';
 import Spinner from '../components/ui/Spinner';
 
 const SETTINGS_CATEGORIES = [
-  { id: 'llm', label: 'AI & Models', icon: <Cpu size={14} /> },
-  { id: 'search', label: 'Search Engine', icon: <Search size={14} /> },
-  { id: 'media', label: 'Crawling & Media', icon: <Globe size={14} /> },
-  { id: 'embedding', label: 'Vector & Embeddings', icon: <Layers size={14} /> }
+  { id: 'llm', label: 'AI & Models' },
+  { id: 'search', label: 'Search Engine' },
+  { id: 'media', label: 'Crawling & Media' },
+  { id: 'embedding', label: 'Vector & Embeddings' }
 ];
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
+
   const {
     activeTab,
     setActiveTab,
@@ -51,8 +53,17 @@ export default function SettingsPage() {
   return (
     <div className="settings-page-container">
       <div className="settings-page-inner">
-        {/* Settings Introduction */}
+        {/* Exact Settings Introduction Hierarchy */}
         <header className="settings-intro">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="settings-back-btn-top"
+          >
+            <ArrowLeft size={13} />
+            <span>Back to Workspace</span>
+          </button>
+
           <nav className="settings-breadcrumb" aria-label="Breadcrumb">
             <Link to="/" className="settings-breadcrumb-link">
               Workspace
@@ -67,7 +78,7 @@ export default function SettingsPage() {
           </p>
         </header>
 
-        {/* Refined Horizontal Category Navigation */}
+        {/* Minimal Horizontal Category Navigation */}
         <nav className="settings-tabs-bar" role="tablist" aria-label="Settings categories">
           {SETTINGS_CATEGORIES.map((cat) => {
             const isActive = activeTab === cat.id;
@@ -80,14 +91,13 @@ export default function SettingsPage() {
                 className={`settings-tab-item ${isActive ? 'active' : ''}`}
                 onClick={() => setActiveTab(cat.id)}
               >
-                <span className="settings-tab-icon">{cat.icon}</span>
                 <span>{cat.label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Two-Panel Integration Workspace */}
+        {/* Two-Column Main Workspace */}
         <div className="settings-workspace-stage">
           {activeTab === 'llm' && (
             <LLMSettingsTab
@@ -139,7 +149,7 @@ export default function SettingsPage() {
       </div>
 
       {toast.message && (
-        <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1200 }}>
+        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1200 }}>
           <Toast
             message={toast.message}
             type={toast.type}

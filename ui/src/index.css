@@ -1563,7 +1563,7 @@
 }
 
 /* ==========================================================================
-   6. Settings Workspace — Complete Two-Panel Rebuild
+   6. Settings Workspace — Final Minimalist Two-Panel Layout
    ========================================================================== */
 
 .settings-loading-state {
@@ -1590,32 +1590,51 @@
 
 .settings-page-inner {
   width: 100%;
-  max-width: 1320px;
+  max-width: 1280px;
   margin: 0 auto;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px clamp(20px, 3.5vw, 44px) 0;
+  padding: 20px clamp(20px, 3.5vw, 44px) 0;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-/* --- Settings Introduction & Breadcrumb --- */
+/* --- Settings Page Introduction --- */
 .settings-intro {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-bottom: 18px;
+  align-items: flex-start;
+  padding-bottom: 14px;
   flex-shrink: 0;
+}
+
+.settings-back-btn-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.settings-back-btn-top:hover {
+  color: var(--text-primary);
 }
 
 .settings-breadcrumb {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: var(--text-dim);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .settings-breadcrumb-link {
@@ -1634,11 +1653,10 @@
 
 .settings-breadcrumb-current {
   color: var(--text-secondary);
-  font-weight: 500;
 }
 
 .settings-main-title {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: -0.025em;
   color: var(--text-primary);
@@ -1647,17 +1665,17 @@
 }
 
 .settings-main-desc {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   margin: 2px 0 0;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
-/* --- Horizontal Tab Navigation (Baseline Underline) --- */
+/* --- Minimal Horizontal Tab Navigation --- */
 .settings-tabs-bar {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 22px;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
   overflow-x: auto;
@@ -1672,15 +1690,14 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 38px;
+  height: 34px;
   padding: 0 2px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   color: var(--text-muted);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast);
@@ -1696,19 +1713,7 @@
   border-bottom-color: var(--accent);
 }
 
-.settings-tab-icon {
-  display: inline-flex;
-  align-items: center;
-  color: var(--text-dim);
-  transition: color var(--transition-fast);
-}
-
-.settings-tab-item:hover .settings-tab-icon,
-.settings-tab-item.active .settings-tab-icon {
-  color: var(--accent);
-}
-
-/* --- Two-Panel Workspace Stage --- */
+/* --- Two-Column Main Workspace --- */
 .settings-workspace-stage {
   flex: 1;
   min-height: 0;
@@ -1718,7 +1723,7 @@
 
 .settings-two-panel-grid {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 320px 1fr;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -1732,19 +1737,19 @@
   overflow: hidden;
 }
 
-/* --- Left Panel: Integration Directory --- */
+/* --- Left Panel: Independently Scrollable Provider Directory --- */
 .integration-directory {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   border-right: 1px solid var(--border-subtle);
-  padding-right: 16px;
+  padding-right: 14px;
   overflow: hidden;
 }
 
 .integration-search-header {
-  padding: 16px 0 12px;
+  padding: 14px 0 10px;
   background-color: var(--surface-0);
   flex-shrink: 0;
 }
@@ -1765,13 +1770,13 @@
 
 .integration-search-input {
   width: 100%;
-  height: 34px;
-  padding: 0 30px 0 32px;
+  height: 32px;
+  padding: 0 28px 0 30px;
   background-color: var(--surface-1);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   outline: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -1806,21 +1811,36 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 4px 24px 0;
+  padding: 2px 4px 20px 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+.integration-directory-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.integration-directory-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.integration-directory-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
 }
 
 .integration-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .integration-group-label {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1842,8 +1862,8 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background-color: transparent;
   cursor: pointer;
@@ -1868,8 +1888,8 @@
   content: "";
   position: absolute;
   left: 0;
-  top: 8px;
-  bottom: 8px;
+  top: 6px;
+  bottom: 6px;
   width: 2px;
   border-radius: 2px;
   background-color: var(--accent);
@@ -1879,8 +1899,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-xs);
   background-color: var(--surface-1);
   border: 1px solid var(--border-subtle);
@@ -1899,7 +1919,7 @@
 .integration-row-content {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
@@ -1912,7 +1932,7 @@
 }
 
 .integration-row-name {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1.3;
@@ -1945,7 +1965,7 @@
 
 .integration-active-pill {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.64rem;
   font-weight: 500;
   color: var(--accent);
   background-color: rgba(168, 199, 250, 0.1);
@@ -1954,9 +1974,9 @@
 }
 
 .integration-row-desc {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.35;
   margin: 0;
 }
 
@@ -1967,13 +1987,13 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 36px 16px;
+  padding: 32px 14px;
   gap: 8px;
 }
 
 .directory-empty-icon {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-full);
   background-color: var(--surface-1);
   border: 1px solid var(--border-default);
@@ -1985,18 +2005,18 @@
 }
 
 .directory-empty-title {
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 500;
   color: var(--text-primary);
   margin: 0;
 }
 
 .directory-empty-desc {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
   line-height: 1.45;
-  margin: 0 0 8px;
-  max-width: 250px;
+  margin: 0 0 6px;
+  max-width: 240px;
 }
 
 .directory-empty-actions {
@@ -2009,14 +2029,14 @@
 
 .directory-empty-github-btn {
   text-decoration: none;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   padding: 6px 12px;
 }
 
 .directory-empty-clear-btn {
   background: transparent;
   border: none;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--text-dim);
   cursor: pointer;
   text-decoration: underline;
@@ -2026,7 +2046,7 @@
   color: var(--text-primary);
 }
 
-/* --- Right Panel: Configuration Workspace --- */
+/* --- Right Panel: Zero-Scroll Configuration Workspace --- */
 .config-workspace {
   display: flex;
   flex-direction: column;
@@ -2035,31 +2055,33 @@
   overflow: hidden;
 }
 
-.config-workspace-scroll {
+.config-workspace-body {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 24px 4px 32px 32px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 18px 0 12px 32px;
+  display: flex;
+  flex-direction: column;
 }
 
 .config-workspace-inner {
-  max-width: 720px;
+  max-width: 680px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .config-mobile-back-btn {
   display: none;
   align-items: center;
   gap: 6px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xs);
-  padding: 5px 10px;
+  padding: 4px 10px;
   cursor: pointer;
   width: fit-content;
 }
@@ -2068,15 +2090,15 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 20px;
+  gap: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .config-header-main {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   flex: 1;
 }
 
@@ -2084,9 +2106,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
   background-color: var(--surface-1);
   border: 1px solid var(--border-default);
   color: var(--accent);
@@ -2096,7 +2118,7 @@
 .config-header-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
 }
 
@@ -2108,64 +2130,66 @@
 }
 
 .config-header-title {
-  font-size: 1.2rem;
+  font-size: 1.08rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   margin: 0;
 }
 
 .config-header-desc {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   margin: 0;
-  line-height: 1.45;
-}
-
-.config-docs-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.76rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: none;
-  padding: 4px 10px;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--border-subtle);
-  background-color: var(--surface-1);
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.config-docs-link:hover {
-  color: var(--text-primary);
-  border-color: var(--border-default);
+  line-height: 1.35;
 }
 
 .config-form-body {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .config-fields-group {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
+}
+
+/* Compact input sizing inside zero-scroll configuration workspace */
+.config-workspace .settings-field {
+  gap: 4px;
+}
+
+.config-workspace .settings-field-label {
+  font-size: 0.78rem;
+}
+
+.config-workspace .settings-field-hint {
+  font-size: 0.7rem;
+}
+
+.config-workspace .settings-input {
+  height: 34px;
+  font-size: 0.8rem;
+}
+
+.config-workspace .settings-toggle-row {
+  padding: 10px 0;
+  border-top: none;
 }
 
 .config-helper-note {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.45;
   margin: 0;
 }
 
 /* --- Collapsible Advanced Configuration --- */
 .config-advanced-section {
   border-top: 1px solid var(--border-subtle);
-  padding-top: 14px;
+  padding-top: 10px;
 }
 
 .config-advanced-toggle {
@@ -2175,10 +2199,10 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 500;
   cursor: pointer;
-  padding: 4px 0;
+  padding: 2px 0;
   transition: color var(--transition-fast);
 }
 
@@ -2195,28 +2219,28 @@
 }
 
 .config-advanced-body {
-  padding-top: 14px;
+  padding-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 /* --- Connection Status Indicator --- */
 .connection-status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 500;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: var(--radius-xs);
   border: 1px solid transparent;
 }
 
 .connection-status-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: currentColor;
 }
@@ -2262,12 +2286,12 @@
 .config-actions-footer {
   border-top: 1px solid var(--border-subtle);
   background-color: var(--surface-0);
-  padding: 14px 4px 18px 32px;
+  padding: 12px 0 16px 32px;
   flex-shrink: 0;
 }
 
 .config-actions-inner {
-  max-width: 720px;
+  max-width: 680px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -2284,14 +2308,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: #fbbf24;
   font-family: var(--font-mono);
 }
 
 .config-dirty-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: #fbbf24;
 }
@@ -2325,9 +2349,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 7px 12px;
   border-radius: var(--radius-sm);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-family: var(--font-mono);
 }
 
@@ -2344,8 +2368,8 @@
 }
 
 .banner-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: currentColor;
   flex-shrink: 0;
@@ -2354,15 +2378,15 @@
 /* --- Mobile & Tablet Responsiveness --- */
 @media (max-width: 900px) {
   .settings-two-panel-grid {
-    grid-template-columns: 270px 1fr;
+    grid-template-columns: 260px 1fr;
   }
 
-  .config-workspace-scroll {
-    padding: 20px 0 24px 20px;
+  .config-workspace-body {
+    padding: 16px 0 12px 20px;
   }
 
   .config-actions-footer {
-    padding: 12px 0 16px 20px;
+    padding: 12px 0 14px 20px;
   }
 }
 
@@ -2388,19 +2412,19 @@
     padding-right: 0;
   }
 
-  .config-workspace-scroll {
-    padding: 16px 0 24px;
+  .config-workspace-body {
+    padding: 14px 0 12px;
+    overflow-y: auto;
   }
 
   .config-actions-footer {
-    padding: 12px 0 16px;
+    padding: 12px 0 14px;
   }
 
   .config-mobile-back-btn {
     display: inline-flex;
   }
 }
-
 
 /* ==========================================================================
    Settings Header

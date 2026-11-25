@@ -42,9 +42,11 @@ export default function AppShell({
   const isPending = engineStatus === 'checking' || isChecking;
   const statusColor = isOnline ? '#10b981' : isPending ? '#f59e0b' : '#ef4444';
 
+  const hideGlobalHeader = isNotebookPage || isYouTubeChatPage || isSettingsPage;
+
   return (
     <div className="app-container">
-      {!isNotebookPage && !isYouTubeChatPage && (
+      {!hideGlobalHeader && (
         <header className="top-nav-bar">
           <div className="nav-left">
             <Link to="/" className="brand-link" title="SourceBook Workspace">
@@ -112,7 +114,7 @@ export default function AppShell({
 
       <main
         className="app-workspace-body"
-        style={{ height: (isNotebookPage || isYouTubeChatPage) ? '100%' : 'calc(100% - 52px)' }}
+        style={{ height: hideGlobalHeader ? '100%' : 'calc(100% - 52px)' }}
       >
         {children}
       </main>
