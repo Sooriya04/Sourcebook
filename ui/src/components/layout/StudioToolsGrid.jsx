@@ -44,12 +44,7 @@ export default function StudioToolsGrid({
       icon: <Headphones size={14} color="#34d399" />,
       badge: hasAudioOverview,
       action: () => {
-        if (hasAudioOverview) {
-          setActiveMode?.('study');
-          setStudyTab?.('audio');
-        } else {
-          onOpenAudioDialog?.();
-        }
+        onOpenAudioDialog?.();
       },
       isActive: activeMode === 'study' && studyTab === 'audio'
     },

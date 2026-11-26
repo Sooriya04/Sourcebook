@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Headphones, Plus } from 'lucide-react';
-import { getPodcastVoices, getPodcastEpisodes, streamPodcastGeneration } from '../../services/sourcebookApi';
-import AudioOverviewDialog from './AudioOverviewDialog';
+import { getPodcastEpisodes, streamPodcastGeneration } from '../../services/sourcebookApi';
 import PodcastPlayerCard from './PodcastPlayerCard';
 import PodcastEpisodeList from './PodcastEpisodeList';
 import OverviewStudioDetail from './OverviewStudioDetail';
+
+const DEFAULT_OPTIONS = {
+  length: 'deep',
+  format: 'banter',
+  voice_host1: 'am_michael',
+  voice_host2: 'af_sarah',
+  focus_source: ''
+};
 
 export default function AudioOverviewView({
   notebookId,
@@ -12,20 +19,10 @@ export default function AudioOverviewView({
   audioPlayer,
   parentEpisodes,
   onEpisodesChange,
-  isDialogOpen = false,
   onOpenDialog,
-  onCloseDialog,
   pendingAudioGen = null,
   onClearPendingAudioGen
 }) {
-  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
-  const dialogOpen = onOpenDialog ? isDialogOpen : internalDialogOpen;
-  const openDialog = onOpenDialog || (() => setInternalDialogOpen(true));
-  const closeDialog = useCallback(() => {
-    if (onCloseDialog) onCloseDialog();
-    else setInternalDialogOpen(false);
-  }, [onCloseDialog]);
-
   const [loading, setLoading] = useState(false);
   const [statusInfo, setStatusInfo] = useState(null);
   const [error, setError] = useState(null);
@@ -34,14 +31,7 @@ export default function AudioOverviewView({
   const [takeaways, setTakeaways] = useState([]);
   const [episodes, setEpisodes] = useState(() => parentEpisodes || []);
   const [activeEpId, setActiveEpId] = useState('');
-  const [voices, setVoices] = useState([]);
-  const [options, setOptions] = useState({
-    length: 'deep',
-    format: 'banter',
-    voice_host1: 'am_michael',
-    voice_host2: 'af_sarah',
-    focus_source: ''
-  });
+  const lastOptionsRef = useRef(DEFAULT_OPTIONS);
 
   const applyEpisode = useCallback((ep) => {
     if (!ep) return;
@@ -73,7 +63,6 @@ export default function AudioOverviewView({
         }
       });
     }
-    getPodcastVoices().then(setVoices);
   }, [notebookId, parentEpisodes, onEpisodesChange, applyEpisode]);
 
   const handleComplete = (data) => {
@@ -86,8 +75,8 @@ export default function AudioOverviewView({
       summary: data.summary,
       takeaways: data.takeaways,
       turns: data.turns,
-      length: data.length || options.length,
-      format: data.format || options.format,
+      length: data.length || lastOptionsRef.current.length,
+      format: data.format || lastOptionsRef.current.format,
       audio_url: cleanUrl,
       created_at: data.created_at || new Date().toISOString()
     };
@@ -99,13 +88,12 @@ export default function AudioOverviewView({
   };
 
   const handleGenerate = async (overrideOptions) => {
-    const genOpts = overrideOptions && overrideOptions.length ? overrideOptions : options;
+    const genOpts = overrideOptions && overrideOptions.length ? overrideOptions : lastOptionsRef.current;
     if (!notebookId || loading || sources.length === 0) return;
     if (overrideOptions && overrideOptions.length) {
       const { _ts, ...cleanOpts } = overrideOptions;
-      setOptions(cleanOpts);
+      lastOptionsRef.current = cleanOpts;
     }
-    closeDialog();
     setLoading(true);
     setError(null);
     setStatusInfo({ step: 'drafting', message: 'Drafting two-host dialogue from sources...' });
@@ -196,7 +184,7 @@ export default function AudioOverviewView({
           </p>
           <button
             type="button"
-            onClick={openDialog}
+            onClick={() => onOpenDialog?.()}
             disabled={sources.length === 0}
             className="audio-generate-primary-btn"
           >
@@ -225,7 +213,7 @@ export default function AudioOverviewView({
             onTogglePlay={togglePlay}
             onSeek={handleSeek}
             onSpeedChange={handleSpeedChange}
-            onOpenGenerate={openDialog}
+            onOpenGenerate={() => onOpenDialog?.()}
             onRetry={handleGenerate}
             formatTime={formatTime}
           />
@@ -247,19 +235,6 @@ export default function AudioOverviewView({
             formatTime={formatTime}
           />
         </>
-      )}
-
-      {!onOpenDialog && (
-        <AudioOverviewDialog
-          isOpen={dialogOpen}
-          onClose={closeDialog}
-          options={options}
-          setOptions={setOptions}
-          voices={voices}
-          sources={sources}
-          loading={loading}
-          onGenerate={handleGenerate}
-        />
       )}
     </div>
   );

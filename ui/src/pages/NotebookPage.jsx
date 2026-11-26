@@ -255,7 +255,7 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
     { label: 'Switch to Clean Corporate theme', type: 'Theme', icon: <Check size={14} />, action: () => changeTheme('corporate') },
     { label: 'Open Chat Studio', type: 'Navigation', icon: <Eye size={14} />, action: () => setActiveMode('chat') },
     { label: 'Study Studio: Briefing Document', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('briefing'); } },
-    { label: 'Study Studio: Audio Overview', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('audio'); } },
+    { label: 'Study Studio: Audio Overview', type: 'Study', icon: <Eye size={14} />, action: () => setIsAudioDialogOpen(true) },
     { label: 'Study Studio: Quizzes', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('quiz'); } },
     { label: 'Study Studio: Mind Map', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('mindmap'); } },
     { label: 'Study Studio: Reports', type: 'Study', icon: <Eye size={14} />, action: () => { setActiveMode('study'); setStudyTab('reports'); } },
@@ -402,10 +402,8 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
                 audioPlayer={audioPlayer}
                 episodes={episodes}
                 onEpisodesChange={setEpisodes}
-                isAudioDialogOpen={isAudioDialogOpen}
                 onOpenAudioDialog={() => setIsAudioDialogOpen(true)}
-              onOpenPromptStudio={() => { setPromptDraft(null); setIsPromptStudioOpen(true); }}
-                onCloseAudioDialog={() => setIsAudioDialogOpen(false)}
+                onOpenPromptStudio={() => { setPromptDraft(null); setIsPromptStudioOpen(true); }}
                 pendingAudioGen={pendingAudioGen}
                 onClearPendingAudioGen={() => setPendingAudioGen(null)}
                 onAddNote={(n) => setNotes((prev) => [{ id: n.id || crypto.randomUUID(), ...n }, ...prev])}
