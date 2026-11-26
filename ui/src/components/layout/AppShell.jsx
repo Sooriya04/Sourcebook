@@ -31,11 +31,10 @@ export default function AppShell({
   };
 
   useEffect(() => {
-    if (!isNotebookPage) {
-      checkStatus();
-      const interval = setInterval(checkStatus, 20000);
-      return () => clearInterval(interval);
-    }
+    if (isNotebookPage) return;
+    checkStatus();
+    window.addEventListener('focus', checkStatus);
+    return () => window.removeEventListener('focus', checkStatus);
   }, [isNotebookPage]);
 
   const isOnline = engineStatus === 'online';

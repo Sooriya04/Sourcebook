@@ -6,6 +6,8 @@ export default function SentinelStatus({ notebookId }) {
 
   useEffect(() => {
     let isMounted = true;
+    let timerId = null;
+
     const fetchStatus = async () => {
       try {
         const url = notebookId
@@ -15,17 +17,26 @@ export default function SentinelStatus({ notebookId }) {
         if (res.ok && isMounted) {
           const data = await res.json();
           setStatus(data);
+          if (data.running && data.empty_count > 0) {
+            timerId = setTimeout(fetchStatus, 5000);
+          }
         }
       } catch (err) {
         console.warn('Failed to fetch sentinel status:', err);
       }
     };
 
+    const handleFocus = () => {
+      if (timerId) clearTimeout(timerId);
+      fetchStatus();
+    };
+
     fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
+    window.addEventListener('focus', handleFocus);
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [notebookId]);
 

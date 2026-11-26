@@ -32,11 +32,12 @@ export default function NotebookPage({ getNotebook, createNotebook }) {
   const [llmHealth, setLlmHealth] = useState({ status: 'checking', model: '', embeddings: '' });
 
   useEffect(() => {
-    fetchLLMHealth().then(setLlmHealth).catch(() => setLlmHealth({ status: 'offline', model: '', embeddings: '' }));
-    const interval = setInterval(() => {
+    const checkLLMHealth = () => {
       fetchLLMHealth().then(setLlmHealth).catch(() => setLlmHealth({ status: 'offline', model: '', embeddings: '' }));
-    }, 8000);
-    return () => clearInterval(interval);
+    };
+    checkLLMHealth();
+    window.addEventListener('focus', checkLLMHealth);
+    return () => window.removeEventListener('focus', checkLLMHealth);
   }, []);
   
   const [notes, setNotes] = useState(EMPTY_ARR);

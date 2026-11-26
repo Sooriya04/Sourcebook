@@ -9,7 +9,6 @@ import OfflineBanner from './OfflineBanner';
 import ScrollBottomButton from './ScrollBottomButton';
 import Toast from '../ui/Toast';
 import { useKeyboard } from '../../hooks/useKeyboard';
-import { fetchLLMHealth } from '../../services/sourcebookApi';
 
 export default function ChatStudio(props) {
   const {
@@ -18,10 +17,10 @@ export default function ChatStudio(props) {
     onEditPrompt,
     chatEndRef, notebookTitle, notebookDescription, isSourcesCollapsed, onToggleSources,
     isStudioCollapsed, onToggleStudio, onAddUrl, onOpenAddSources, guide,
-    chatMode = 'notebook', setChatMode
+    chatMode = 'notebook', setChatMode,
+    llmHealth = { status: 'checking', model: '', embeddings: '' }
   } = props;
 
-  const [llmHealth, setLlmHealth] = useState({ status: 'checking', model: '', embeddings: '' });
   const [showOfflineBanner, setShowOfflineBanner] = useState(false);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -34,13 +33,6 @@ export default function ChatStudio(props) {
     setToast({ message, type });
     setTimeout(() => setToast({ message: '', type: 'info' }), 3000);
   };
-
-  useEffect(() => {
-    const check = () => fetchLLMHealth().then(setLlmHealth).catch(() => setLlmHealth({ status: 'offline', model: '', embeddings: '' }));
-    check();
-    const interval = setInterval(check, 8000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (llmHealth.status === 'offline') {
