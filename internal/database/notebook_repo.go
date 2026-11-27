@@ -3,6 +3,8 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sourcebook/internal/models"
 	"strings"
 	"time"
@@ -76,6 +78,9 @@ func (r *Repository) DeleteNotebook(id string) error {
 	_, _ = r.db.Exec(`DELETE FROM notes WHERE notebook_id = ?`, id)
 	query := `DELETE FROM notebooks WHERE id = ?`
 	_, err := r.db.Exec(query, id)
+	_ = os.RemoveAll(filepath.Join("database", "audio", id))
+	_ = os.Remove(filepath.Join("database", "audio", id+".wav"))
+	_ = os.Remove(filepath.Join("database", "audio", id+".json"))
 	return err
 }
 

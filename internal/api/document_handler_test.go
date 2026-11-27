@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -142,5 +143,20 @@ func TestHandleParsePDF_ValidPDF(t *testing.T) {
 	}
 	if !strings.Contains(parsed.Text, "Hello SourceBook PDF Parser Verification") {
 		t.Errorf("expected parsed text to contain target text, got %q", parsed.Text)
+	}
+}
+
+func TestHandleParseMarkdown_BoundedBody(t *testing.T) {
+	api := &API{}
+	// Large body larger than 50MB should be capped cleanly by io.LimitReader
+	limitReader := io.LimitReader(strings.NewReader(strings.Repeat("a", 100)), 50)
+	req := httptest.NewRequest(http.MethodPost, "/parse/markdown", limitReader)
+	w := httptest.NewRecorder()
+
+	api.HandleParseMarkdown(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
 	}
 }
