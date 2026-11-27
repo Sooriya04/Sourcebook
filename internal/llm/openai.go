@@ -13,7 +13,7 @@ import (
 )
 
 func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, onToken func(string) error) error {
-	_, baseURL, model, apiKey := c.GetConfig()
+	provider, baseURL, model, apiKey := c.GetConfig()
 	reqURL := fmt.Sprintf("%s/chat/completions", baseURL)
 
 	bodyData := map[string]interface{}{
@@ -38,7 +38,7 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("%s stream request failed: %w", c.provider, err)
+		return fmt.Errorf("%s stream request failed: %w", provider, err)
 	}
 
 	// Retry once on transient 503 (high demand) or 429 (rate spike) if context permits
@@ -48,7 +48,7 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 
 		select {
 		case <-ctx.Done():
-			return parseAPIError(c.provider, resp.StatusCode, respBytes)
+			return parseAPIError(provider, resp.StatusCode, respBytes)
 		case <-time.After(1 * time.Second):
 		}
 
@@ -61,7 +61,7 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 			if respRetry, errDo := c.httpClient.Do(reqRetry); errDo == nil {
 				resp = respRetry
 			} else {
-				return parseAPIError(c.provider, resp.StatusCode, respBytes)
+				return parseAPIError(provider, resp.StatusCode, respBytes)
 			}
 		}
 	}
@@ -69,7 +69,7 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return parseAPIError(c.provider, resp.StatusCode, respBytes)
+		return parseAPIError(provider, resp.StatusCode, respBytes)
 	}
 
 	reader := bufio.NewReader(resp.Body)
@@ -109,7 +109,7 @@ func (c *Client) generateOpenAIStream(ctx context.Context, messages []Message, o
 }
 
 func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string, error) {
-	_, baseURL, model, apiKey := c.GetConfig()
+	provider, baseURL, model, apiKey := c.GetConfig()
 	reqURL := fmt.Sprintf("%s/chat/completions", baseURL)
 
 	bodyData := map[string]interface{}{
@@ -133,7 +133,7 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("%s request failed: %w", c.provider, err)
+		return "", fmt.Errorf("%s request failed: %w", provider, err)
 	}
 
 	// Retry once on transient 503 (high demand) or 429 (rate spike) if context permits
@@ -143,7 +143,7 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 
 		select {
 		case <-ctx.Done():
-			return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
+			return "", parseAPIError(provider, resp.StatusCode, respBytes)
 		case <-time.After(1 * time.Second):
 		}
 
@@ -156,7 +156,7 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 			if respRetry, errDo := c.httpClient.Do(reqRetry); errDo == nil {
 				resp = respRetry
 			} else {
-				return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
+				return "", parseAPIError(provider, resp.StatusCode, respBytes)
 			}
 		}
 	}
@@ -164,7 +164,7 @@ func (c *Client) generateOpenAI(ctx context.Context, messages []Message) (string
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
+		return "", parseAPIError(provider, resp.StatusCode, respBytes)
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)

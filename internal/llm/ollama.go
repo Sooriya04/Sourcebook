@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Client) generateOllamaStream(ctx context.Context, messages []Message, onToken func(string) error) error {
-	_, baseURL, model, _ := c.GetConfig()
+	provider, baseURL, model, _ := c.GetConfig()
 	reqURL := fmt.Sprintf("%s/api/chat", baseURL)
 
 	bodyData := map[string]interface{}{
@@ -41,7 +41,7 @@ func (c *Client) generateOllamaStream(ctx context.Context, messages []Message, o
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return parseAPIError(c.provider, resp.StatusCode, respBytes)
+		return parseAPIError(provider, resp.StatusCode, respBytes)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -69,7 +69,7 @@ func (c *Client) generateOllamaStream(ctx context.Context, messages []Message, o
 }
 
 func (c *Client) generateOllama(ctx context.Context, messages []Message) (string, error) {
-	_, baseURL, model, _ := c.GetConfig()
+	provider, baseURL, model, _ := c.GetConfig()
 	reqURL := fmt.Sprintf("%s/api/chat", baseURL)
 
 	bodyData := map[string]interface{}{
@@ -100,7 +100,7 @@ func (c *Client) generateOllama(ctx context.Context, messages []Message) (string
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", parseAPIError(c.provider, resp.StatusCode, respBytes)
+		return "", parseAPIError(provider, resp.StatusCode, respBytes)
 	}
 
 	var res struct {
