@@ -29,8 +29,12 @@ type API struct {
 
 func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource providers.SearchProvider, pipelineStore *pipeline.Store, repo *database.Repository) *API {
 	llmClient := llm.NewClient()
+	vectorClient := vector.NewClient()
 	if repo != nil {
 		if s, err := repo.GetSettings(); err == nil && s != nil {
+			if s.EmbeddingURL != "" || s.EmbeddingModel != "" {
+				vectorClient.SetConfig(s.EmbeddingURL, s.EmbeddingModel)
+			}
 			envProvider := strings.TrimSpace(os.Getenv("LLM_PROVIDER"))
 			envKey := strings.TrimSpace(os.Getenv("LLM_API_KEY"))
 
@@ -55,7 +59,7 @@ func NewAPI(c *controller.UnifiedSearchController, pipelineSearchSource provider
 		pipelineStore:        pipelineStore,
 		synthesizer:          synthesis.NewSynthesizer(llmClient),
 		repo:                 repo,
-		vectorClient:         vector.NewClient(),
+		vectorClient:         vectorClient,
 		llmClient:            llmClient,
 	}
 	api.sentinel = agent.NewSentinel(repo.DB())

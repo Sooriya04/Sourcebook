@@ -13,6 +13,7 @@ import (
 	"sourcebook/internal/models"
 	"sourcebook/internal/providers/searx"
 	"sourcebook/internal/registry"
+	"sourcebook/internal/vector"
 )
 
 func TestHandleSettings_SyncsSearchProvider(t *testing.T) {
@@ -131,4 +132,46 @@ func TestHandleSettings_PersistsInferenceProvider(t *testing.T) {
 	_ = u
 	_ = m
 	_ = k
+}
+
+func TestHandleSettings_SyncsVectorClient(t *testing.T) {
+	db, err := database.InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to init db: %v", err)
+	}
+	defer db.Close()
+	repo := database.NewRepository(db)
+	vc := vector.NewClient()
+
+	api := &API{
+		repo:         repo,
+		vectorClient: vc,
+	}
+
+	newSettings := models.UserSettings{
+		EmbeddingURL:   "http://custom-embed:7000",
+		EmbeddingModel: "custom-embed-model",
+	}
+	body, _ := json.Marshal(newSettings)
+	req := httptest.NewRequest(http.MethodPut, "/api/sourcebook/v1/settings", bytes.NewBuffer(body))
+	rec := httptest.NewRecorder()
+	api.HandleSettings(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", rec.Code)
+	}
+
+	url, model := vc.GetConfig()
+	if url != "http://custom-embed:7000" {
+		t.Errorf("Expected vectorClient URL 'http://custom-embed:7000', got %q", url)
+	}
+	if model != "custom-embed-model" {
+		t.Errorf("Expected vectorClient model 'custom-embed-model', got %q", model)
+	}
+
+	restartedAPI := NewAPI(nil, nil, nil, repo)
+	rURL, rModel := restartedAPI.vectorClient.GetConfig()
+	if rURL != "http://custom-embed:7000" || rModel != "custom-embed-model" {
+		t.Errorf("Expected NewAPI to load embedding settings, got url=%q model=%q", rURL, rModel)
+	}
 }
