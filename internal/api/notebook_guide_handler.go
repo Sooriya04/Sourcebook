@@ -133,7 +133,10 @@ Respond ONLY with valid JSON in this exact structure:
 		}
 	}
 
-	if guide.Summary == "" {
+	if guide.Summary != "" {
+		_ = a.repo.UpsertNotebookGuide(&guide)
+		log.Printf("[Notebook Guide] Generated and cached guide for notebook %s", notebookID)
+	} else {
 		guide.Summary = fmt.Sprintf("This notebook synthesizes %d research sources covering %s.", len(sources), sources[0].Title)
 		guide.Topics = []string{"Research Synthesis", "Source Analysis"}
 		guide.SuggestedQuestions = []string{
@@ -142,9 +145,6 @@ Respond ONLY with valid JSON in this exact structure:
 		}
 	}
 
-	_ = a.repo.UpsertNotebookGuide(&guide)
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(guide)
-	log.Printf("[Notebook Guide] Generated and cached guide for notebook %s", notebookID)
 }
