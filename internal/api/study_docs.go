@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"sourcebook/internal/models"
 	"sourcebook/internal/synthesis"
@@ -77,11 +78,63 @@ func (a *API) fetchStudyDocuments(notebookID string) ([]synthesis.ScrapedDoc, er
 	return docs, nil
 }
 
+func isCitationBracket(s string) bool {
+	if !strings.HasPrefix(s, "[") || !strings.HasSuffix(s, "]") {
+		return false
+	}
+	inner := strings.TrimSpace(s[1 : len(s)-1])
+	if len(inner) == 0 {
+		return false
+	}
+	for _, ch := range inner {
+		if !((ch >= '0' && ch <= '9') || ch == ',' || ch == ' ' || ch == '-') {
+			return false
+		}
+	}
+	return true
+}
+
 func extractJSON(raw, openChar, closeChar string) string {
 	cleaned := strings.TrimSpace(raw)
+	if start := strings.Index(cleaned, "```"); start != -1 {
+		rest := cleaned[start+3:]
+		if idx := strings.Index(rest, "\n"); idx != -1 {
+			rest = rest[idx+1:]
+		}
+		if end := strings.LastIndex(rest, "```"); end != -1 {
+			cleaned = strings.TrimSpace(rest[:end])
+		} else {
+			cleaned = strings.TrimSpace(rest)
+		}
+	}
+
+	for i := 0; i < len(cleaned); i++ {
+		idx := strings.Index(cleaned[i:], openChar)
+		if idx == -1 {
+			break
+		}
+		startPos := i + idx
+		for end := len(cleaned); end > startPos; {
+			last := strings.LastIndex(cleaned[startPos:end], closeChar)
+			if last == -1 {
+				break
+			}
+			closePos := startPos + last
+			candidate := strings.TrimSpace(cleaned[startPos : closePos+1])
+			if !isCitationBracket(candidate) && json.Valid([]byte(candidate)) {
+				return candidate
+			}
+			end = closePos
+		}
+		i = startPos
+	}
+
 	if first := strings.Index(cleaned, openChar); first != -1 {
 		if last := strings.LastIndex(cleaned, closeChar); last > first {
-			return cleaned[first : last+1]
+			candidate := strings.TrimSpace(cleaned[first : last+1])
+			if !isCitationBracket(candidate) {
+				return candidate
+			}
 		}
 	}
 	cleaned = strings.TrimPrefix(cleaned, "```json")
