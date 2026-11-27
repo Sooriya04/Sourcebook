@@ -60,32 +60,38 @@ func (a *API) handleNotebookUpdate(w http.ResponseWriter, r *http.Request, id st
 		existingIDs[src.ID] = true
 	}
 
-	// Ensure all incoming sources have an ID before syncing
-	for i := range req.Sources {
-		if req.Sources[i].ID == "" {
-			req.Sources[i].ID = uuid.NewString()
+	if req.Sources != nil {
+		// Ensure all incoming sources have an ID before syncing
+		for i := range req.Sources {
+			if req.Sources[i].ID == "" {
+				req.Sources[i].ID = uuid.NewString()
+			}
+		}
+
+		if err := a.repo.SyncNotebookSources(id, req.Sources); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Trigger thread-safe background embedding to prevent HTTP 502 timeouts
+		a.triggerNotebookEmbedding(id, req.Sources)
+
+		// Offload heavy agentic search / source enrichment to non-blocking background worker
+		a.triggerSourceEnrichment(id, req.Sources, existingIDs)
+	}
+
+	if req.Notes != nil {
+		if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 
-	if err := a.repo.SyncNotebookSources(id, req.Sources); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Trigger thread-safe background embedding to prevent HTTP 502 timeouts
-	a.triggerNotebookEmbedding(id, req.Sources)
-
-	// Offload heavy agentic search / source enrichment to non-blocking background worker
-	a.triggerSourceEnrichment(id, req.Sources, existingIDs)
-
-	if err := a.repo.SyncNotebookNotes(id, req.Notes); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := a.repo.SyncNotebookMessages(id, req.Messages); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if req.Messages != nil {
+		if err := a.repo.SyncNotebookMessages(id, req.Messages); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)

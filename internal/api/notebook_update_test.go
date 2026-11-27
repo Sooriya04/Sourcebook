@@ -99,3 +99,54 @@ func TestHandleNotebookUpdate_DecoupledAgenticSearch(t *testing.T) {
 		t.Errorf("Expected background agentic planner to be triggered asynchronously")
 	}
 }
+
+func TestHandleNotebookUpdate_PartialUpdatePreservesData(t *testing.T) {
+	db, err := database.InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+	repo := database.NewRepository(db)
+
+	nb, err := repo.CreateNotebook("Original Title", "Original Desc")
+	if err != nil {
+		t.Fatalf("CreateNotebook failed: %v", err)
+	}
+
+	if err := repo.AddSource(&models.SourceRecord{ID: "src-1", NotebookID: nb.ID, Title: "Existing Source", Content: "Keep me"}); err != nil {
+		t.Fatalf("AddSource failed: %v", err)
+	}
+	if _, err := repo.CreateNote(nb.ID, "Existing Note"); err != nil {
+		t.Fatalf("CreateNote failed: %v", err)
+	}
+	if _, err := repo.AddMessage(nb.ID, "user", "Existing Message"); err != nil {
+		t.Fatalf("AddMessage failed: %v", err)
+	}
+
+	api := &API{repo: repo}
+
+	reqBody := []byte(`{"title": "Renamed Only"}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/sourcebook/v1/notebooks/"+nb.ID, bytes.NewReader(reqBody))
+	w := httptest.NewRecorder()
+
+	api.handleNotebookUpdate(w, req, nb.ID)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("Expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
+
+	sources, err := repo.GetSourcesByNotebook(nb.ID)
+	if err != nil || len(sources) != 1 {
+		t.Fatalf("Expected 1 source preserved, got %d (err: %v)", len(sources), err)
+	}
+
+	notes, err := repo.GetNotesByNotebook(nb.ID)
+	if err != nil || len(notes) != 1 {
+		t.Fatalf("Expected 1 note preserved, got %d (err: %v)", len(notes), err)
+	}
+
+	messages, err := repo.GetMessagesByNotebook(nb.ID)
+	if err != nil || len(messages) != 1 {
+		t.Fatalf("Expected 1 message preserved, got %d (err: %v)", len(messages), err)
+	}
+}
