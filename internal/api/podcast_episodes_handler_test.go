@@ -104,3 +104,31 @@ func TestHandleEpisodeDeleteAndRename_ValidIDs(t *testing.T) {
 		t.Errorf("expected 200 OK for valid rename, got %d", renameW.Code)
 	}
 }
+
+func TestHandleListEpisodes_PathTraversalBlocked(t *testing.T) {
+	api := &API{}
+
+	traversalCases := []struct {
+		name       string
+		notebookID string
+	}{
+		{"dot-dot traversal", "../../etc"},
+		{"slash in notebook_id", "foo/bar"},
+		{"empty notebook_id", ""},
+		{"encoded traversal", "..%2F..%2Fetc"},
+	}
+
+	for _, tc := range traversalCases {
+		t.Run(tc.name, func(t *testing.T) {
+			url := "/api/sourcebook/v1/study/podcast/episodes?notebook_id=" + tc.notebookID
+			req := httptest.NewRequest(http.MethodGet, url, nil)
+			w := httptest.NewRecorder()
+
+			api.HandleListEpisodes(w, req)
+
+			if w.Code != http.StatusBadRequest {
+				t.Errorf("expected 400 Bad Request for %s, got %d", tc.name, w.Code)
+			}
+		})
+	}
+}
