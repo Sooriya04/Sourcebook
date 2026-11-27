@@ -59,3 +59,11 @@ func TestHandleSourcePing_AllowedExternal(t *testing.T) {
 		t.Fatalf("expected 400 Bad Request for unresolvable host, got %d", w.Code)
 	}
 }
+
+func TestSafeTransport_BlocksPrivateIP(t *testing.T) {
+	tr := newSafeTransport()
+	_, err := tr.DialContext(t.Context(), "tcp", "127.0.0.1:80")
+	if err == nil {
+		t.Fatal("expected error dialing loopback, got nil")
+	}
+}

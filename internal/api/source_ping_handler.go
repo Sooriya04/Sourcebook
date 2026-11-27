@@ -79,7 +79,7 @@ func newSafeTransport() *http.Transport {
 	}
 	return &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, _, err := net.SplitHostPort(addr)
+			host, port, err := net.SplitHostPort(addr)
 			if err != nil {
 				return nil, err
 			}
@@ -92,7 +92,10 @@ func newSafeTransport() *http.Transport {
 					return nil, errors.New("blocked IP address")
 				}
 			}
-			return dialer.DialContext(ctx, network, addr)
+			if len(ips) == 0 {
+				return nil, errors.New("no IP address found")
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
 		},
 	}
 }

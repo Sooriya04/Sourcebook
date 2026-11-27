@@ -71,6 +71,15 @@ func (s *Sentinel) runOnce(ctx context.Context) {
 	if err := s.repairSources(ctx, empty); err != nil {
 		log.Printf("[Sentinel] Repair cycle error: %v", err)
 	}
+
+	for _, src := range empty {
+		var content sql.NullString
+		if err := s.db.QueryRow(`SELECT content FROM sources WHERE id = ?`, src.ID).Scan(&content); err == nil {
+			if !content.Valid || content.String == "" {
+				_ = s.updateSourceContent(src.ID, "[Scrape failed]")
+			}
+		}
+	}
 }
 
 // fetchEmptySources queries for sources with no content whose notebook exists.

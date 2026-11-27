@@ -29,6 +29,11 @@ func (a *API) HandleListEpisodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isValidID(notebookID) {
+		http.Error(w, "Invalid notebook ID", http.StatusBadRequest)
+		return
+	}
+
 	audioURL := os.Getenv("AUDIO_SERVICE_URL")
 	if audioURL == "" {
 		audioURL = "http://127.0.0.1:6003"
