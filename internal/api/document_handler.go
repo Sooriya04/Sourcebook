@@ -131,7 +131,7 @@ func (a *API) HandleParseMarkdown(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if rawText == "" && r.Body != nil {
-		if b, err := io.ReadAll(r.Body); err == nil && len(b) > 0 {
+		if b, err := io.ReadAll(io.LimitReader(r.Body, 50<<20)); err == nil && len(b) > 0 {
 			rawText = string(b)
 		}
 	}
