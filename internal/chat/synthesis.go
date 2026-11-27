@@ -78,15 +78,7 @@ func (c *Controller) Generate(ctx context.Context, req ChatRequest) (*ChatRespon
 		return nil, fmt.Errorf("synthesis failed: %w", err)
 	}
 
-	if req.NotebookID != "" {
-		if c.repo != nil {
-			_, _ = c.repo.AddMessage(req.NotebookID, "user", req.Query)
-			_, _ = c.repo.AddMessage(req.NotebookID, "assistant", answer)
-		}
-		if c.memoryRetriever != nil {
-			c.memoryRetriever.SaveTurn(req.NotebookID, req.Query, answer)
-		}
-	}
+	c.persistTurn(req, answer)
 
 	citations := make([]SourceCitationDetail, len(docs))
 	for i, doc := range docs {
@@ -193,15 +185,7 @@ func (c *Controller) GenerateStream(ctx context.Context, req ChatRequest, onToke
 		return nil, nil, "", fmt.Errorf("synthesis stream failed: %w", err)
 	}
 
-	if req.NotebookID != "" {
-		if c.repo != nil {
-			_, _ = c.repo.AddMessage(req.NotebookID, "user", req.Query)
-			_, _ = c.repo.AddMessage(req.NotebookID, "assistant", fullAnswer.String())
-		}
-		if c.memoryRetriever != nil {
-			c.memoryRetriever.SaveTurn(req.NotebookID, req.Query, fullAnswer.String())
-		}
-	}
+	c.persistTurn(req, fullAnswer.String())
 
 	return citations, newSources, contextMeta, nil
 }
